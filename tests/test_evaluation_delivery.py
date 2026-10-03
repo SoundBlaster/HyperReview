@@ -65,6 +65,10 @@ class Value:
         self.__dict__.update(kwargs)
 
 
+class PagedList(list):
+    token = None
+
+
 class FakeMLflowClient:
     def __init__(self, uri, artifact_store):
         self.tracking_uri = uri
@@ -77,6 +81,7 @@ class FakeMLflowClient:
         self.metrics = {}
         self.artifacts = {}
         self.missing_metric = None
+        self.metric_page_token = None
         self.artifact_mutations = {}
         self.terminated_status = None
 
@@ -121,8 +126,11 @@ class FakeMLflowClient:
     def get_metric_history(self, run_id, name):
         assert run_id == self.run.info.run_id
         if name == self.missing_metric:
-            return []
-        return self.metrics.get(name, [])
+            history = PagedList()
+        else:
+            history = PagedList(self.metrics.get(name, []))
+        history.token = self.metric_page_token
+        return history
 
     def set_tag(self, run_id, key, value):
         assert run_id == self.run.info.run_id
@@ -278,6 +286,19 @@ class EvaluationDeliveryTests(unittest.TestCase):
             self.deliver()
         self.assertEqual(self.client.run.data.tags["hyperreview.evaluation_stage"], "pending")
         self.assertEqual(self.client.terminated_status, "FAILED")
+
+    def test_metric_paged_list_accepts_empty_token_and_rejects_more_pages(self):
+        result = self.deliver()
+        self.assertEqual(result["evaluation_stage"], EVALUATION_STAGE)
+
+        other = FakeMLflowClient(self.client.tracking_uri, self.root / "paged-artifact-store")
+        other.metric_page_token = "next-page"
+        with self.assertRaisesRegex(EvaluationDeliveryError, "could not be confirmed"):
+            deliver_evaluation(valid_assessment(), output_root=self.output_root,
+                               database=self.database, artifacts_root=self.artifacts_root,
+                               sdk_factory=FakeReportSDK(), mlflow_client_factory=lambda _uri: other)
+        self.assertEqual(other.run.data.tags["hyperreview.evaluation_stage"], "pending")
+        self.assertEqual(other.terminated_status, "FAILED")
 
     def test_artifact_fingerprint_mismatch_keeps_stage_pending_and_marks_run_failed(self):
         self.client.artifact_mutations["report.html"] = b"mismatched artifact"

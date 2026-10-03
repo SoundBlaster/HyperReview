@@ -203,7 +203,8 @@ def _verify_run_metadata(client, run_id, tags, metrics):
             history = client.get_metric_history(run_id, name)
         except Exception as error:
             raise EvaluationDeliveryError("Local evaluation metric readback failed") from error
-        _require(type(history) is list and len(history) == 1
+        _require(isinstance(history, list) and len(history) == 1
+                 and getattr(history, "token", None) in (None, "")
                  and type(getattr(history[0], "value", None)) in (int, float)
                  and float(history[0].value) == float(value),
                  "Local evaluation metric does not match the submitted value")

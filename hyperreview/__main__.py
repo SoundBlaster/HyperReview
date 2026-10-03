@@ -2,13 +2,13 @@ import argparse
 import sys
 from pathlib import Path
 
-from .intake import IntakeError, collect, encoded, save
+from .intake import IntakeError, collect, digest, encoded, save
 from .model_contract import ContractError, prepare_request
 from .storage import StorageError, read_json, write_bundle
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Collect pinned PR evidence locally.")
+    parser = argparse.ArgumentParser(description="Prepare and validate local PR explanations.")
     commands = parser.add_subparsers(dest="command", required=True)
     review = commands.add_parser("review")
     review.add_argument("--repo", required=True)
@@ -34,8 +34,58 @@ def main():
     generation.add_argument("--timeout-seconds", type=int, default=120)
     generation.add_argument("--output-root", type=Path,
                             default=Path.home() / ".local/share/hyperreview/generated")
+    compilation = commands.add_parser("compile", help="Validate paired projections and render a private preview")
+    compilation.add_argument("--evidence", required=True, type=Path)
+    compilation.add_argument("--request", required=True, type=Path)
+    compilation.add_argument("--result", required=True, type=Path)
+    compilation.add_argument("--generation-receipt", required=True, type=Path)
+    compilation.add_argument("--compiler", required=True, type=Path)
+    compilation.add_argument("--compiler-sha256", required=True)
+    compilation.add_argument("--timeout-seconds", type=int, default=60)
+    compilation.add_argument("--output-root", type=Path,
+                             default=Path.home() / ".local/share/hyperreview/previews")
     args = parser.parse_args()
     try:
+        if args.command == "compile":
+            from .compiled_preview import PreviewError, compile_preview
+            from .render import render_preview
+            import json
+            evidence = read_json(args.evidence)
+            request = read_json(args.request)
+            selection = request["source_selection"]
+            rebuilt = prepare_request(evidence, max_source_bytes=selection["max_source_bytes"],
+                                      include_paths=selection["include_paths"])
+            if rebuilt != request:
+                raise ContractError("Request does not match this evidence and selection")
+            result = read_json(args.result, max_bytes=1024 * 1024)
+            generation_receipt = read_json(args.generation_receipt)
+            if (generation_receipt.get("stage") != "model_generated"
+                    or generation_receipt.get("request_digest") != request["request_digest"]
+                    or generation_receipt.get("result_digest") != digest(result)):
+                raise ContractError("Generation receipt does not bind this request and result")
+            try:
+                compiled = compile_preview(request, result, compiler=args.compiler,
+                                           compiler_sha256=args.compiler_sha256,
+                                           timeout_seconds=args.timeout_seconds)
+            except PreviewError as error:
+                print(f"HyperReview: {error}; no validated preview saved", file=sys.stderr)
+                return 1
+            artifacts = compiled["artifacts"]
+            semantic_diff = json.loads(artifacts["diff.json"])
+            artifacts["preview.md"] = render_preview(request, result, compiled["receipt"], semantic_diff)
+            artifacts["evidence.json"] = encoded(evidence)
+            artifacts["generation-receipt.json"] = encoded(generation_receipt)
+            from uuid import uuid4
+            artifacts["metadata.json"] = encoded({
+                "schema": "hyperreview.preview.v1", "stage": "projections_validated",
+                "tracking_correlation_id": str(uuid4()), "tracking_status": "not_started",
+                "request_digest": request["request_digest"], "result_digest": digest(result),
+                "delivery_mode": "preview", "attempt": 1,
+            })
+            destination = write_bundle(artifacts, args.output_root)
+            print(f"Validated structural preview: {destination / 'preview.md'}")
+            print("Stage: projections_validated; claims remain inferred; tracking not started")
+            return 0
         if args.command == "generate":
             from .local_provider import ProviderConfig, ProviderError, generate
             endpoint = args.endpoint or {

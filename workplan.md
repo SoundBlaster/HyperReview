@@ -1,8 +1,9 @@
 # HyperReview implementation workplan
 
 **Current delivery:** specifications, a parsable desired-system Hypercode model,
-and a manual Python pipeline through filtered requests and local HTTP inference.
-Compiled paired projections, tracking, evaluation, scheduler, and publishing are
+and a manual Python pipeline through filtered requests, local HTTP inference,
+and compiled paired projections with local Markdown output.
+Tracking, evaluation, scheduler, and publishing are
 not implemented.
 
 | Phase | Work | Exit evidence |
@@ -26,8 +27,9 @@ before model analysis. Executable presence alone does not choose a backend.
    boundary: [contract](SPECS/09-model-contract.md). LM Studio/Ollama transport:
    [local inference](SPECS/10-local-inference.md), with offline fixtures and a
    controlled local readiness probe.
-3. Next: paired Hypercode compilation, identity/provenance validation, and explanation.
-4. Local MLflow tracking and bounded recovery; complete P1 acceptance fixtures.
+3. Paired Hypercode compilation, identity/provenance validation, and explanation:
+   [compiled preview](SPECS/11-compiled-preview.md).
+4. Next: local MLflow tracking and bounded recovery; complete P1 acceptance fixtures.
 
 A later optional phase may compare explicit SpecGraph architectural intent
 against source-derived evidence. It must preserve accepted intent and inferred

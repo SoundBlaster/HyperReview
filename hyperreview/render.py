@@ -18,7 +18,7 @@ def _fence(value, language="hc"):
     return f"{fence}{language}\n{value.rstrip()}\n{fence}\n"
 
 
-def render_preview(request, result, receipt, semantic_diff):
+def render_preview(request, result, receipt, semantic_diff, *, tracking_status="not_started"):
     """Inputs must come from the successful compiler boundary, never raw model output.
 
     Compiler validation establishes structure and reference integrity. It does
@@ -26,6 +26,11 @@ def render_preview(request, result, receipt, semantic_diff):
     """
     model_contract.validate_request(request)
     model_contract.validate_result(result, request)
+    if tracking_status not in ("not_started", "tracking_pending", "confirmed"):
+        raise model_contract.ContractError("Rendering tracking status is invalid")
+    tracking_label = {"not_started": "Tracking has not been confirmed.",
+                      "tracking_pending": "Tracking delivery is pending.",
+                      "confirmed": "Metadata-only tracking delivery is confirmed."}[tracking_status]
     if (receipt.get("stage") != "projections_validated"
             or receipt.get("request_digest") != request["request_digest"]
             or receipt.get("result_digest") != intake.digest(result)
@@ -44,7 +49,7 @@ def render_preview(request, result, receipt, semantic_diff):
         f"Request: `{request['request_digest']}`\n",
         f"Compiler SHA256: `{receipt['compiler_sha256']}`\n",
         f"Scope: {len(request['sources'])} supplied source records; "
-        f"{len(request['omissions'])} omissions. Tracking has not been confirmed.\n",
+        f"{len(request['omissions'])} omissions. {tracking_label}\n",
         "## Model summary (inferred)\n", _text(result["summary"]) + "\n",
         "## Paired Hypercode projections\n", "### Before\n", _fence(result["before_hc"]),
         "### After\n", _fence(result["after_hc"]),

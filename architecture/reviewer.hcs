@@ -1,0 +1,199 @@
+# Operator-owned desired configuration, not an installed runtime policy.
+HyperReview:
+  specification_status: "design"
+
+'#scheduler':
+  poll_interval_seconds: 300
+  install_enabled: false
+
+'#queue':
+  concurrency: 1
+
+'#specgraph':
+  slug: "0al-spec/SpecGraph"
+  enabled: true
+
+'#hypercode':
+  slug: "0al-spec/Hypercode"
+  enabled: true
+
+'#eligibility':
+  author_login: "SoundBlaster"
+  same_repository_required: true
+  include_drafts: false
+  include_closed: false
+
+'#evidence':
+  max_files: 30
+  max_bytes: 262144
+  execute_source: false
+
+'#backend':
+  provider: "unconfigured"
+  transport: "none"
+  endpoint: ""
+  configured: false
+  model_selection: "operator-required"
+
+'#projection':
+  interpretation_status: "illustrative"
+  profile_version: "composition-v1"
+
+'#hypercode-validator':
+  ir_version: 2
+
+'#preview':
+  enabled: true
+
+'#publication-gate':
+  requested: false
+  operator_authorization_required: true
+  revision_recheck_required: true
+
+'#publisher':
+  delivery_mode: "preview"
+  comment_marker_namespace: "hyperreview"
+
+'#budget':
+  analysis_timeout_seconds: 300
+  max_model_attempts: 2
+
+'#tracking':
+  enabled: true
+  experiment_name: "HyperReview-Pilot"
+  publication_receipt_required: true
+
+'#mlflow':
+  tracking_uri: "http://127.0.0.1:5000"
+  server_install_enabled: false
+
+'#traces':
+  instrumentation: "manual"
+  capture_content: false
+
+'#evaluation':
+  llm_judge_enabled: false
+
+'#evidently':
+  enabled: true
+  deployment: "local-library"
+  cloud_upload_enabled: false
+
+'#reports':
+  capture_content: false
+  format_profile: "json-html"
+
+'#regression':
+  blocking: false
+  threshold_policy: "operator-required"
+
+'#tracking-spool':
+  max_events: 1000
+  max_bytes: 1048576
+
+'#audit':
+  bundle_retention_days: 7
+  redact_credentials: true
+
+'#credentials':
+  expose_to_model: false
+
+'#isolation':
+  source_execution_allowed: false
+  model_tools_allowed: false
+  capability_verification_required: true
+
+@backend[codex]:
+  '#backend':
+    provider: "codex"
+    transport: "codex-exec"
+    configured: true
+
+@backend[lmstudio]:
+  '#backend':
+    provider: "lmstudio"
+    transport: "http-inference"
+    endpoint: "http://127.0.0.1:1234/v1"
+    configured: true
+
+@backend[ollama]:
+  '#backend':
+    provider: "ollama"
+    transport: "http-inference"
+    endpoint: "http://127.0.0.1:11434/api"
+    configured: true
+
+@mode[publish]:
+  '#publisher':
+    delivery_mode: "publish"
+  '#publication-gate':
+    requested: true
+
+# Applicable in every context. These constrain values, not worker behavior.
+@contract:
+  '#scheduler':
+    poll_interval_seconds: int >= 60 <= 3600
+    install_enabled: bool
+  '#queue':
+    concurrency: int >= 1 <= 1
+  Repository:
+    slug: string
+    enabled: bool
+  '#eligibility':
+    author_login: string
+    same_repository_required: bool
+    include_drafts: bool
+    include_closed: bool
+  '#evidence':
+    max_files: int >= 1 <= 100
+    max_bytes: int >= 1 <= 1048576
+    execute_source: bool
+  '#backend':
+    provider: string
+    transport: string
+    endpoint: string
+    configured: bool
+    model_selection: string
+  '#hypercode-validator':
+    ir_version: int >= 2 <= 2
+  '#publication-gate':
+    requested: bool
+    operator_authorization_required: bool
+    revision_recheck_required: bool
+  '#budget':
+    analysis_timeout_seconds: int >= 1 <= 600
+    max_model_attempts: int >= 1 <= 2
+  '#audit':
+    bundle_retention_days: int >= 1 <= 30
+    redact_credentials: bool
+  '#tracking':
+    enabled: bool
+    experiment_name: string
+    publication_receipt_required: bool
+  '#mlflow':
+    tracking_uri: string
+    server_install_enabled: bool
+  '#traces':
+    instrumentation: string
+    capture_content: bool
+  '#evaluation':
+    llm_judge_enabled: bool
+  '#evidently':
+    enabled: bool
+    deployment: string
+    cloud_upload_enabled: bool
+  '#reports':
+    capture_content: bool
+    format_profile: string
+  '#regression':
+    blocking: bool
+    threshold_policy: string
+  '#tracking-spool':
+    max_events: int >= 1 <= 1000
+    max_bytes: int >= 1 <= 1048576
+  '#credentials':
+    expose_to_model: bool
+  '#isolation':
+    source_execution_allowed: bool
+    model_tools_allowed: bool
+    capability_verification_required: bool

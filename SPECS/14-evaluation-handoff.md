@@ -14,7 +14,9 @@ lineage; exporting assessments to MLflow and Evidently does not create two
 independent measurements.
 
 The trusted SDK environment pins MLflow `3.16.1` and Evidently `0.7.23`. Operator
-paths must be absolute and must not traverse symlinks. Delivery uses a local
+paths must be absolute and must not traverse symlinks or include `..` components.
+SQLite database paths reject `?`, `#`, `%`, and control characters so URI parsing
+cannot change the selected filename. Delivery uses a local
 SQLite database and a local artifact root, with an evaluation experiment
 separate from manual preview workflow runs. No inference or GitHub write occurs.
 Run the optional command with a minimal environment outside analyzed checkouts.

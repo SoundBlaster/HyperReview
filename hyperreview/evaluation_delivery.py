@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import stat
 import tempfile
 
 from .evaluation_report import (
@@ -100,6 +101,36 @@ def _trusted_path(value, *, directory, create=False, create_parent=False):
                 raise EvaluationDeliveryError("Evaluation database cannot be inspected") from error
             _require(signature == b"SQLite format 3\x00",
                      "Evaluation database is not a SQLite file")
+    return path
+
+
+def _check_sqlite_path_syntax(value):
+    try:
+        raw = os.fspath(value)
+    except (TypeError, ValueError, OSError) as error:
+        raise EvaluationDeliveryError("Evaluation database path is invalid") from error
+    _require(type(raw) is str
+             and not any(character in raw for character in "?#%")
+             and not any(ord(character) < 32 or ord(character) == 127 for character in raw),
+             "SQLite database paths cannot contain URI metacharacters")
+
+
+def _trusted_input_file(value):
+    try:
+        path = Path(os.fspath(value))
+    except (TypeError, ValueError, OSError) as error:
+        raise EvaluationDeliveryError("Assessment input path is invalid") from error
+    _require(path.is_absolute() and ".." not in path.parts,
+             "Assessment input path must be absolute and must not contain '..'")
+    current = Path(path.anchor)
+    for component in path.parts[1:]:
+        current = current / component
+        _require(not current.is_symlink(), "Assessment input path must not traverse symlinks")
+    try:
+        mode = path.stat().st_mode
+    except OSError as error:
+        raise EvaluationDeliveryError("Assessment input file is unavailable") from error
+    _require(stat.S_ISREG(mode), "Assessment input must be a regular file")
     return path
 
 
@@ -338,6 +369,7 @@ def _deliver_evaluation(assessment, *, output_root, database, artifacts_root,
     except EvaluationReportError as error:
         raise EvaluationDeliveryError("Evaluation assessment failed local validation") from error
     output_root = _trusted_path(output_root, directory=True, create=True)
+    _check_sqlite_path_syntax(database)
     database = _trusted_path(database, directory=False, create_parent=True)
     _require(database.is_absolute(), "Evaluation database path must be absolute")
     _require(database.suffix in (".db", ".sqlite", ".sqlite3"),
@@ -411,7 +443,8 @@ def main(argv=None):
         print("HyperReview: all evaluation paths must be absolute", file=sys.stderr)
         return 2
     try:
-        assessment = _assessment_from_path(args.input)
+        input_path = _trusted_input_file(args.input)
+        assessment = _assessment_from_path(input_path)
         result = deliver_evaluation(
             assessment,
             output_root=args.output_root,

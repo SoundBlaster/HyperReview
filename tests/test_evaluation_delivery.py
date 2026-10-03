@@ -274,6 +274,21 @@ class EvaluationDeliveryTests(unittest.TestCase):
                                database=bad_db, artifacts_root=self.artifacts_root,
                                sdk_factory=self.sdk, mlflow_client_factory=lambda _uri: self.client)
 
+    def test_rejects_sqlite_uri_metacharacters_before_sdk_or_client_use(self):
+        for character in ("?", "#", "%", "\n", "\x00", "\x7f"):
+            sdk = FakeReportSDK()
+            client_factory = mock.Mock()
+            with self.subTest(character=character), self.assertRaisesRegex(
+                    EvaluationDeliveryError, "URI metacharacters"):
+                deliver_evaluation(
+                    valid_assessment(), output_root=self.output_root,
+                    database=self.root / f"tracking{character}bad.sqlite",
+                    artifacts_root=self.artifacts_root, sdk_factory=sdk,
+                    mlflow_client_factory=client_factory,
+                )
+            self.assertIsNone(sdk.rows)
+            client_factory.assert_not_called()
+
     def test_existing_experiment_must_use_exact_artifact_root(self):
         self.client.experiment = Value(experiment_id="eval-old", artifact_location="file:///wrong",
                                        name=EXPERIMENT_NAME)
@@ -320,6 +335,20 @@ class EvaluationDeliveryTests(unittest.TestCase):
         self.assertEqual(main(["--input", "relative.json", "--output-root", "/tmp/out",
                               "--database", "/tmp/tracking.sqlite",
                               "--artifacts-root", "/tmp/artifacts"]), 2)
+
+    def test_cli_rejects_symlink_and_parent_component_input_paths(self):
+        target = self.root / "assessment.json"
+        target.write_text(json.dumps(valid_assessment()), encoding="utf-8")
+        linked = self.root / "assessment-link.json"
+        linked.symlink_to(target)
+        args = ["--output-root", str(self.output_root),
+                "--database", str(self.database),
+                "--artifacts-root", str(self.artifacts_root)]
+        with mock.patch("hyperreview.evaluation_delivery._assessment_from_path") as reader:
+            self.assertEqual(main(["--input", str(linked), *args]), 1)
+            parent_path = Path(str(self.root) + "/child/../assessment.json")
+            self.assertEqual(main(["--input", str(parent_path), *args]), 1)
+        reader.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -47,8 +47,8 @@ def main():
             request = read_json(args.request)
             try:
                 proposed = generate(request, config)
-            except ProviderError:
-                print("HyperReview: local inference did not complete; no result bundle saved", file=sys.stderr)
+            except ProviderError as error:
+                print(f"HyperReview: {error}; no result bundle saved", file=sys.stderr)
                 return 1
             receipt = {**proposed["receipt"], "stage": "model_generated",
                        "hypercode_validation": "not_started", "tracking_status": "not_started"}

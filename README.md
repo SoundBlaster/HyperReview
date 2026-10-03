@@ -3,9 +3,10 @@
 A local PR reviewer that explains architectural changes using illustrative
 Hypercode projections, source references, and explicit evidence boundaries.
 
-**Status: specification bootstrap.** This repository defines the pilot;
-no worker, model adapter, scheduler, or GitHub publisher is implemented yet.
-The Hypercode model describes the proposed reviewer, not an installed service.
+**Status: manual evidence intake.** A Python CLI collects pinned PR evidence
+and writes a local intake preview. Model adapters, paired projections, MLflow,
+Evidently, scheduler, and publisher remain implementation work. The Hypercode
+model describes the proposed full reviewer, not an installed service.
 
 ## The pilot
 
@@ -50,6 +51,45 @@ Operational job/publication state remains in a separate store.
 Model backends are interchangeable: Codex CLI, LM Studio HTTP API, and Ollama
 HTTP API. Backend readiness and isolation must be verified before use; an
 installed executable alone does not establish a safe unattended setup.
+
+## Manual evidence preview
+
+Requirements: Python 3.10+ and an authenticated `gh` CLI for `github.com`.
+Run from this repository; there are no Python package dependencies to install.
+
+```sh
+python3 -m hyperreview review --repo 0al-spec/SpecGraph --pr 761 --preview
+```
+
+Choose a currently open, non-draft PR by `SoundBlaster` in the configured
+allowlist. The command rejects a different authenticated account or a fork.
+It performs GitHub reads and local writes only. `--preview` is required;
+publishing is not implemented. PR #761 is the first intake case, not a permanent
+fixture: it becomes ineligible when closed or marked as a draft.
+
+Outputs are `evidence.json` and `preview.md` in a fresh private directory under
+`~/.local/share/hyperreview/evidence/`. Override the trusted destination using
+`--output-root /absolute/operator/path`. Output paths must not traverse symlinks.
+Source is read as blobs without checkout or executing repository code. Revisions
+are rechecked before saving; a change aborts intake. The preview is pinned to
+the collected revisions and can become stale after the final check.
+
+The pack is bounded to 262144 encoded JSON bytes and 30 logical changed files
+(up to two revisions per file). It records exclusions, read failures, and check
+coverage. Source-path filtering is a conservative heuristic, not a guarantee
+that arbitrary source text contains no secrets. Full local evidence is not yet
+approved input for a model or tracking export. No automatic retention or job
+deduplication is implemented; manually remove intake directories when no longer
+needed. See [the intake milestone contract](SPECS/08-intake-milestone.md).
+
+Run the offline intake checks:
+
+```sh
+python3 -m unittest discover -s tests -v
+```
+
+[Intake CI](.github/workflows/intake-validation.yml) runs these fixtures without
+GitHub credentials, real PR reads, or model calls.
 
 ## Architecture validation
 

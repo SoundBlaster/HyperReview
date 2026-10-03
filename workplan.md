@@ -1,7 +1,8 @@
 # HyperReview implementation workplan
 
-**Current delivery:** specification bootstrap and a parsable desired-system
-Hypercode model. No runtime implementation is claimed.
+**Current delivery:** specifications, a parsable desired-system Hypercode model,
+and a manual Python evidence-intake CLI. This is the first P1 increment; paired
+projections, tracking, evaluation, scheduler, and publishing are not implemented.
 
 | Phase | Work | Exit evidence |
 |---|---|---|
@@ -12,10 +13,18 @@ Hypercode model. No runtime implementation is claimed.
 | P4 — Local worker | Install a `launchd` job using the proven one-shot path | Serialized polling, wake/restart recovery, resource bounds, logs and retention verified |
 
 MLflow and Evidently are selected; their installation and integration remain
-implementation work. Initial implementation language, exact local model, Codex isolation mechanism,
-and first PR corpus remain open. Choose and record these before P1; executable
-presence alone does not choose a backend. No scheduler or publisher should be
-installed as part of the specification bootstrap.
+implementation work. Intake uses Python 3.10+ standard library and `gh`.
+SpecGraph PR #761 is the first intake smoke case. The exact local model, Codex
+isolation mechanism, and evaluation corpus remain open; choose and record these
+before model analysis. Executable presence alone does not choose a backend.
+
+## P1 increments
+
+1. Evidence intake: implemented; [scope and limitations](SPECS/08-intake-milestone.md).
+2. Next: provider-neutral request/result schema and a credential-free, content-filtered
+   model input boundary. Verify a configured local HTTP backend.
+3. Paired Hypercode projection, identity/provenance validation, and explanation.
+4. Local MLflow tracking and bounded recovery; complete P1 acceptance fixtures.
 
 A later optional phase may compare explicit SpecGraph architectural intent
 against source-derived evidence. It must preserve accepted intent and inferred

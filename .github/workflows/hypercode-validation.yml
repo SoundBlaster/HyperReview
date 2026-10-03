@@ -1,0 +1,55 @@
+name: Hypercode validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hypercode-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  architecture:
+    name: Hypercode architecture
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout HyperReview
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout pinned Hypercode compiler
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: 0al-spec/Hypercode
+          ref: 7d23efdc9976226a21e1fc301730940d62097607
+          path: .toolchain/hypercode
+          persist-credentials: false
+
+      - name: Record tool versions
+        run: |
+          swift --version
+          python3 --version
+          git -C .toolchain/hypercode rev-parse HEAD
+
+      - name: Build Hypercode with locked dependencies
+        working-directory: .toolchain/hypercode
+        run: swift build --product hypercode --force-resolved-versions
+
+      - name: Validate architecture profiles
+        run: python3 tools/validate_architecture.py --hypercode .toolchain/hypercode/.build/debug/hypercode
+
+      - name: Upload emitted IR and diff
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hypercode-validation
+          path: .artifacts/hypercode/
+          if-no-files-found: ignore
+          retention-days: 7

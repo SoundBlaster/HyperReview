@@ -1,17 +1,18 @@
 import csv
+import hashlib
+import os
 from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
 
 from hyperreview import intake
-from hyperreview.compiled_preview import PreviewError
+from hyperreview.compiled_preview import CompilerCommandError, PreviewError
 from hyperreview.pilot import CASES, run_pilot
 from hyperreview.storage import read_json
 
 
 EXPECTED_FAILURES = {
-    "case-002": "Hypercode compiler command failed",
     "case-003": "Hypercode IR IDs do not match the model identity map",
     "case-004": "Before-side identity references do not match emitted IR",
 }
@@ -22,6 +23,8 @@ def expected_compilation(request, result, **kwargs):
                 if case["before_hc"] == result["before_hc"]
                 and case["after_hc"] == result["after_hc"])
     if not case["accepted"]:
+        if case["id"] == "case-002":
+            raise CompilerCommandError("parse", 1, ("HC1001",))
         raise PreviewError(EXPECTED_FAILURES[case["id"]])
     return {"receipt": {"change_count": case["changes"]}}
 
@@ -49,9 +52,10 @@ class PilotTests(unittest.TestCase):
         self.assertEqual([row["projection_grammar_valid"] for row in records],
                          [case["grammar_valid"] for case in CASES])
         self.assertEqual([row["projection_reference_valid"] for row in records],
-                         [case["reference_valid"] for case in CASES])
+                         [1, None, 0, 0, 1, 1])
         self.assertEqual([row["structural_change_count"] for row in records],
                          [1, None, None, None, 0, 0])
+        self.assertEqual(result["assessment"]["metric_definition_version"], "boundary-v2")
 
     def test_unrelated_compiler_failure_does_not_pass_rejection_case(self):
         def unrelated_failure(case_request, case_result, **kwargs):
@@ -64,8 +68,52 @@ class PilotTests(unittest.TestCase):
         row = result["assessment"]["records"][1]
         self.assertEqual(row["case_id"], "case-002")
         self.assertEqual(row["validator_expected_outcome_match"], 0)
-        self.assertEqual(row["projection_grammar_valid"], 0)
-        self.assertEqual(row["projection_reference_valid"], 0)
+        self.assertIsNone(row["projection_grammar_valid"])
+        self.assertIsNone(row["projection_reference_valid"])
+
+    def test_generic_parse_failure_does_not_pass_syntax_rejection(self):
+        def generic_parse_failure(case_request, case_result, **kwargs):
+            if case_result["after_hc"] == CASES[1]["after_hc"]:
+                raise CompilerCommandError("parse", 1, ())
+            return expected_compilation(case_request, case_result, **kwargs)
+        result, _ = self.run_with(generic_parse_failure)
+        row = result["assessment"]["records"][1]
+        self.assertFalse(result["all_expected_outcomes_matched"])
+        self.assertEqual(row["validator_expected_outcome_match"], 0)
+        self.assertIsNone(row["projection_grammar_valid"])
+        self.assertIsNone(row["projection_reference_valid"])
+        receipts = read_json(result["destination"] / "boundary-receipts.json")
+        self.assertEqual(receipts[1]["compiler_failure"], {
+            "operation": "parse", "return_code": 1, "diagnostic_codes": [],
+        })
+
+    def test_change_count_mismatch_keeps_successful_validity_metrics(self):
+        def wrong_change_count(case_request, case_result, **kwargs):
+            compiled = expected_compilation(case_request, case_result, **kwargs)
+            if case_result["after_hc"] == CASES[0]["after_hc"]:
+                return {"receipt": {"change_count": 9}}
+            return compiled
+        result, _ = self.run_with(wrong_change_count)
+        row = result["assessment"]["records"][0]
+        self.assertEqual(row["validator_expected_outcome_match"], 0)
+        self.assertEqual(row["projection_grammar_valid"], 1)
+        self.assertEqual(row["projection_reference_valid"], 1)
+        self.assertEqual(row["structural_change_count"], 9)
+
+    @unittest.skipUnless(os.environ.get("HYPERREVIEW_TEST_COMPILER"),
+                         "set HYPERREVIEW_TEST_COMPILER to exercise the real compiler pilot")
+    def test_real_compiler_pilot_matches_expected_outcomes(self):
+        compiler = Path(os.environ["HYPERREVIEW_TEST_COMPILER"])
+        result = run_pilot(compiler, hashlib.sha256(compiler.read_bytes()).hexdigest(),
+                           self.output_root)
+        self.assertTrue(result["all_expected_outcomes_matched"])
+        records = result["assessment"]["records"]
+        self.assertEqual([row["validator_expected_outcome_match"] for row in records], [1] * 6)
+        self.assertEqual(records[1]["projection_grammar_valid"], 0)
+        receipts = read_json(result["destination"] / "boundary-receipts.json")
+        self.assertEqual(receipts[1]["compiler_failure"], {
+            "operation": "parse", "return_code": 1, "diagnostic_codes": ["HC1001"],
+        })
 
     def test_unchanged_case_six_is_accepted_without_behavior_proof(self):
         result, _ = self.run_with(expected_compilation)

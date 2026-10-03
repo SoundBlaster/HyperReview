@@ -15,7 +15,7 @@ from .storage import StorageError, read_json, write_bundle
 
 INPUT_SCHEMA = "hyperreview.evaluation.v1"
 SUMMARY_SCHEMA = "hyperreview.evaluation-report.v1"
-METRIC_DEFINITION_VERSION = "boundary-v1"
+METRIC_DEFINITION_VERSION = "boundary-v2"
 ASSESSOR_TYPE = "deterministic"
 EVIDENTLY_VERSION = "0.7.23"
 MAX_INPUT_BYTES = 64 * 1024
@@ -83,7 +83,8 @@ def validate_assessment(assessment):
         for field in ("projection_grammar_valid", "projection_reference_valid",
                       "validator_expected_outcome_match"):
             value = record[field]
-            _require(type(value) is int and value in (0, 1),
+            nullable = field in ("projection_grammar_valid", "projection_reference_valid")
+            _require((nullable and value is None) or (type(value) is int and value in (0, 1)),
                      f"Assessment {field} must be integer 0 or 1")
         changes = record["structural_change_count"]
         _require(changes is None or (type(changes) is int and 0 <= changes <= 1000),
@@ -156,10 +157,13 @@ def _evidently_factory(rows, metric_columns):
 
 def _summary(assessment):
     means = {}
+    coverage = {}
     for field in METRIC_FIELDS:
         values = [record[field] for record in assessment["records"]
                   if record[field] is not None]
         means[field] = statistics.mean(values) if values else None
+        coverage[field] = {"measured_count": len(values),
+                           "record_count": len(assessment["records"])}
     return {
         "schema": SUMMARY_SCHEMA,
         "dataset_digest": assessment["dataset_digest"],
@@ -170,6 +174,7 @@ def _summary(assessment):
         "evidently_version": EVIDENTLY_VERSION,
         "record_count": len(assessment["records"]),
         "means": means,
+        "coverage": coverage,
     }
 
 
@@ -184,8 +189,7 @@ def create_report(assessment, output_root, sdk_factory=None):
     _require(isinstance(output_root, (str, Path)) and Path(output_root).is_absolute(),
              "Output root must be an absolute path")
     metric_columns = tuple(field for field in METRIC_FIELDS
-                           if field != "structural_change_count"
-                           or any(row[field] is not None for row in assessment["records"]))
+                           if any(row[field] is not None for row in assessment["records"]))
     numeric_rows = [{field: row[field] for field in metric_columns}
                     for row in assessment["records"]]
     factory = sdk_factory or _evidently_factory

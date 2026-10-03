@@ -13,8 +13,11 @@ outcomes, and answer keys. Synthetic revision IDs are fixture inputs, not GitHub
 evidence. No source is executed, and no model is called.
 
 Each case uses the same pinned external compiler boundary as manual previews.
-A rejection only passes when its controlled diagnostic matches the expected
-failure; an unrelated compiler failure is not a successful negative test.
+A rejection only passes when its controlled failure matches the expected
+operation and diagnostic. The unsupported arrow case requires the parse
+operation, exit status 1, and allowlisted diagnostic code `HC1001`; generic
+compiler failures do not pass it. Compiler diagnostic messages and paths are
+not retained in the assessment bundle.
 Equal structure does not establish equal behavior: the approval-bypass case is
 accepted structurally and requires source inspection to identify the violation.
 
@@ -25,11 +28,16 @@ LLM-explanation, and HyperReview study defined by the product specifications.
 
 ## Reporting subset
 
-`hyperreview.evaluation.v1` accepts 5–10 unique fixed-format case IDs and numeric
-boundary assessments only. Unknown columns, prose, booleans used as numbers,
-nonfinite values, and duplicate JSON fields are rejected. Missing structural
-change counts remain missing. The metric definition is `boundary-v1`; these
-values describe controlled validator outcomes, not general model quality.
+`hyperreview.evaluation.v1` accepts 5–10 unique fixed-format case IDs with
+numeric or explicitly missing metric values. Unknown columns, prose, booleans
+used as numbers, nonfinite values, and duplicate JSON fields are rejected.
+Grammar and reference validity may be missing when the corresponding check did
+not run; a successful compile records both as valid even if the observed
+structural change count differs from the fixture expectation. Missing metric
+values remain missing, and the summary reports measured-record coverage for
+each metric. The metric
+definition is `boundary-v2`; these values describe controlled validator
+outcomes, not general model quality.
 
 Evidently `0.7.23` computes fixed numeric means and exports JSON/HTML locally.
 Case IDs and source data are excluded from the SDK table. Both telemetry flags

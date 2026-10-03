@@ -78,7 +78,7 @@ class ValidateAssessmentTests(unittest.TestCase):
             ("dataset_digest", "A" * 64),
             ("dataset_digest", "../unsafe"),
             ("assessor_type", "human"),
-            ("metric_definition_version", "boundary-v2"),
+            ("metric_definition_version", "boundary-v1"),
         )
         for key, value in mutations:
             with self.subTest(key=key, value=value):
@@ -124,6 +124,15 @@ class ValidateAssessmentTests(unittest.TestCase):
             item["records"][0][field] = value
             with self.subTest(field=field, value=value), self.assertRaises(EvaluationReportError):
                 validate_assessment(item)
+
+    def test_allows_unmeasured_validity_fields_but_not_unmeasured_outcome(self):
+        item = assessment()
+        item["records"][0]["projection_grammar_valid"] = None
+        item["records"][0]["projection_reference_valid"] = None
+        self.assertIs(validate_assessment(item), item)
+        item["records"][0]["validator_expected_outcome_match"] = None
+        with self.assertRaises(EvaluationReportError):
+            validate_assessment(item)
 
     def test_rejects_nan_and_duplicate_json_fields(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -185,6 +194,25 @@ class CreateReportTests(unittest.TestCase):
         create_report(assessment(structural_change_count=None), self.root, fake)
         self.assertNotIn("structural_change_count", fake.columns)
         self.assertTrue(all("structural_change_count" not in row for row in fake.rows))
+
+    def test_report_preserves_missing_values_and_reports_metric_coverage(self):
+        value = assessment(structural_change_count=None)
+        value["records"][0]["projection_reference_valid"] = None
+        value["records"][0]["projection_grammar_valid"] = None
+        fake = FakeSDK()
+        result = create_report(value, self.root, fake)
+        self.assertIn("projection_reference_valid", fake.columns)
+        self.assertNotIn("structural_change_count", fake.columns)
+        self.assertEqual(result["summary"]["means"]["projection_reference_valid"], 0.5)
+        self.assertEqual(result["summary"]["coverage"]["projection_reference_valid"], {
+            "measured_count": 4, "record_count": 5,
+        })
+        self.assertEqual(result["summary"]["coverage"]["projection_grammar_valid"], {
+            "measured_count": 4, "record_count": 5,
+        })
+        self.assertEqual(result["summary"]["coverage"]["structural_change_count"], {
+            "measured_count": 0, "record_count": 5,
+        })
 
     def test_rejects_wrong_sdk_version_and_oversized_artifacts(self):
         with self.assertRaisesRegex(EvaluationReportError, "Evidently 0.7.23"):

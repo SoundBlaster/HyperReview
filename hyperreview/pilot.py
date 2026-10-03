@@ -6,7 +6,7 @@ from pathlib import Path
 import time
 
 from . import intake, model_contract
-from .compiled_preview import PreviewError, compile_preview
+from .compiled_preview import CompilerCommandError, PreviewError, compile_preview
 from .storage import write_bundle
 
 
@@ -115,30 +115,47 @@ def run_pilot(compiler, compiler_sha256, output_root):
         accepted = False
         observed_changes = None
         failure = None
+        compiler_failure = None
+        grammar_valid = None
+        reference_valid = None
         try:
             compiled = compile_preview(request, result, compiler=Path(compiler),
                                        compiler_sha256=compiler_sha256, timeout_seconds=60)
             accepted = True
             observed_changes = compiled["receipt"]["change_count"]
+            grammar_valid = 1
+            reference_valid = 1
+        except CompilerCommandError as error:
+            failure = str(error)
+            compiler_failure = {"operation": error.operation, "return_code": error.return_code,
+                                "diagnostic_codes": list(error.diagnostic_codes)}
         except PreviewError as error:
             failure = str(error)  # Application-owned diagnostics, never compiler text.
         match = accepted == case["accepted"] and (not accepted or observed_changes == case["changes"])
-        # Passing a rejection fixture is not a positive grammar/reference result.
-        # Rejection class is checked against the controlled expected diagnostic;
-        # an unrelated transport/binary failure is never counted as a passing test.
         if not accepted:
-            expected_failure = {"case-002": "Hypercode compiler command failed",
-                                "case-003": "Hypercode IR IDs do not match the model identity map",
+            expected_failure = {"case-003": "Hypercode IR IDs do not match the model identity map",
                                 "case-004": "Before-side identity references do not match emitted IR"}.get(case["id"])
-            match = match and expected_failure is not None and failure == expected_failure
+            if case["id"] == "case-002":
+                expected_rejection = compiler_failure == {
+                    "operation": "parse", "return_code": 1, "diagnostic_codes": ["HC1001"],
+                }
+                grammar_valid = 0 if expected_rejection else None
+                match = match and expected_rejection
+            else:
+                expected_rejection = expected_failure is not None and failure == expected_failure
+                if expected_rejection:
+                    grammar_valid = 1
+                    reference_valid = 0
+                match = match and expected_rejection
         assessments.append({"case_id": case["id"],
-                            "projection_grammar_valid": case["grammar_valid"] if match else 0,
-                            "projection_reference_valid": case["reference_valid"] if match else 0,
+                            "projection_grammar_valid": grammar_valid,
+                            "projection_reference_valid": reference_valid,
                             "validator_expected_outcome_match": int(match),
                             "structural_change_count": observed_changes, "omissions": len(request["omissions"]),
                             "elapsed_ms": int((time.monotonic() - started) * 1000)})
         details.append({"case_id": case["id"], "accepted": accepted, "expected_acceptance": case["accepted"],
-                        "failure": failure, "request_digest": request["request_digest"],
+                        "failure": failure, "compiler_failure": compiler_failure,
+                        "request_digest": request["request_digest"],
                         "result_digest": intake.digest(result)})
         question_lines.extend([f"## {case['id']} — {case['title']}\n",
                                "### Before source (not executed)\n```python\n" + (case["before"] or "") + "```\n",
@@ -149,7 +166,7 @@ def run_pilot(compiler, compiler_sha256, output_root):
         scorecard.append(f"{case['id']},,,,,,,,\n")
         answers.extend([f"## {case['id']}\n", case["answer"] + "\n"])
     assessment = {"schema": "hyperreview.evaluation.v1", "dataset_digest": dataset_digest,
-                  "metric_definition_version": "boundary-v1", "assessor_type": "deterministic",
+                  "metric_definition_version": "boundary-v2", "assessor_type": "deterministic",
                   "records": assessments}
     destination = write_bundle({"assessments.json": intake.encoded(assessment),
                                 "boundary-receipts.json": intake.encoded(details),

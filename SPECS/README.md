@@ -33,6 +33,9 @@ retrospective workflow traces, and the bounded recovery outbox.
 [Controlled pilot boundaries](13-pilot-boundaries.md) defines synthetic cases,
 numeric local Evidently reports, and the remaining human comparison.
 
+[Evaluation handoff](14-evaluation-handoff.md) defines the local sanitized report
+export and its recovery limits.
+
 The `.hc` model names architecture responsibilities with explicit IDs.
 [SPECS/02-architecture.md](02-architecture.md) maps those IDs to requirements.
 Markdown specifications supply behavioral semantics; `.hcs` supplies values and

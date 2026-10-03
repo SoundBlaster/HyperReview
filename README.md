@@ -7,8 +7,9 @@ Hypercode projections, source references, and explicit evidence boundaries.
 prepares a filtered request, proposes a result through LM Studio or Ollama,
 and validates paired projections before rendering a local explanation.
 Metadata-only MLflow delivery and recovery are implemented. Controlled pilot
-fixtures and local Evidently reports are available; human comparison, evaluation
-artifact handoff to MLflow, scheduler, and publisher remain implementation work. The Hypercode
+fixtures, local Evidently reports, and explicit sanitized evaluation export to
+MLflow are available; human comparison, scheduler, and publisher remain
+implementation work. The Hypercode
 model describes the proposed full reviewer, not an installed service.
 
 ## The pilot
@@ -229,6 +230,28 @@ The reporting runtime requires Python 3.12+; Python 3.13 was exercised on macOS
 ARM64. Evidently receives only fixed numeric columns, with telemetry disabled
 before import. Reports remain local, with no model calls or Cloud upload. Human
 accuracy and review time remain unmeasured. See [the pilot subset](SPECS/13-pilot-boundaries.md).
+
+### Link a report to MLflow
+
+Install the optional handoff dependencies in the evaluation runtime:
+
+```sh
+~/.local/share/hyperreview/evaluation-runtime/bin/python -m pip install -r requirements-evaluation-tracking.txt
+env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin \
+  DO_NOT_TRACK=1 EVIDENTLY_DISABLE_TELEMETRY=1 \
+  ~/.local/share/hyperreview/evaluation-runtime/bin/python -m hyperreview.evaluation_delivery \
+  --input /absolute/path/pilot-bundle/assessments.json \
+  --output-root /absolute/operator/path/evaluation \
+  --database /absolute/operator/path/mlflow/tracking.db \
+  --artifacts-root /absolute/operator/path/mlflow/evaluation-artifacts
+```
+
+Run from this trusted repository. Delivery regenerates the report from validated
+numeric assessments, then logs selected artifacts and numeric summaries in a
+separate local evaluation experiment. Arbitrary report files cannot be supplied
+for upload. Failed delivery leaves the local report available; another explicit
+invocation may create another run. There is no durable evaluation retry outbox.
+See [evaluation handoff](SPECS/14-evaluation-handoff.md).
 
 ## Architecture validation
 

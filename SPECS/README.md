@@ -30,6 +30,9 @@ identity/provenance checks, and local Markdown explanation boundary.
 [Local tracking](12-local-tracking.md) defines metadata-only MLflow delivery,
 retrospective workflow traces, and the bounded recovery outbox.
 
+[Controlled pilot boundaries](13-pilot-boundaries.md) defines synthetic cases,
+numeric local Evidently reports, and the remaining human comparison.
+
 The `.hc` model names architecture responsibilities with explicit IDs.
 [SPECS/02-architecture.md](02-architecture.md) maps those IDs to requirements.
 Markdown specifications supply behavioral semantics; `.hcs` supplies values and

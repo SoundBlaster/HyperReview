@@ -3,8 +3,9 @@
 **Current delivery:** specifications, a parsable desired-system Hypercode model,
 and a manual Python pipeline through filtered requests, local HTTP inference,
 and compiled paired projections with local Markdown output and metadata-only
-MLflow delivery. Evaluation, scheduler, and publishing are
-not implemented.
+MLflow delivery. Six controlled pilot cases and local Evidently reports are
+implemented. Human comparison, evaluation artifact handoff, scheduler, and
+publishing remain open.
 
 | Phase | Work | Exit evidence |
 |---|---|---|
@@ -15,8 +16,9 @@ not implemented.
 | P4 — Local worker | Install a `launchd` job using the proven one-shot path | Serialized polling, wake/restart recovery, resource bounds, logs and retention verified |
 
 MLflow `3.16.1` is installed in an isolated optional runtime; its local SQLite
-delivery and loopback UI have been exercised. Evidently integration remains
-implementation work. Intake uses Python 3.10+ standard library and `gh`.
+delivery and loopback UI have been exercised. The local Evidently reporting
+subset uses a separate optional Python 3.12+ runtime. Intake uses Python 3.10+
+standard library and `gh`.
 SpecGraph PR #761 is the first intake smoke case. Its selected slice was analyzed
 with the existing local LM Studio gpt-oss-20b model, explicit API alias and context
 16384. The alias fingerprint is recorded; a weights revision remains unavailable.
@@ -34,7 +36,9 @@ alone does not choose a backend.
    [compiled preview](SPECS/11-compiled-preview.md).
 4. Local MLflow tracking and bounded recovery:
    [delivery profile](SPECS/12-local-tracking.md), exercised on the compiled real slice.
-5. Next: versioned pilot cases, sanitized Evidently reports, and human comparison.
+5. Controlled versioned cases and sanitized local Evidently reports:
+   [pilot subset](SPECS/13-pilot-boundaries.md). Next: MLflow evaluation artifact
+   handoff and independent human comparison on matched real cases.
 
 A later optional phase may compare explicit SpecGraph architectural intent
 against source-derived evidence. It must preserve accepted intent and inferred

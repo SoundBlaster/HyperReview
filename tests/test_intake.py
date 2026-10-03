@@ -3,6 +3,7 @@ import hashlib
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from hyperreview.intake import (AUTHOR, MAX_BYTES, IntakeError, collect, digest,
                                eligible, encoded, exclusion, save, source)
@@ -129,6 +130,26 @@ class IntakeTests(unittest.TestCase):
         self.assertLessEqual(len(encoded(pack)), MAX_BYTES)
         self.assertEqual(pack["files"][0]["sources"], [])
         self.assertEqual(pack["files"][0]["omissions"][0]["reason"], "encoded_evidence_byte_limit")
+
+    def test_large_source_and_many_checks_keep_final_metadata_within_budget(self):
+        class ManyChecks(FakeGitHub):
+            def get(self, endpoint, query="."):
+                if "/check-runs" in endpoint:
+                    return {"total_count": 100, "check_runs": [
+                        {"id": n, "name": f"ordinary-check-{n}", "status": "completed",
+                         "conclusion": "success", "head_sha": HEAD} for n in range(100)]}
+                return super().get(endpoint, query)
+        with patch("hyperreview.intake.utc_now", return_value="2026-10-03T15:04:00.123456+00:00"):
+            pack = collect(REPO, 761, ManyChecks(raw=b"x" * 245130))
+        self.assertLessEqual(len(encoded(pack)), MAX_BYTES)
+        self.assertEqual(len(pack["files"][0]["sources"]), 1)
+        self.assertTrue(pack["checks"])
+        self.assertLess(len(pack["checks"]), 100)
+        self.assertIn("evidence_byte_limit", pack["check_omissions"])
+        self.assertEqual(pack["scope"]["commit_status_contexts"], "not_collected")
+        self.assertIn("rechecked_at", pack)
+        claimed = pack.pop("evidence_digest")
+        self.assertEqual(claimed, digest(pack))
 
     def test_binary_and_blob_integrity(self):
         api = FakeGitHub(raw=b"a\0b")

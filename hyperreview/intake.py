@@ -43,7 +43,7 @@ def digest(value):
 
 
 def utc_now():
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
 class GitHub:
@@ -226,12 +226,16 @@ def collect(repo, number, api=None):
         "delivery_mode": "preview", "repository": repo, "pr": number,
         "authenticated_account": account, **pr, "merge_base_sha": merge_base,
         "collected_at": utc_now(), "correlation_id": str(uuid4()),
+        # Account for final metadata before selecting source/check records.
+        # Fixed-width placeholders are replaced without growing the JSON pack.
+        "rechecked_at": utc_now(), "evidence_digest": "0" * 64,
         "tracking_status": "not_started", "files": inventory,
         "scope": {"inventory": "complete_pinned_tree_comparison",
                   "source": "whole_selected_changed_files_only",
                   "rename_hints": "possibly_incomplete" if len(files) >= 300 else "compare_api",
                   "surrounding_files": "not_collected", "pr_authored_text": "not_collected",
-                  "behavior": "not_executed", "secret_detection": "path_filter_only_not_a_content_guarantee"},
+                  "behavior": "not_executed", "secret_detection": "path_filter_only_not_a_content_guarantee",
+                  "commit_status_contexts": "not_collected"},
         "limits": {"source_files": MAX_FILES, "evidence_bytes": MAX_BYTES,
                    "deadline_seconds": DEADLINE_SECONDS},
         "checks": [], "check_omissions": [],
@@ -283,13 +287,13 @@ def collect(repo, number, api=None):
             pack["check_omissions"].append("check_api_page_limit")
     except IntakeError:
         pack["check_omissions"].append("check_read_failure")
-    pack["scope"]["commit_status_contexts"] = "not_collected"
     current = metadata(api, repo, number)
     eligible(repo, number, current, account)
     if any(current[field] != pr[field] for field in ("base_sha", "head_sha")):
         raise IntakeError("PR revisions changed during collection; rerun intake")
     pack["rechecked_at"] = utc_now()
-    pack["evidence_digest"] = digest(pack)
+    pack["evidence_digest"] = digest({key: value for key, value in pack.items()
+                                      if key != "evidence_digest"})
     if len(encoded(pack)) > MAX_BYTES:
         raise IntakeError("Evidence pack exceeds the byte limit")
     return pack

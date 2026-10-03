@@ -1,10 +1,11 @@
 # MLflow tracking and evaluation
 
 MLflow is the selected experiment/tracing/evaluation system for HyperReview.
-This is an implementation requirement, not a running MLflow installation.
-The initial deployment is a loopback-only tracking server on the operator's
-MacBook. The MLflow package/version and server schema must be pinned when
-implementation starts; this specification does not choose an unverified version.
+The initial implementation pins MLflow `3.16.1` and uses a direct local SQLite
+SDK connection with a loopback-only UI server on the operator's MacBook.
+[The implemented subset](12-local-tracking.md) records its delivery and recovery
+limits; the full tracing, evaluation and worker obligations below remain the
+target contract where they exceed that subset.
 
 ## Run and trace contracts
 

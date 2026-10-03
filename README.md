@@ -3,10 +3,11 @@
 A local PR reviewer that explains architectural changes using illustrative
 Hypercode projections, source references, and explicit evidence boundaries.
 
-**Status: manual compiled preview.** A Python CLI collects pinned PR evidence,
+**Status: manual compiled preview with local tracking.** A Python CLI collects pinned PR evidence,
 prepares a filtered request, proposes a result through LM Studio or Ollama,
 and validates paired projections before rendering a local explanation.
-MLflow delivery, Evidently, scheduler, and publisher remain implementation work. The Hypercode
+Metadata-only MLflow delivery and recovery are implemented. Evidently, scheduler,
+and publisher remain implementation work. The Hypercode
 model describes the proposed full reviewer, not an installed service.
 
 ## The pilot
@@ -44,7 +45,8 @@ HyperReview. Canonical expected architecture, when supplied, stays separate
 from inferred projections.
 
 MLflow is the selected system for experiment runs, manually instrumented traces,
-and pilot evaluation. Its local deployment is specified but not installed.
+and pilot evaluation. The first local deployment pins MLflow `3.16.1`, uses
+SQLite directly for SDK writes, and serves a loopback-only UI.
 Evidently produces local quality/regression reports from versioned assessments;
 sanitized report artifacts and summaries are linked to MLflow evaluation runs.
 Operational job/publication state remains in a separate store.
@@ -160,6 +162,43 @@ tracking has not been confirmed and publication remains unavailable. See
 Prompt `composition-v2` explicitly aligns projection IDs and revision-specific
 source references. Prepare a new request for this version; older prepared
 requests are rejected rather than silently reinterpreted under a changed prompt.
+
+## Deliver local tracking metadata
+
+The core CLI still uses the standard library; tracking runs in a separate
+optional environment. Install and run the UI outside analyzed checkouts:
+
+```sh
+python3 -m venv ~/.local/share/hyperreview/runtime
+~/.local/share/hyperreview/runtime/bin/python -m pip install -r requirements-tracking.txt
+mkdir -p ~/.local/share/hyperreview/mlflow/artifacts
+~/.local/share/hyperreview/runtime/bin/mlflow server --host 127.0.0.1 --port 5050 \
+  --workers 1 \
+  --backend-store-uri "sqlite:///$HOME/.local/share/hyperreview/mlflow/tracking.db" \
+  --artifacts-destination "$HOME/.local/share/hyperreview/mlflow/artifacts" \
+  --allowed-hosts '127.0.0.1:5050,localhost:5050' \
+  --cors-allowed-origins 'http://127.0.0.1:5050' --x-frame-options DENY
+```
+
+The setup paths are trusted operator configuration. Run delivery separately:
+
+```sh
+python3 -m hyperreview track --bundle /absolute/path/compiled-preview-bundle
+python3 -m hyperreview track --reconcile
+```
+
+The first command persists a metadata-only event before SDK delivery. The second
+replays one pending event without inference. The default database/artifact root
+matches the server command above; override trusted paths with `--database`,
+`--artifacts-root`, `--runtime-python`, and `--spool-root`. A spool cannot silently
+switch destinations. Source-bearing bundles stay local; operational receipts
+survive their removal. An incomplete/conflicting MLflow record remains pending.
+
+The UI at `http://127.0.0.1:5050` reads the same SQLite database; the delivery
+child makes no HTTP tracking requests. Manual traces are retrospective workflow
+receipts with absent inputs/outputs. Confirmation updates preview metadata and
+displayed status, and does not establish program behavior or authorize a GitHub
+comment. See [local tracking and recovery](SPECS/12-local-tracking.md).
 
 ## Architecture validation
 

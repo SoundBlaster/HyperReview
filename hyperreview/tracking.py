@@ -83,7 +83,9 @@ def validate_event(event):
         _require(type(stage) is dict and set(stage) == {"name", "status", "elapsed_ms"}
                  and stage["name"] == name and stage["status"] in ("completed", "unavailable")
                  and (stage["elapsed_ms"] is None or (type(stage["elapsed_ms"]) is int
-                      and 0 <= stage["elapsed_ms"] <= 10**12)), "Tracking stage is invalid")
+                      and 0 <= stage["elapsed_ms"] <= 10**12))
+                 and (stage["status"] != "unavailable" or stage["elapsed_ms"] is None),
+                 "Tracking stage is invalid")
     try:
         _require(len(intake.encoded(event)) <= MAX_EVENT_BYTES, "Tracking event exceeds its byte limit")
     except (ValueError, TypeError, RecursionError, OverflowError) as error:
@@ -119,8 +121,23 @@ def build_event(bundle):
     metadata = _read_artifact(bundle, "metadata.json")
     compiler = _read_artifact(bundle, "compiler-receipt.json")
     generation = _read_artifact(bundle, "generation-receipt.json")
+    evidence = _read_artifact(bundle, "evidence.json", 262144)
     model_contract.validate_request(request)
     model_contract.validate_result(result, request)
+    selection = request["source_selection"]
+    _require(model_contract.prepare_request(evidence, max_source_bytes=selection["max_source_bytes"],
+                                           include_paths=selection["include_paths"]) == request,
+             "Tracking evidence no longer matches the selected request")
+    preview_path = bundle / "preview.md"
+    _require(not preview_path.is_symlink() and preview_path.is_file()
+             and preview_path.stat().st_size <= 2 * 1024 * 1024,
+             "Tracking requires a bounded local preview artifact")
+    for side in ("before", "after"):
+        path = bundle / (side + ".hc")
+        _require(not path.is_symlink() and path.is_file()
+                 and path.stat().st_size <= 262144
+                 and path.read_bytes() == result[side + "_hc"].encode("utf-8"),
+                 "Projection artifact does not match its bound result")
     result_digest = intake.digest(result)
     for receipt in (metadata, compiler, generation):
         _require(receipt.get("request_digest") == request["request_digest"]
@@ -183,6 +200,11 @@ def build_event(bundle):
 def _atomic_json(path, value):
     raw = intake.encoded(value)
     _require(len(raw) <= MAX_EVENT_BYTES, "Operational tracking data exceeds its byte limit")
+    _atomic_bytes(path, raw)
+
+
+def _atomic_bytes(path, raw):
+    _require(not path.is_symlink(), "Tracking output must not be a symlink")
     descriptor, temporary = tempfile.mkstemp(prefix=".tracking-", dir=path.parent)
     try:
         with os.fdopen(descriptor, "wb") as stream:

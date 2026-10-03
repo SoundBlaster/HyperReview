@@ -60,7 +60,7 @@ def main():
     args = parser.parse_args()
     try:
         if args.command == "track":
-            from .tracking import TrackingError, build_event, pending_events, reconcile, update_bundle_tracking
+            from .tracking import TrackingError, pending_events, reconcile, update_bundle_tracking
             options = {"spool_root": args.spool_root, "runtime_python": args.runtime_python,
                        "database": args.database, "artifacts_root": args.artifacts_root,
                        "timeout_seconds": args.timeout_seconds}
@@ -76,8 +76,7 @@ def main():
                 if args.bundle:
                     update_bundle_tracking(args.bundle, receipt)
                     from .render import render_preview
-                    from .tracking import _atomic_json
-                    import json
+                    from .tracking import _atomic_bytes
                     request = read_json(args.bundle / "request.json")
                     result = read_json(args.bundle / "result.json", max_bytes=1024 * 1024)
                     compiler_receipt = read_json(args.bundle / "compiler-receipt.json")
@@ -88,8 +87,7 @@ def main():
                     preview_path = args.bundle / "preview.md"
                     if preview_path.is_symlink():
                         raise TrackingError("Preview output must not be a symlink")
-                    with preview_path.open("wb") as target:
-                        target.write(preview)
+                    _atomic_bytes(preview_path, preview)
                 print(f"Tracking confirmed: run {receipt['run_id']}, trace {receipt['trace_id']}")
                 print("Claims remain inferred; no publication performed")
                 return 0

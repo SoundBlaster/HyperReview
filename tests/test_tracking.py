@@ -1,13 +1,18 @@
 import copy
+import hashlib
 import json
 from pathlib import Path
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
+from uuid import uuid4
 
 from hyperreview import intake
 from hyperreview.model_contract import ABSTRACTION_PROFILE, PROMPT_VERSION
-from hyperreview.tracking import (TrackingError, pending_events, reconcile, validate_event)
+from hyperreview.tracking import (TrackingError, _run_delivery, build_event, pending_events, reconcile, validate_event)
+from hyperreview.model_contract import prepare_request
+from test_model_contract import pack, source, valid_result
 
 
 def event():
@@ -107,6 +112,85 @@ class TrackingTests(unittest.TestCase):
         arguments = {**self.arguments, "spool_root": link}
         with self.assertRaisesRegex(TrackingError, "symlinks"):
             reconcile(event(), **arguments)
+
+    def test_bundle_export_contains_no_source_model_prose_paths_or_model_name(self):
+        evidence = pack([source("after", "private_source_sentinel\n")])
+        request = prepare_request(evidence)
+        result = valid_result(request)
+        result["summary"] = "private_model_summary_sentinel"
+        result["before_hc"] = "\n"
+        result["after_hc"] = "Application#App\n"
+        bound = {"request_digest": request["request_digest"], "result_digest": intake.digest(result)}
+        compiler = {**bound, "stage": "projections_validated", "compiler_sha256": "a" * 64,
+                    "before_resolver": {"name": "hypercode-swift", "version": "0.6.0-dev"},
+                    "after_resolver": {"name": "hypercode-swift", "version": "0.6.0-dev"},
+                    "before_ids": [], "after_ids": ["App"], "change_count": 1, "elapsed_ms": 2}
+        values = {
+            "evidence.json": evidence, "request.json": request, "result.json": result,
+            "metadata.json": {**bound, "schema": "hyperreview.preview.v1", "stage": "projections_validated",
+                              "tracking_correlation_id": str(uuid4()), "delivery_mode": "preview", "attempt": 1},
+            "generation-receipt.json": {**bound, "stage": "model_generated", "provider": "lmstudio",
+                                        "model": "private_model_name_sentinel", "elapsed_ms": 1,
+                                        "input_tokens": None, "output_tokens": None},
+        }
+        for name, field in (("before.ir.json", "before_ir_sha256"),
+                            ("after.ir.json", "after_ir_sha256"), ("diff.json", "diff_sha256")):
+            raw = intake.encoded({"fixture": name})
+            (self.root / name).write_bytes(raw)
+            compiler[field] = hashlib.sha256(raw).hexdigest()
+        values["compiler-receipt.json"] = compiler
+        for name, value in values.items():
+            (self.root / name).write_bytes(intake.encoded(value))
+        (self.root / "before.hc").write_text(result["before_hc"])
+        (self.root / "after.hc").write_text(result["after_hc"])
+        (self.root / "preview.md").write_text("private_preview_sentinel")
+        exported = build_event(self.root)
+        serialized = intake.encoded(exported).decode()
+        for sentinel in ("private_source_sentinel", "private_model_summary_sentinel",
+                         "private_model_name_sentinel", "private_preview_sentinel", "src/app.py"):
+            self.assertNotIn(sentinel, serialized)
+        self.assertNotIn("input_tokens", exported["metrics"])
+        (self.root / "after.ir.json").write_bytes(b"modified")
+        with self.assertRaisesRegex(TrackingError, "fingerprint mismatch"):
+            build_event(self.root)
+
+    def test_spool_cannot_be_silently_redirected_to_another_store(self):
+        value = event()
+        reconcile(value, **self.arguments, delivery=lambda candidate, *_: receipt(candidate))
+        arguments = {**self.arguments, "database": self.root / "other.sqlite"}
+        with self.assertRaisesRegex(TrackingError, "another destination"):
+            reconcile(value, **arguments, delivery=lambda *_: receipt(value))
+
+    def runtime(self, body):
+        script = self.root / "fixture-runtime"
+        script.write_text(f"#!{sys.executable}\n" + body)
+        script.chmod(0o700)
+        return script
+
+    def test_delivery_child_gets_only_sanitized_input_and_minimal_environment(self):
+        script = self.runtime(
+            "import os,sys,json,hashlib\n"
+            "assert os.getenv('HYPERREVIEW_PRIVATE_SENTINEL') is None\n"
+            "event=json.load(sys.stdin)\n"
+            "assert 'sources' not in event and 'result' not in event\n"
+            "raw=json.dumps(event,sort_keys=True,separators=(',',':'),ensure_ascii=True).encode()\n"
+            "receipt={'schema':'hyperreview.tracking-receipt.v1','correlation_id':event['correlation_id'],"
+            "'attempt':1,'tracking_status':'confirmed','experiment_id':'1','run_id':'fixture-run',"
+            "'trace_id':'fixture-trace','event_digest':hashlib.sha256(raw).hexdigest()}\n"
+            "print(json.dumps(receipt))\n")
+        with patch.dict("os.environ", {"HYPERREVIEW_PRIVATE_SENTINEL": "do-not-inherit"}):
+            confirmed = _run_delivery(event(), script, self.arguments["database"],
+                                      self.arguments["artifacts_root"], 5)
+        self.assertEqual(confirmed["event_digest"], intake.digest(event()))
+
+    def test_delivery_child_output_and_total_time_are_bounded(self):
+        for body, timeout in (("import sys\nsys.stdout.write('X'*65537)\nsys.stdout.flush()\n", 5),
+                              ("import time\ntime.sleep(3)\n", 1)):
+            with self.subTest(body=body):
+                script = self.runtime(body)
+                with self.assertRaises(TrackingError):
+                    _run_delivery(event(), script, self.arguments["database"],
+                                  self.arguments["artifacts_root"], timeout)
 
 
 if __name__ == "__main__":

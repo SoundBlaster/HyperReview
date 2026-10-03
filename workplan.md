@@ -1,8 +1,9 @@
 # HyperReview implementation workplan
 
 **Current delivery:** specifications, a parsable desired-system Hypercode model,
-and a manual Python evidence-intake CLI. This is the first P1 increment; paired
-projections, tracking, evaluation, scheduler, and publishing are not implemented.
+and a manual Python pipeline through filtered requests and local HTTP inference.
+Compiled paired projections, tracking, evaluation, scheduler, and publishing are
+not implemented.
 
 | Phase | Work | Exit evidence |
 |---|---|---|
@@ -22,9 +23,10 @@ before model analysis. Executable presence alone does not choose a backend.
 
 1. Evidence intake: implemented; [scope and limitations](SPECS/08-intake-milestone.md).
 2. Provider-neutral request/result schema and a content-filtered model input
-   boundary: [contract](SPECS/09-model-contract.md). Next: implement and verify a
-   configured local HTTP backend with a controlled fixture.
-3. Paired Hypercode projection, identity/provenance validation, and explanation.
+   boundary: [contract](SPECS/09-model-contract.md). LM Studio/Ollama transport:
+   [local inference](SPECS/10-local-inference.md), with offline fixtures and a
+   controlled local readiness probe.
+3. Next: paired Hypercode compilation, identity/provenance validation, and explanation.
 4. Local MLflow tracking and bounded recovery; complete P1 acceptance fixtures.
 
 A later optional phase may compare explicit SpecGraph architectural intent

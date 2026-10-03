@@ -221,6 +221,17 @@ def _atomic_bytes(path, raw):
         Path(temporary).unlink(missing_ok=True)
 
 
+def _remove_pending_event(root, event_path):
+    """Durably remove an outbox item after its receipt has been validated."""
+    _require(event_path.parent == root, "Tracking event path escaped its spool")
+    event_path.unlink(missing_ok=True)
+    descriptor = os.open(root, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def _validate_receipt(receipt, event):
     _require(type(receipt) is dict and set(receipt) == {
         "schema", "correlation_id", "attempt", "tracking_status", "experiment_id",
@@ -353,7 +364,9 @@ def reconcile(event, *, spool_root, runtime_python, database, artifacts_root,
         _require(not event_path.is_symlink() and not receipt_path.is_symlink(),
                  "Tracking outbox files must not be symlinks")
         if receipt_path.exists():
-            return _validate_receipt(read_json(receipt_path, MAX_EVENT_BYTES), event)
+            receipt = _validate_receipt(read_json(receipt_path, MAX_EVENT_BYTES), event)
+            _remove_pending_event(root, event_path)
+            return receipt
         if event_path.exists():
             _require(read_json(event_path, MAX_EVENT_BYTES) == event, "Tracking event identity conflict")
         else:
@@ -364,7 +377,7 @@ def reconcile(event, *, spool_root, runtime_python, database, artifacts_root,
         receipt = method(event, runtime_python, database, artifacts_root, timeout_seconds)
         _validate_receipt(receipt, event)
         _atomic_json(receipt_path, receipt)
-        event_path.unlink(missing_ok=True)
+        _remove_pending_event(root, event_path)
         return receipt
     finally:
         os.close(descriptor)

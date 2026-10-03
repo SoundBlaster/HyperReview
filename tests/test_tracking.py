@@ -101,6 +101,56 @@ class TrackingTests(unittest.TestCase):
             reconcile(value, **self.arguments, delivery=lambda *_: bad)
         self.assertEqual(list(pending_events(self.arguments["spool_root"])), [value])
 
+    def test_reconcile_cleans_event_left_after_durable_receipt_before_yielding_next(self):
+        first = event()
+        later = event()
+        later["correlation_id"] = str(uuid4())
+        spool = self.arguments["spool_root"]
+        spool.mkdir(mode=0o700)
+        first_event = spool / (first["correlation_id"] + ".json")
+        first_receipt = spool / (first["correlation_id"] + ".receipt.json")
+        later_event = spool / (later["correlation_id"] + ".json")
+        first_event.write_bytes(intake.encoded(first))
+        first_receipt.write_bytes(intake.encoded(receipt(first)))
+        later_event.write_bytes(intake.encoded(later))
+        calls = []
+
+        confirmed = reconcile(
+            first,
+            **self.arguments,
+            delivery=lambda *args: calls.append(args),
+        )
+
+        self.assertEqual(confirmed, receipt(first))
+        self.assertEqual(calls, [])
+        self.assertFalse(first_event.exists())
+        self.assertTrue(first_receipt.exists())
+        self.assertEqual(list(pending_events(spool)), [later])
+
+    def test_invalid_existing_receipt_keeps_event_pending(self):
+        value = event()
+        spool = self.arguments["spool_root"]
+        spool.mkdir(mode=0o700)
+        event_path = spool / (value["correlation_id"] + ".json")
+        receipt_path = spool / (value["correlation_id"] + ".receipt.json")
+        invalid = receipt(value)
+        invalid["event_digest"] = "0" * 64
+        event_path.write_bytes(intake.encoded(value))
+        receipt_path.write_bytes(intake.encoded(invalid))
+        calls = []
+
+        with self.assertRaises(TrackingError):
+            reconcile(
+                value,
+                **self.arguments,
+                delivery=lambda *args: calls.append(args),
+            )
+
+        self.assertEqual(calls, [])
+        self.assertTrue(event_path.exists())
+        self.assertTrue(receipt_path.exists())
+        self.assertEqual(list(pending_events(spool)), [value])
+
     def test_pending_budget_and_symlink_paths(self):
         with patch("hyperreview.tracking.MAX_PENDING_EVENTS", 0):
             with self.assertRaisesRegex(TrackingError, "spool is full"):

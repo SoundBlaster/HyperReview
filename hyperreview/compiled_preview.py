@@ -17,6 +17,7 @@ from . import intake, model_contract
 
 
 MAX_PROCESS_OUTPUT_BYTES = 1024 * 1024
+MAX_COMPILER_BYTES = 128 * 1024 * 1024
 _HEX_64 = re.compile(r"[0-9a-f]{64}\Z")
 _IR_ID = re.compile(r"[A-Za-z][A-Za-z0-9_.-]*\Z")
 
@@ -77,6 +78,64 @@ def _compiler_sha256(path):
 
 def _verify_compiler(path, expected):
     _require(_compiler_sha256(path) == expected, "Trusted compiler SHA256 does not match")
+
+
+def _stat_fingerprint(value):
+    return (value.st_dev, value.st_ino, value.st_mode, value.st_size,
+            value.st_mtime_ns, value.st_ctime_ns)
+
+
+def _copy_verified_compiler(source_path, private_path, expected, deadline):
+    """Copy an operator-pinned executable from one verified descriptor."""
+    try:
+        initial_path_stat = source_path.lstat()
+        _require(not stat.S_ISLNK(initial_path_stat.st_mode)
+                 and stat.S_ISREG(initial_path_stat.st_mode),
+                 "Compiler must be a regular, non-symlink file")
+        _require(bool(initial_path_stat.st_mode & 0o111), "Compiler is not executable")
+        descriptor = os.open(source_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except PreviewError:
+        raise
+    except OSError as error:
+        raise PreviewError("Trusted compiler cannot be inspected") from error
+
+    digest = hashlib.sha256()
+    copied = 0
+    try:
+        with os.fdopen(descriptor, "rb") as source:
+            opened_stat = os.fstat(source.fileno())
+            expected_fingerprint = _stat_fingerprint(initial_path_stat)
+            _require(stat.S_ISREG(opened_stat.st_mode)
+                     and _stat_fingerprint(opened_stat) == expected_fingerprint,
+                     "Compiler changed while it was being opened")
+            private_fd = os.open(private_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(private_fd, "wb") as destination:
+                while True:
+                    _require(time.monotonic() < deadline,
+                             "Compiler preview exceeded its total deadline")
+                    chunk = source.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    copied += len(chunk)
+                    _require(copied <= MAX_COMPILER_BYTES,
+                             "Trusted compiler exceeds the 128 MiB binary limit")
+                    digest.update(chunk)
+                    destination.write(chunk)
+
+            final_fd_stat = os.fstat(source.fileno())
+            final_path_stat = source_path.lstat()
+            _require(_stat_fingerprint(final_fd_stat) == expected_fingerprint
+                     and _stat_fingerprint(final_path_stat) == expected_fingerprint
+                     and not stat.S_ISLNK(final_path_stat.st_mode),
+                     "Compiler changed while it was being copied")
+        _require(digest.hexdigest() == expected,
+                 "Trusted compiler SHA256 does not match")
+        private_path.chmod(0o700)
+        _verify_compiler(private_path, expected)
+    except PreviewError:
+        raise
+    except OSError as error:
+        raise PreviewError("Trusted compiler could not be copied safely") from error
 
 
 def _terminate(proc, *, force=False):
@@ -292,13 +351,14 @@ def compile_preview(request, result, *, compiler: Path, compiler_sha256: str,
     _require(type(timeout_seconds) is int and 1 <= timeout_seconds <= 300,
              "timeout_seconds must be an integer from 1 through 300")
     compiler = Path(os.path.abspath(compiler))
-    _verify_compiler(compiler, compiler_sha256)
 
     started = time.monotonic()
     deadline = started + timeout_seconds
     try:
         with tempfile.TemporaryDirectory(prefix="hyperreview-preview-") as temporary_directory:
             workdir = Path(temporary_directory)
+            private_compiler = workdir / "hypercode-compiler"
+            _copy_verified_compiler(compiler, private_compiler, compiler_sha256, deadline)
             before_hc = workdir / "before.hc"
             after_hc = workdir / "after.hc"
             before_ir_path = workdir / "before.ir.json"
@@ -308,17 +368,19 @@ def compile_preview(request, result, *, compiler: Path, compiler_sha256: str,
             _write_private(after_hc, result["after_hc"].encode("utf-8"))
 
             for source_path in (before_hc, after_hc):
-                _run_compiler(compiler, ["parse", str(source_path)], workdir=workdir,
+                _run_compiler(private_compiler, ["parse", str(source_path)], workdir=workdir,
                               deadline=deadline, expected_sha256=compiler_sha256)
-                _run_compiler(compiler, ["validate", str(source_path)], workdir=workdir,
+                _run_compiler(private_compiler, ["validate", str(source_path)], workdir=workdir,
                               deadline=deadline, expected_sha256=compiler_sha256)
 
             before_ir, _ = _run_compiler(
-                compiler, ["emit", str(before_hc), "--format", "json", "--ir-version", "2"],
+                private_compiler,
+                ["emit", str(before_hc), "--format", "json", "--ir-version", "2"],
                 workdir=workdir, deadline=deadline, expected_sha256=compiler_sha256,
             )
             after_ir, _ = _run_compiler(
-                compiler, ["emit", str(after_hc), "--format", "json", "--ir-version", "2"],
+                private_compiler,
+                ["emit", str(after_hc), "--format", "json", "--ir-version", "2"],
                 workdir=workdir, deadline=deadline, expected_sha256=compiler_sha256,
             )
             _require(len(before_ir) <= MAX_PROCESS_OUTPUT_BYTES
@@ -333,7 +395,8 @@ def compile_preview(request, result, *, compiler: Path, compiler_sha256: str,
             _validate_identity_provenance(result, before_ids, after_ids)
 
             diff_raw, diff_code = _run_compiler(
-                compiler, ["diff", str(before_ir_path), str(after_ir_path), "--format", "json"],
+                private_compiler,
+                ["diff", str(before_ir_path), str(after_ir_path), "--format", "json"],
                 workdir=workdir, deadline=deadline, expected_sha256=compiler_sha256,
                 expected_codes=(0, 1),
             )
@@ -344,7 +407,7 @@ def compile_preview(request, result, *, compiler: Path, compiler_sha256: str,
                      "Compiler diff exit status does not match its changes")
             _write_private(diff_path, diff_raw)
 
-            _verify_compiler(compiler, compiler_sha256)
+            _verify_compiler(private_compiler, compiler_sha256)
             receipt = {
                 "stage": "projections_validated",
                 "compiler_sha256": compiler_sha256,

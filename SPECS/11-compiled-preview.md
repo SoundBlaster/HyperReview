@@ -8,7 +8,11 @@ conformance or a proof of implementation behavior.
 ## Compiler boundary
 
 The operator supplies an absolute executable path and its SHA256. HyperReview
-checks that fingerprint before and after compilation. The current reference
+copies that binary from one no-follow file descriptor into a private directory,
+verifies its fingerprint during and after copying, then launches that private
+copy for every compiler command. The copy shares the preview deadline and is
+capped at 128 MiB; replacing the original pathname after copying cannot select
+a different program for execution. The current reference
 toolchain is Hypercode revision `7d23efdc9976226a21e1fc301730940d62097607`,
 using IR v2 and diff v1. A binary fingerprint identifies the invoked executable;
 it does not independently prove that binary's source revision. Build provenance

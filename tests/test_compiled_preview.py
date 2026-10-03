@@ -3,10 +3,12 @@ import json
 import os
 from pathlib import Path
 import stat
+import subprocess
 import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 from hyperreview import intake, model_contract
 from hyperreview.compiled_preview import PreviewError, compile_preview
@@ -262,6 +264,34 @@ class CompiledPreviewTests(unittest.TestCase):
             compile_preview(self.request, self.result, compiler=compiler, compiler_sha256=digest)
         with self.assertRaisesRegex(PreviewError, "SHA256"):
             compile_preview(self.request, self.result, compiler=compiler, compiler_sha256=digest)
+
+    def test_original_path_replacement_after_copy_never_runs_substitute(self):
+        compiler, digest = self.compiler()
+        marker = self.root / "substitute-ran"
+        replacement = self.root / "replacement-compiler"
+        replacement.write_text(
+            f"#!{sys.executable}\nfrom pathlib import Path\n"
+            f"Path({str(marker)!r}).write_text('executed')\n",
+            encoding="utf-8",
+        )
+        replacement.chmod(0o700)
+        real_popen = subprocess.Popen
+        did_replace = False
+
+        def replace_original_then_spawn(arguments, *args, **kwargs):
+            nonlocal did_replace
+            if not did_replace:
+                os.replace(replacement, compiler)
+                did_replace = True
+            return real_popen(arguments, *args, **kwargs)
+
+        with mock.patch("hyperreview.compiled_preview.subprocess.Popen",
+                        side_effect=replace_original_then_spawn):
+            preview = compile_preview(self.request, self.result, compiler=compiler,
+                                      compiler_sha256=digest)
+        self.assertTrue(did_replace)
+        self.assertEqual(preview["receipt"]["compiler_sha256"], digest)
+        self.assertFalse(marker.exists())
 
     def test_rejects_symlink_nonexecutable_relative_and_wrong_digest(self):
         compiler, digest = self.compiler()

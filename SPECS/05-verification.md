@@ -26,6 +26,17 @@ validation only; it does not prove any worker or security behavior.
 | HR-VERIFY-018 | HR-EVAL-004 | Default Evidently reports and their MLflow exports contain sanitized assessments only; no implicit Cloud/embedding/judge call occurs. |
 | HR-VERIFY-019 | HR-EVAL-002, HR-EVAL-005 | JSON/HTML report digests and summaries are correlated to MLflow runs without duplicate cases or conflicting metric definitions; export recovery does not repeat inference. |
 
+## Implemented model check
+
+[The validation script](../tools/validate_architecture.py) and
+[CI workflow](../.github/workflows/hypercode-validation.yml) implement the
+syntax/property-contract portion of HR-VERIFY-010 for the authored model.
+They parse the structure, validate and emit all seven profiles, reject an
+invalid concurrency value in each profile, and check changed/identical IR diffs.
+They do not establish runtime isolation, publication policy, model quality, or
+other worker acceptance scenarios. The other acceptance scenarios remain future
+implementation obligations.
+
 ## Human evaluation
 
 Before integration with a scheduler, record 5–10 PR cases, their source revisions,

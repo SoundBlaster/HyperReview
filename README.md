@@ -51,6 +51,25 @@ Model backends are interchangeable: Codex CLI, LM Studio HTTP API, and Ollama
 HTTP API. Backend readiness and isolation must be verified before use; an
 installed executable alone does not establish a safe unattended setup.
 
+## Architecture validation
+
+[GitHub Actions](.github/workflows/hypercode-validation.yml) builds Hypercode
+at the pinned source revision using `Package.resolved`, then checks all seven
+profiles on PRs and pushes to `main`. It also checks rejection of an invalid
+concurrency value and semantic diff behavior. Emitted IR and backend diff are
+retained as CI artifacts. These checks validate the model, not worker behavior.
+
+Run the same check locally after building the sibling Hypercode repository:
+
+```sh
+python3 tools/validate_architecture.py --hypercode ../Hypercode/.build/debug/hypercode
+```
+
+The required check name, if enabled in branch protection, is
+`Hypercode architecture`. Updating the compiler requires reviewing the pinned
+SHA in the workflow. Runner tool versions are logged; `macos-latest` is a moving
+runner image, not a fully reproducible operating-system/toolchain pin.
+
 ## License
 
 [MIT](LICENSE). The license covers these specifications and examples as well as

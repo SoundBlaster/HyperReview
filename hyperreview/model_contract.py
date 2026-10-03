@@ -27,7 +27,7 @@ _OMISSION_REASONS = frozenset({
     "invalid_or_non_utf8_blob", "binary_content", "empty_source",
     "source_file_limit", "encoded_evidence_byte_limit", "evidence_byte_limit",
     "revision_mismatch", "operator_slice", "secret_pattern", "source_byte_limit",
-    "unknown_intake_omission",
+    "incomplete_pair", "unknown_intake_omission",
 })
 
 
@@ -71,6 +71,13 @@ def _source_id(revision, path, content_sha256):
     return "src_" + hashlib.sha256(intake.encoded(value)).hexdigest()
 
 
+_CREDENTIAL_KEY = (
+    r"(?:[A-Za-z0-9]+[_-])*(?:password|(?:api|access|private)[_-]?key|token|secret)"
+    r"(?:[_-][A-Za-z0-9]+)*"
+)
+_CREDENTIAL_KEY_REFERENCE = (
+    r"(?:\b" + _CREDENTIAL_KEY + r"\b|['\"]" + _CREDENTIAL_KEY + r"['\"])"
+)
 _SECRET_PATTERNS = (
     re.compile(r"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----", re.IGNORECASE),
     re.compile(r"\b(?:ghp_|github_pat_)[A-Za-z0-9_]{8,}\b"),
@@ -79,13 +86,12 @@ _SECRET_PATTERNS = (
     # value form covers common .env and assignment files without classifying
     # function calls, variable references, or placeholders as exposed values.
     re.compile(
-        r"(?:\b(?:password|api[_-]?key|token|secret)\b|"
-        r"['\"](?:password|api[_-]?key|token|secret)['\"])\s*[:=]\s*"
+        _CREDENTIAL_KEY_REFERENCE + r"\s*[:=]\s*"
         r"(['\"])(?P<quoted>[^'\"\r\n]+)['\"]",
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:password|api[_-]?key|token|secret)\b\s*[:=]\s*"
+        _CREDENTIAL_KEY_REFERENCE + r"\s*[:=]\s*"
         r"(?P<bare>[A-Za-z0-9_./+:-]{8,})(?=\s*(?:[,;}#]|$))",
         re.IGNORECASE,
     ),
@@ -168,6 +174,9 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
         _require(type(file_record) is dict, "Evidence file entry must be an object")
         raw_sources = file_record.get("sources", [])
         _require(type(raw_sources) is list, "Evidence source entries must be a list")
+        original_sides = {raw.get("side") for raw in raw_sources if type(raw) is dict}
+        has_original_pair = {"before", "after"} <= original_sides
+        file_candidates = []
         for raw in raw_sources:
             _require(type(raw) is dict, "Evidence source must be an object")
             side = raw.get("side")
@@ -213,7 +222,7 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
                      "Evidence source line range does not match LF line count")
             _require(raw.get("trust") == "untrusted_source_data",
                      "Evidence source trust label is missing or invalid")
-            candidates.append({
+            file_candidates.append({
                 "id": source_id,
                 "side": side,
                 "revision": revision,
@@ -225,6 +234,14 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
                 "trust": "untrusted_source_data",
                 "_content_encoded_bytes": len(intake.encoded(content)),
             })
+
+        retained_sides = {candidate["side"] for candidate in file_candidates}
+        if has_original_pair and retained_sides != {"before", "after"}:
+            for candidate in file_candidates:
+                omissions.append({"id": candidate["id"], "path": candidate["path"],
+                                  "side": candidate["side"], "reason": "incomplete_pair"})
+        elif file_candidates:
+            candidates.append(file_candidates)
 
         raw_omissions = file_record.get("omissions", [])
         _require(type(raw_omissions) is list, "Evidence omissions must be a list")
@@ -243,16 +260,25 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
             safe_reason = reason if reason in _OMISSION_REASONS else "unknown_intake_omission"
             omissions.append({"id": None, "path": path, "side": side, "reason": safe_reason})
 
-    candidates.sort(key=lambda record: (record["side"], record["revision"], record["path"], record["id"]))
+    candidates.sort(key=lambda group: (
+        min(record["path"] for record in group),
+        min(0 if record["side"] == "before" else 1 for record in group),
+    ))
     source_bytes = 0
-    for candidate in candidates:
-        content_bytes = candidate.pop("_content_encoded_bytes")
-        if source_bytes + content_bytes > max_source_bytes:
-            omissions.append({"id": candidate["id"], "path": candidate["path"],
-                              "side": candidate["side"], "reason": "source_byte_limit"})
+    for group in candidates:
+        group.sort(key=lambda record: (record["path"], 0 if record["side"] == "before" else 1,
+                                       record["revision"], record["id"]))
+        group_bytes = sum(record["_content_encoded_bytes"] for record in group)
+        if source_bytes + group_bytes > max_source_bytes:
+            for candidate in group:
+                candidate.pop("_content_encoded_bytes")
+                omissions.append({"id": candidate["id"], "path": candidate["path"],
+                                  "side": candidate["side"], "reason": "source_byte_limit"})
             continue
-        source_bytes += content_bytes
-        source_records.append(candidate)
+        source_bytes += group_bytes
+        for candidate in group:
+            candidate.pop("_content_encoded_bytes")
+            source_records.append(candidate)
     _require(source_records, "No eligible source records remain for model analysis")
     _require(len({record["id"] for record in source_records}) == len(source_records),
              "Evidence contains duplicate source identities")
@@ -307,7 +333,13 @@ def prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
 
 
 def result_schema():
-    """Return a strict JSON Schema usable by providers with schema output mode."""
+    """Return a strict provider schema; local validation adds provenance constraints.
+
+    The schema leaves conditional reference requirements out for provider
+    compatibility. ``validate_result`` requires each identity-map entry to
+    reference at least one supplied source, allowing one-sided additions and
+    removals while rejecting identities without provenance.
+    """
     short_text = {"type": "string", "minLength": 1, "maxLength": 4000}
     limited_text = {"type": "string", "minLength": 1, "maxLength": 2000}
     source_ref = {"type": "string", "pattern": r"^src_[0-9a-f]{64}$", "maxLength": 68}
@@ -485,6 +517,8 @@ def _validate_result(result, request):
         _require(architecture_id not in architecture_ids, "Duplicate architecture identity")
         architecture_ids.add(architecture_id)
         _check_string(entry["reason"], name=f"identity_map[{index}].reason", maximum=2000)
+        _require(bool(entry["before_refs"] or entry["after_refs"]),
+                 f"identity_map[{index}] must reference at least one source")
         for field, expected_side in (("before_refs", "before"), ("after_refs", "after")):
             refs = entry[field]
             _require(type(refs) is list and len(refs) <= 100,

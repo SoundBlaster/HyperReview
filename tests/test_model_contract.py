@@ -12,7 +12,7 @@ BASE = "a" * 40
 HEAD = "b" * 40
 
 
-def source(side, content, path="src/app.py", revision=None, **changes):
+def source(side, content, path="src/app.py", revision=None, file_group=None, **changes):
     revision = revision or (BASE if side == "before" else HEAD)
     raw = content.encode("utf-8")
     record = {
@@ -27,10 +27,32 @@ def source(side, content, path="src/app.py", revision=None, **changes):
         "url": "https://example.invalid/source",
     }
     record.update(changes)
+    if file_group is not None:
+        record["_test_file_group"] = file_group
     return record
 
 
 def pack(sources=None, omissions=None, **extra):
+    sources = list(sources if sources is not None else [source("after", "print('ok')\n")])
+    groups = {}
+    for raw in sources:
+        raw = dict(raw)
+        group_key = raw.pop("_test_file_group", raw["path"])
+        groups.setdefault(group_key, []).append(raw)
+    files = []
+    for grouped_sources in groups.values():
+        before = next((item["path"] for item in grouped_sources if item["side"] == "before"), None)
+        after = next((item["path"] for item in grouped_sources if item["side"] == "after"), None)
+        files.append({
+            "before_path": before,
+            "after_path": after,
+            "sources": grouped_sources,
+            "omissions": [],
+        })
+    if not files:
+        files.append({"before_path": None, "after_path": None, "sources": [], "omissions": []})
+    if omissions:
+        files[0]["omissions"].extend(omissions)
     value = {
         "schema": intake.SCHEMA,
         "stage": "evidence_collected",
@@ -45,12 +67,7 @@ def pack(sources=None, omissions=None, **extra):
         "base_sha": "c" * 40,
         "merge_base_sha": BASE,
         "head_sha": HEAD,
-        "files": [{
-            "before_path": "src/app.py",
-            "after_path": "src/app.py",
-            "sources": list(sources if sources is not None else [source("after", "print('ok')\n")]),
-            "omissions": list(omissions or []),
-        }],
+        "files": files,
     }
     value.update(extra)
     value["evidence_digest"] = intake.digest(value)
@@ -144,6 +161,28 @@ class ModelContractTests(unittest.TestCase):
                 self.assertEqual(len(request["sources"]), 1)
                 self.assertEqual(request["sources"][0]["content"], "safe source\n")
 
+    def test_composite_credential_keys_are_omitted_without_losing_safe_source(self):
+        secrets = (
+            ('client_secret="client-secret-value-123456"\n', "client-secret-value-123456"),
+            ('{"AWS_SECRET_ACCESS_KEY": "aws-secret-value-123456"}\n',
+             "aws-secret-value-123456"),
+            ('api_token=api-token-value-123456\n', "api-token-value-123456"),
+            ('"client_secret": bare-secret-value-123456\n', "bare-secret-value-123456"),
+        )
+        for index, (content, secret_value) in enumerate(secrets):
+            with self.subTest(secret_key=content.split("=")[0][:24]):
+                request = prepare_request(pack([
+                    source("after", content, f"src/config{index}.py"),
+                    source("after", "safe source survives\n", "src/safe.py"),
+                ]))
+                encoded = intake.encoded(request).decode()
+                self.assertNotIn(secret_value, encoded)
+                self.assertNotIn(content, encoded)
+                self.assertEqual([item["content"] for item in request["sources"]],
+                                 ["safe source survives\n"])
+                self.assertTrue(any(item["reason"] == "secret_pattern"
+                                    for item in request["omissions"]))
+
     def test_unsafe_omission_metadata_is_allowlisted_and_sanitized(self):
         record = source("after", "x\n", path="credential-secret-leak.py")
         path_secret = "ghp_1234567890abcdefghijklmnopqrstuv"
@@ -168,7 +207,8 @@ class ModelContractTests(unittest.TestCase):
             for item in request["omissions"]))
 
     def test_empty_source_becomes_omission_and_other_source_survives(self):
-        request = prepare_request(pack([source("before", ""), source("after", "ok\n")]))
+        request = prepare_request(pack([source("before", "", "src/empty.py"),
+                                        source("after", "ok\n", "src/valid.py")]))
         self.assertEqual(len(request["sources"]), 1)
         self.assertEqual(request["omissions"][0]["reason"], "empty_source")
         with self.assertRaisesRegex(ContractError, "No eligible source records"):
@@ -195,6 +235,50 @@ class ModelContractTests(unittest.TestCase):
             prepare_request(pack(records), include_paths=["../secret.py"])
         with self.assertRaises(ContractError):
             prepare_request(pack(records), include_paths=["src/ghp_1234567890abcdefghijklmnopqrstuv.py"])
+
+    def test_source_budget_keeps_revision_pairs_together_and_in_path_order(self):
+        pair = [source("before", "old content\n", "src/a.py"),
+                source("after", "new content\n", "src/a.py")]
+        other = source("after", "small\n", "src/z.py")
+        before_bytes = len(intake.encoded(pair[0]["content"]))
+        after_bytes = len(intake.encoded(pair[1]["content"]))
+        other_bytes = len(intake.encoded(other["content"]))
+        self.assertLess(max(before_bytes, after_bytes), before_bytes + after_bytes)
+
+        request = prepare_request(pack(pair + [other]),
+                                  max_source_bytes=max(before_bytes, after_bytes, other_bytes))
+        self.assertEqual([(item["path"], item["side"]) for item in request["sources"]],
+                         [("src/z.py", "after")])
+        self.assertEqual(sum(item["reason"] == "source_byte_limit"
+                             for item in request["omissions"]), 2)
+
+        with self.assertRaisesRegex(ContractError, "No eligible source records"):
+            prepare_request(pack(pair), max_source_bytes=max(before_bytes, after_bytes))
+
+        request = prepare_request(pack(pair), max_source_bytes=before_bytes + after_bytes)
+        self.assertEqual([(item["path"], item["side"]) for item in request["sources"]],
+                         [("src/a.py", "before"), ("src/a.py", "after")])
+
+    def test_renamed_pair_remains_atomic_and_filtered_side_is_not_restored(self):
+        renamed = [source("before", 'client_secret="must-not-return-123456"\n',
+                          "src/old.py", file_group="rename"),
+                   source("after", "new file\n", "src/new.py", file_group="rename")]
+        operator_pair = [source("before", "old selected file\n", "src/operator-old.py",
+                                file_group="operator-rename"),
+                         source("after", "new selected file\n", "src/operator-new.py",
+                                file_group="operator-rename")]
+        other = source("after", "other file\n", "src/other.py")
+        request = prepare_request(pack(renamed + operator_pair + [other]),
+                                  include_paths=["src/new.py", "src/old.py",
+                                                 "src/operator-new.py", "src/other.py"],
+                                  max_source_bytes=len(intake.encoded("other file\n")))
+        encoded = intake.encoded(request).decode()
+        self.assertNotIn("must-not-return-123456", encoded)
+        self.assertEqual([(item["path"], item["side"]) for item in request["sources"]],
+                         [("src/other.py", "after")])
+        self.assertTrue(any(item["reason"] == "operator_slice" for item in request["omissions"]))
+        self.assertTrue(any(item["reason"] == "secret_pattern" for item in request["omissions"]))
+        self.assertTrue(any(item["reason"] == "incomplete_pair" for item in request["omissions"]))
 
     def test_result_rejects_unknown_fields_dangling_wrong_side_and_duplicates(self):
         request = prepare_request(pack([source("before", "old\n"), source("after", "new\n")]))
@@ -223,6 +307,19 @@ class ModelContractTests(unittest.TestCase):
         result["claims"].append(dict(result["claims"][0]))
         with self.assertRaisesRegex(ContractError, "Duplicate claim"):
             validate_result(result, request)
+
+    def test_identity_map_requires_source_provenance_but_accepts_additions_and_removals(self):
+        request = prepare_request(pack([source("before", "old\n"), source("after", "new\n")]))
+        result = valid_result(request)
+        result["identity_map"][0]["before_refs"] = []
+        result["identity_map"][0]["after_refs"] = []
+        with self.assertRaisesRegex(ContractError, "at least one source"):
+            validate_result(result, request)
+
+        addition = prepare_request(pack([source("after", "added\n")]))
+        self.assertEqual(validate_result(valid_result(addition), addition)["schema"], RESULT_SCHEMA)
+        removal = prepare_request(pack([source("before", "removed\n")]))
+        self.assertEqual(validate_result(valid_result(removal), removal)["schema"], RESULT_SCHEMA)
 
     def test_result_cannot_elevate_authority_or_exceed_structural_limits(self):
         request = prepare_request(pack())

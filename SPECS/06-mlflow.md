@@ -9,7 +9,12 @@ implementation starts; this specification does not choose an unverified version.
 ## Run and trace contracts
 
 **HR-TRACK-001 — Analysis identity.** Every analysis MUST be associated with an
-MLflow experiment and a run, with attempt-level records linked to the same job.
+MLflow experiment and a run once tracking delivery is confirmed, with
+attempt-level records linked to the same job. Before contacting MLflow, assign
+and persist a local tracking correlation ID shared by the bundle, operational
+receipt, and spooled events. During `tracking_pending`, server-issued IDs MAY
+be absent. Recovery MUST reconcile that same correlation ID with the resulting
+experiment/run/trace IDs without changing job or attempt identity.
 Record job identity, repository/PR, source revisions, evidence digest, exact
 provider/model identity when available, prompt and abstraction-profile versions,
 Hypercode version, policy/schema versions, and delivery mode. Attempts and
@@ -27,9 +32,14 @@ provider tracing that captures raw prompts/responses MUST be disabled by default
 
 **HR-TRACK-003 — Data minimization.** Default tracking MUST contain metadata,
 digests, counts, decisions, and sanitized assessments; raw source, full prompts,
-model response bodies, and source-derived output artifacts MUST NOT be uploaded
-by default. Keep full analysis bundles in the separately managed local result
-store. An optional content-capture mode needs explicit operator authorization
+model response bodies, and source-content-bearing output artifacts (including
+projections, claim text, and Markdown previews) MUST NOT be uploaded by default.
+Sanitized Evidently JSON/HTML reports under HR-EVAL-004/005 are permitted when
+they contain only allowed assessment metadata and metrics; sanitization MUST
+exclude source excerpts, prompts, response bodies, claim text, and credentials
+from report data, labels, and embedded content. Sanitization does not authorize
+uploading other source-derived artifacts. Keep full analysis bundles in the
+separately managed local result store. An optional content-capture mode needs explicit operator authorization
 for the selected repository and destination, client-side filtering before
 logging, and dedicated retention. Credentials MUST never be logged, even in
 content-capture mode. Tracing hooks/redaction are implementation aids, not proof

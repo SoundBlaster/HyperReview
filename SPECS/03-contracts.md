@@ -54,8 +54,12 @@ two jobs simultaneously. Unchanged completed jobs MUST NOT be regenerated.
 
 **HR-DATA-005.** A local result bundle MUST include the evidence manifest,
 before/after `.hc`, emitted v2 IRs, semantic diff, identity map, claim ledger,
-Markdown preview, and run metadata including MLflow experiment/run/trace IDs
-and tracking-delivery status. Output validation MUST finish before a
+Markdown preview, and run metadata including a locally generated tracking
+correlation ID and tracking-delivery status. While `tracking_pending`, MLflow
+experiment/run/trace IDs MAY be absent; the pending bundle remains valid for
+preview. Confirmed tracking delivery MUST reconcile the correlation ID with
+the server-issued IDs and persist them in the bundle metadata and operational
+receipt before publication. Output validation MUST finish before a
 result becomes `ready`. Schema versions and Hypercode version/revision MUST be
 pinned. Operator-controlled paths store results; model text MUST NOT choose
 filesystem paths. A structurally invalid projection MUST NOT be presented as a

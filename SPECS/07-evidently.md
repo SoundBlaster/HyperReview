@@ -49,7 +49,9 @@ and exclude model-supplied scripts or remote resources.
 runs, workflow traces, and assessment lineage. Evidently consumes versioned
 assessment data and produces report artifacts. Log sanitized report JSON/HTML,
 report/dataset digests, baseline/current run IDs, and selected numeric summaries
-into the corresponding MLflow evaluation run. This is a planned HyperReview
+into the corresponding MLflow evaluation run, subject to the explicit sanitized
+report allowance in HR-TRACK-003. Reports containing source-content-bearing
+fields MUST NOT use that allowance. This is a planned HyperReview
 adapter, not a claimed preinstalled integration. Shared metric definitions MUST
 have one versioned source of truth; exporting the same assessment through both
 tools MUST NOT count as independent evidence or duplicate evaluation cases.

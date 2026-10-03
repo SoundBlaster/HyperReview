@@ -21,9 +21,9 @@ validation only; it does not prove any worker or security behavior.
 | HR-VERIFY-013 | HR-TRACK-001, HR-TRACK-002 | One analysis and its repair attempts have correlated MLflow records with pinned versions and workflow-stage timings. |
 | HR-VERIFY-014 | HR-TRACK-003, HR-TRACK-005 | Metadata-only tracking excludes source/prompts/response bodies and credentials; scorers cannot trigger an unconfigured remote judge. |
 | HR-VERIFY-015 | HR-TRACK-004, HR-TRACK-005 | Versioned pilot cases retain expert expectations and distinguish deterministic, human, and LLM assessments. |
-| HR-VERIFY-016 | HR-TRACK-006 | Tracking outage spools bounded events, marks preview pending, blocks publication, and recovers without repeated inference or duplicate logical results. |
+| HR-VERIFY-016 | HR-DATA-005, HR-TRACK-001, HR-TRACK-006 | Outage before any MLflow run/trace exists produces a valid pending preview with a persisted local correlation ID and absent server IDs; bounded spool recovery reconciles those IDs before publication without repeated inference or duplicate logical results. |
 | HR-VERIFY-017 | HR-EVAL-001, HR-EVAL-003 | Matched cases produce baseline/current reports; different corpora and missing labels are disclosed rather than interpreted as a quality regression. |
-| HR-VERIFY-018 | HR-EVAL-004 | Default Evidently reports and their MLflow exports contain sanitized assessments only; no implicit Cloud/embedding/judge call occurs. |
+| HR-VERIFY-018 | HR-TRACK-003, HR-EVAL-004, HR-EVAL-005 | Default tracking permits sanitized Evidently JSON/HTML assessment reports, rejects content-bearing report fields and full analysis artifacts, and makes no implicit Cloud/embedding/judge call. |
 | HR-VERIFY-019 | HR-EVAL-002, HR-EVAL-005 | JSON/HTML report digests and summaries are correlated to MLflow runs without duplicate cases or conflicting metric definitions; export recovery does not repeat inference. |
 
 ## Implemented model check

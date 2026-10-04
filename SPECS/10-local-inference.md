@@ -21,6 +21,18 @@ data. The result schema binds the request digest and constrains source-reference
 choices. Local result validation remains authoritative for semantic constraints
 that a provider's JSON Schema implementation cannot establish.
 
+The current `composition-v3` prompt requests
+`hyperreview.composition-plan.v1` structured nodes. HyperReview validates this
+plan and deterministically converts it to canonical `hyperreview.result.v1`
+with paired `.hc` projections and an identity map. The generated bundle keeps
+the original `composition-plan.json`, the converted `result.json`, and a
+sanitized receipt; these stages do not compile or endorse the proposal.
+
+LM Studio may be explicitly configured with `--instruction-role developer` for
+models such as gpt-oss; the default remains `system`. The chosen role is retained
+in the local generation receipt. Ollama permits only `system`. This choice never
+changes source-data trust or permits tools and has no automatic role fallback.
+
 ## Bounds and receipts
 
 Context preflight uses a conservative serialized byte budget plus output tokens

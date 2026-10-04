@@ -31,10 +31,13 @@ identity/provenance checks, and local Markdown explanation boundary.
 retrospective workflow traces, and the bounded recovery outbox.
 
 [Controlled pilot boundaries](13-pilot-boundaries.md) defines synthetic cases,
-numeric local Evidently reports, and the remaining human comparison.
+numeric local Evidently reports, and the planned own-PR feedback loop.
 
 [Evaluation handoff](14-evaluation-handoff.md) defines the local sanitized report
 export and its recovery limits.
+
+[Structured composition](15-structured-composition.md) defines one model-authored
+node plan and deterministic rendering of Hypercode and identity references.
 
 The `.hc` model names architecture responsibilities with explicit IDs.
 [SPECS/02-architecture.md](02-architecture.md) maps those IDs to requirements.

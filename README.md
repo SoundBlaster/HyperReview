@@ -8,8 +8,8 @@ prepares a filtered request, proposes a result through LM Studio or Ollama,
 and validates paired projections before rendering a local explanation.
 Metadata-only MLflow delivery and recovery are implemented. Controlled pilot
 fixtures, local Evidently reports, and explicit sanitized evaluation export to
-MLflow are available; human comparison, scheduler, and publisher remain
-implementation work. The Hypercode
+MLflow are available. A simple own-PR feedback capture, scheduler, and publisher
+remain implementation work. The Hypercode
 model describes the proposed full reviewer, not an installed service.
 
 ## The pilot
@@ -17,7 +17,9 @@ model describes the proposed full reviewer, not an installed service.
 For an eligible PR, collect pinned before/after source data, build a paired
 architecture projection with stable IDs, validate the artifacts, and produce
 one concise Markdown explanation with a Hypercode diff. Initial operation is
-local preview. Publication is a separately enabled mode.
+local preview. Publishing is not implemented; a future publisher must remain
+behind explicit authorization, eligibility, artifact, tracking-confirmation,
+and security gates.
 
 The initial repository allowlist is `0al-spec/SpecGraph` and
 `0al-spec/Hypercode`, with PR author `SoundBlaster` and same-repository heads.
@@ -131,11 +133,22 @@ tools, remote fallback, or automatic model downloads. The invocation has bounded
 context, response bytes, and time; `--max-tokens` and `--timeout-seconds` are
 trusted operator limits. The configured context must not exceed the loaded one.
 
-Private bundles under `~/.local/share/hyperreview/generated/` contain the request,
-proposed result, and a sanitized receipt. The stage is `model_generated`, not a
-completed review: the `.hc` strings still require compiler validation and the
+Prompt `composition-v3` asks the provider for structured
+`hyperreview.composition-plan.v1` nodes. HyperReview validates the plan and
+deterministically converts it to the provider-neutral `hyperreview.result.v1`;
+the provider does not author `.hc` or identity-map strings directly. Private
+bundles under `~/.local/share/hyperreview/generated/` retain the original plan
+as `composition-plan.json`, the canonical result as `result.json`, the request,
+and a sanitized `receipt.json`. The stage is `model_generated`, not a completed
+review: the derived `.hc` still requires compiler validation and the
 interpretation still requires review. No MLflow or GitHub publication occurs.
-See [the local inference contract](SPECS/10-local-inference.md).
+For gpt-oss on LM Studio, use `--instruction-role developer` explicitly; the
+role is retained in the receipt. The four-file smoke selection was run with a
+loaded context of 32768 and an output limit of 3072; the conservative byte-budget
+preflight can require more context than the source text's tokenizer count.
+
+See [the local inference contract](SPECS/10-local-inference.md) and
+[structured composition](SPECS/15-structured-composition.md).
 
 ## Compile a paired preview
 
@@ -156,14 +169,12 @@ no validated preview. Each compiled node must have an explicit ID and source
 references on its side; a genuinely empty side is a newline-only `.hc` string.
 
 Private bundles under `~/.local/share/hyperreview/previews/` contain evidence,
-paired projections and IR, semantic diff, proposed claims, receipts, and Markdown.
-All model interpretations remain `inferred`. The stage is `projections_validated`;
-tracking has not been confirmed and publication remains unavailable. See
-[the compiled-preview contract](SPECS/11-compiled-preview.md).
-
-Prompt `composition-v2` explicitly aligns projection IDs and revision-specific
-source references. Prepare a new request for this version; older prepared
-requests are rejected rather than silently reinterpreted under a changed prompt.
+paired projections and IR, semantic diff, claims (if supplied), receipts, and two
+Markdown views. `preview.md` is the verbose diagnostic explanation;
+`preview-compact.md` is a concise Russian diff with reasons and revision-specific
+source links. Both remain inferred review aids. The stage is
+`projections_validated`; tracking has not been confirmed and publication remains
+unavailable. See [the compiled-preview contract](SPECS/11-compiled-preview.md).
 
 ## Deliver local tracking metadata
 
@@ -200,7 +211,8 @@ The UI at `http://127.0.0.1:5050` reads the same SQLite database; the delivery
 child makes no HTTP tracking requests. Manual traces are retrospective workflow
 receipts with absent inputs/outputs. Confirmation updates preview metadata and
 displayed status, and does not establish program behavior or authorize a GitHub
-comment. See [local tracking and recovery](SPECS/12-local-tracking.md).
+comment. For a preview bundle, `track --bundle` re-renders both Markdown views
+after tracking confirmation. See [local tracking and recovery](SPECS/12-local-tracking.md).
 
 ## Controlled pilot and local Evidently report
 
@@ -216,6 +228,14 @@ separate answer key, and an unfilled scorecard. These are hand-authored boundary
 fixtures, not measured LLM output or a completed human evaluation. An unchanged
 composition deliberately accompanies an approval bypass in one case.
 
+The intended P2 product loop is lightweight: after viewing a preview for their
+own PR, a user can mark it `ok` or `not_ok` and optionally leave a note. Any
+feedback record must stay tied to the PR revisions and projection version that
+were shown. This feedback capture is not implemented yet. Comparative accuracy
+or review-time studies are optional research, not a product, scheduler, or
+publication prerequisite; the current technical reports make no model
+superiority claim.
+
 Install the optional reporting environment separately from MLflow:
 
 ```sh
@@ -229,7 +249,8 @@ python3.13 -m venv ~/.local/share/hyperreview/evaluation-runtime
 The reporting runtime requires Python 3.12+; Python 3.13 was exercised on macOS
 ARM64. Evidently receives only fixed numeric columns, with telemetry disabled
 before import. Reports remain local, with no model calls or Cloud upload. Human
-accuracy and review time remain unmeasured. See [the pilot subset](SPECS/13-pilot-boundaries.md).
+accuracy and review time are outside these technical metrics. See [the pilot
+subset](SPECS/13-pilot-boundaries.md).
 
 ### Link a report to MLflow
 

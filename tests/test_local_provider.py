@@ -1,3 +1,4 @@
+from dataclasses import replace
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -42,22 +43,22 @@ def make_request(content="def assess():\n    return True\n"):
     return model_contract.prepare_request(evidence)
 
 
-def make_result(request):
+def make_plan(request):
     source_id = request["sources"][0]["id"]
     return {
-        "schema": model_contract.RESULT_SCHEMA,
+        "schema": "hyperreview.composition-plan.v1",
         "request_digest": request["request_digest"],
-        "before_hc": "# Before\n",
-        "after_hc": "Application#app\n  Assessment#assessment\n",
-        "identity_map": [{"architecture_id": "#Assessment", "before_refs": [],
-                          "after_refs": [source_id], "reason": "It owns the assessment responsibility."}],
-        "claims": [{"id": "claim-assessment", "text": "The source defines an assessment operation.",
-                    "evidence_status": "inferred", "architecture_ids": ["#Assessment"],
-                    "source_refs": [source_id], "scope": "Supplied source only.",
-                    "limitations": ["The responsibility is inferred."]}],
+        "nodes": [{"id": "assessment", "before_type": None, "after_type": "Assessment",
+                   "before_parent": None, "after_parent": None, "before_refs": [],
+                   "after_refs": [source_id], "reason": "It owns the assessment responsibility."}],
         "summary": "One assessment responsibility is proposed.",
         "limitations": ["The compiler must validate Hypercode syntax."],
     }
+
+
+def make_result(request):
+    from hyperreview.composition_plan import to_result
+    return to_result(make_plan(request), request)
 
 
 class FixtureServer:
@@ -130,7 +131,7 @@ class LocalProviderTests(unittest.TestCase):
             self.fixture.close()
 
     def _envelope(self, config, result=None, *, include_usage=True, **overrides):
-        result = result or make_result(self.request)
+        result = result or make_plan(self.request)
         content = intake.encoded(result).decode("utf-8")
         if config.provider == "lmstudio":
             envelope = {
@@ -152,6 +153,7 @@ class LocalProviderTests(unittest.TestCase):
         if callback is None:
             callback = lambda _request: (200, {"Content-Type": "application/json"},
                                          self._envelope(self.config))
+        config_values.setdefault("context_tokens", 16384)
         self.fixture = FixtureServer(callback)
         prefix = "/v1" if provider == "lmstudio" else "/api"
         self.config = ProviderConfig(provider, f"http://127.0.0.1:{self.fixture.port}{prefix}",
@@ -162,6 +164,10 @@ class LocalProviderTests(unittest.TestCase):
         fixture = self._start()
         outcome = generate(self.request, self.config)
         self.assertEqual(outcome["result"], make_result(self.request))
+        self.assertEqual(outcome["plan"], make_plan(self.request))
+        self.assertEqual(outcome["receipt"]["provider_plan_digest"], intake.digest(outcome["plan"]))
+        self.assertEqual(outcome["receipt"]["result_schema_sha256"],
+                         intake.digest(model_contract.result_schema()))
         receipt = outcome["receipt"]
         self.assertEqual((receipt["provider"], receipt["model"]), ("lmstudio", "fixture-model"))
         self.assertEqual((receipt["input_tokens"], receipt["output_tokens"]), (23, 11))
@@ -181,12 +187,25 @@ class LocalProviderTests(unittest.TestCase):
         self.assertTrue(response_schema["strict"])
         schema = response_schema["schema"]
         self.assertEqual(schema["properties"]["request_digest"]["const"], self.request["request_digest"])
-        identity = schema["properties"]["identity_map"]["items"]["properties"]
+        identity = schema["properties"]["nodes"]["items"]["properties"]
+        self.assertEqual(list(identity)[0], "id")
+        self.assertLess(list(identity).index("id"), list(identity).index("after_parent"))
         self.assertEqual(identity["before_refs"]["maxItems"], 0)
+        self.assertEqual(identity["before_type"], {"type": "null"})
+        self.assertEqual(identity["before_parent"], {"type": "null"})
         self.assertEqual(identity["after_refs"]["items"]["enum"], [self.request["sources"][0]["id"]])
-        refs = schema["properties"]["claims"]["items"]["properties"]["source_refs"]["items"]["enum"]
-        self.assertEqual(refs, [self.request["sources"][0]["id"]])
+        self.assertNotIn("claims", schema["properties"])
         self.assertNotIn("tools", body)
+
+    def test_explicit_developer_role_is_transmitted_and_recorded(self):
+        fixture = self._start(instruction_role="developer")
+        outcome = generate(self.request, self.config)
+        self.assertEqual(json.loads(fixture.requests[0]["body"])["messages"][0]["role"], "developer")
+        self.assertEqual(outcome["receipt"]["instruction_role"], "developer")
+        bad = replace(self.config, provider="ollama", instruction_role="developer")
+        with self.assertRaises(ProviderError):
+            generate(self.request, bad)
+        self.assertEqual(len(fixture.requests), 1)
 
     def test_ollama_wire_shape_and_missing_counts_are_none(self):
         def callback(_request):
@@ -200,7 +219,7 @@ class LocalProviderTests(unittest.TestCase):
         self.assertEqual(posted["path"], "/api/chat")
         body = json.loads(posted["body"])
         self.assertFalse(body["stream"])
-        self.assertEqual(body["options"], {"temperature": 0, "num_predict": 1024, "num_ctx": 8192})
+        self.assertEqual(body["options"], {"temperature": 0, "num_predict": 1024, "num_ctx": 16384})
         self.assertEqual(body["keep_alive"], 0)
         self.assertIsInstance(body["format"], dict)
         self.assertNotIn("tools", body)
@@ -321,11 +340,13 @@ class LocalProviderTests(unittest.TestCase):
             self.fixture = None
 
     def test_rejects_invalid_result_binding_and_unknown_fields(self):
-        wrong_digest = make_result(self.request)
+        wrong_digest = make_plan(self.request)
         wrong_digest["request_digest"] = "0" * 64
-        unknown = make_result(self.request)
+        unknown = make_plan(self.request)
         unknown["authority"] = "elevated"
-        for result in (wrong_digest, unknown):
+        invalid_type = make_plan(self.request)
+        invalid_type["nodes"][0]["after_type"] = "PredicateSpec[Context]"
+        for result in (wrong_digest, unknown, invalid_type, make_result(self.request)):
             self.fixture = None
             fixture = self._start(callback=lambda _request, result=result:
                                   (200, {"Content-Type": "application/json"},

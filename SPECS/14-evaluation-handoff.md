@@ -1,7 +1,8 @@
 # Local evaluation artifact handoff
 
 This subset links deterministic boundary assessments to an MLflow evaluation
-run. It does not complete the human comparison or enable publication.
+run. It records technical diagnostics and lineage; it does not implement the
+planned own-PR user-feedback capture or enable publication.
 
 ## Trusted export boundary
 
@@ -16,10 +17,12 @@ independent measurements.
 The trusted SDK environment pins MLflow `3.16.1` and Evidently `0.7.23`. Operator
 paths must be absolute and must not traverse symlinks or include `..` components.
 SQLite database paths reject `?`, `#`, `%`, and control characters so URI parsing
-cannot change the selected filename. Delivery uses a local
-SQLite database and a local artifact root, with an evaluation experiment
-separate from manual preview workflow runs. No inference or GitHub write occurs.
-Run the optional command with a minimal environment outside analyzed checkouts.
+cannot change the selected filename. Delivery uses a local SQLite database and
+a local artifact root, with an evaluation experiment separate from manual
+preview workflow runs. MLflow receives selected technical metrics and sanitized
+report lineage, not optional free-text feedback notes. No inference or GitHub
+write occurs. Run the optional command with a minimal environment outside
+analyzed checkouts.
 
 ## Recovery limits
 
@@ -29,6 +32,11 @@ evaluation run. This increment has no durable evaluation outbox or retry
 idempotency; the manual-preview tracking outbox does not cover evaluation runs.
 Do not use this export as a background retrying worker or a publication gate.
 
-P2 still requires matched real cases, independent human answers and timing,
-baseline/current comparison, coverage review, and operator-reviewed thresholds
-before any quality gate is introduced.
+The next P2 product increment is a simple feedback record for a preview on the
+user's own PR: `ok` or `not_ok`, optionally with a local note, tied to the exact
+base/head revisions and projection version shown. This capture path is not
+implemented. Comparative accuracy or review-time studies and baseline/current
+experiments are optional research, not product, scheduler, or publication
+gates. Technical report outputs make no model-superiority claim. Publication
+continues to require its separate eligibility, explicit-authorization,
+tracking-confirmation, and security gates.

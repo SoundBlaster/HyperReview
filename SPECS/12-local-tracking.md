@@ -56,7 +56,11 @@ before removing the event. Source-bearing preview metadata is then reconciled
 and its status becomes `ready`. Receipt retention is independent of preview
 retention. A failure keeps the event pending and does not rerun inference.
 `track --reconcile` handles one pending event per invocation; running `track
---bundle ...` afterward also reconciles that bundle's status and displayed text.
+--bundle ...` afterward also reconciles that bundle's status and refreshes both
+`preview.md` and `preview-compact.md` after tracking confirmation. Both output
+paths are checked before replacement; writes remain individually atomic, not a
+multi-file transaction. A refresh failure reports confirmed delivery with an
+incomplete preview refresh, and replay can refresh without another inference.
 No worker queue, automatic cleanup, failed-inference journal, or publication
 authority is implemented by this increment. Spool capacity gates enqueueing;
 integrating that gate before every analysis is a later one-shot/worker concern.

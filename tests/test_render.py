@@ -2,7 +2,7 @@ import unittest
 
 from hyperreview.model_contract import ContractError, prepare_request
 from hyperreview.intake import digest
-from hyperreview.render import render_preview
+from hyperreview.render import render_preview, render_compact_preview
 from test_model_contract import pack, valid_result
 
 
@@ -40,6 +40,31 @@ class RenderTests(unittest.TestCase):
     def test_projection_uses_fence_longer_than_untrusted_content(self):
         self.result["after_hc"] = "Application#App\n```\n<script>bad</script>\n"
         self.assertIn("````hc\n", self.render())
+
+    def test_compact_preview_has_diff_and_revision_links(self):
+        self.receipt["result_digest"] = digest(self.result)
+        preview = render_compact_preview(self.request, self.result, self.receipt, self.diff).decode()
+        self.assertIn("```diff", preview)
+        self.assertIn("blob/" + self.request["head_sha"], preview)
+        self.assertIn("Ок или не ок", preview)
+        self.assertIn("не означает порядок выполнения", preview)
+
+    def test_compact_preview_escapes_prose_and_rejects_unbound_receipt(self):
+        self.result["summary"] = "<script>bad</script> @someone"
+        self.receipt["result_digest"] = digest(self.result)
+        preview = render_compact_preview(self.request, self.result, self.receipt, self.diff).decode()
+        self.assertNotIn("<script>", preview)
+        self.assertNotIn("@someone", preview)
+        self.receipt["stage"] = "model_generated"
+        with self.assertRaises(ContractError):
+            render_compact_preview(self.request, self.result, self.receipt, self.diff)
+
+    def test_compact_preview_does_not_invent_changes(self):
+        self.result["before_hc"] = self.result["after_hc"]
+        self.receipt["result_digest"] = digest(self.result)
+        preview = render_compact_preview(self.request, self.result, self.receipt, self.diff).decode()
+        self.assertNotIn("```diff", preview)
+        self.assertIn("Структурных изменений в проекции нет", preview)
 
     def test_unvalidated_or_unbound_receipt_is_rejected(self):
         for field, invalid in (("stage", "model_generated"), ("request_digest", "0" * 64)):

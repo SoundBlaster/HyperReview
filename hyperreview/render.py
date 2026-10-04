@@ -1,6 +1,7 @@
 """Render a local review aid without promoting model interpretations to facts."""
 
 import html
+import difflib
 import re
 from urllib.parse import quote
 
@@ -87,4 +88,37 @@ def render_preview(request, result, receipt, semantic_diff, *, tracking_status="
     lines.append("\nNo PR code was executed by this analysis. An absent reference or unchanged "
                  "projection does not establish unchanged behavior. Publication requires separate "
                  "authorization, revision checks, and confirmed tracking delivery.\n")
+    return "\n".join(lines).encode("utf-8")
+
+
+def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_status="not_started"):
+    """Render a small review aid from the same validated, revision-bound inputs."""
+    render_preview(request, result, receipt, semantic_diff, tracking_status=tracking_status)
+    before = result["before_hc"].splitlines() if result["before_hc"].strip() else []
+    after = result["after_hc"].splitlines() if result["after_hc"].strip() else []
+    change = "\n".join(difflib.unified_diff(before, after, fromfile="before.hc",
+                                           tofile="after.hc", lineterm=""))
+    lines = ["# HyperReview — архитектурный эскиз изменения\n",
+             _text(result["summary"]) + "\n",
+             "Интерпретация выбранных исходников; порядок узлов не означает порядок выполнения.\n",
+             _fence(change, "diff") if change else "Структурных изменений в проекции нет.\n"]
+    sources = {source["id"]: source for source in request["sources"]}
+    for identity in result["identity_map"]:
+        links = []
+        refs = list(dict.fromkeys(identity["after_refs"] + identity["before_refs"]))
+        for ref in refs:
+            source = sources[ref]
+            url = (f"https://github.com/{request['repository']}/blob/{source['revision']}/"
+                   f"{quote(source['path'], safe='/')}#L{source['line_start']}-L{source['line_end']}")
+            links.append(f"[{_text(source['path'])}]({url})")
+        lines.append(f"- `{identity['architecture_id']}` — {_text(identity['reason'])} "
+                     + "; ".join(links) + "\n")
+    lines.extend(["\n<details>\n<summary>Границы анализа и основания</summary>\n",
+                  f"PR #{request['pr']}: `{request['merge_base_sha']}` → `{request['head_sha']}`.\n",
+                  f"Исходников в анализе: {len(request['sources'])}; пропущено: {len(request['omissions'])}.\n",
+                  "Компилятор проверил структуру Hypercode и ссылки. Соответствие интерпретации коду "
+                  "и поведение программы этим не доказаны.\n"])
+    for limitation in [*request["scope"], *request["limitations"], *result["limitations"]]:
+        lines.append("- " + _text(limitation) + "\n")
+    lines.extend(["\n</details>\n", "**Ок или не ок?**\n"])
     return "\n".join(lines).encode("utf-8")

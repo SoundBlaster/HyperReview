@@ -29,6 +29,7 @@ def main():
     generation.add_argument("--provider", required=True, choices=("lmstudio", "ollama"))
     generation.add_argument("--endpoint")
     generation.add_argument("--model", required=True)
+    generation.add_argument("--instruction-role", choices=("system", "developer"), default="system")
     generation.add_argument("--context-tokens", type=int, default=8192)
     generation.add_argument("--max-tokens", type=int, default=1024)
     generation.add_argument("--timeout-seconds", type=int, default=120)
@@ -76,6 +77,7 @@ def main():
             options = {"spool_root": args.spool_root, "runtime_python": args.runtime_python,
                        "database": args.database, "artifacts_root": args.artifacts_root,
                        "timeout_seconds": args.timeout_seconds}
+            receipt = None
             try:
                 if args.bundle:
                     event = update_bundle_tracking(args.bundle)
@@ -87,7 +89,7 @@ def main():
                 receipt = reconcile(event, **options)
                 if args.bundle:
                     update_bundle_tracking(args.bundle, receipt)
-                    from .render import render_preview
+                    from .render import render_preview, render_compact_preview
                     from .tracking import _atomic_bytes
                     request = read_json(args.bundle / "request.json")
                     result = read_json(args.bundle / "result.json", max_bytes=1024 * 1024)
@@ -99,16 +101,23 @@ def main():
                     preview_path = args.bundle / "preview.md"
                     if preview_path.is_symlink():
                         raise TrackingError("Preview output must not be a symlink")
+                    compact_path = args.bundle / "preview-compact.md"
+                    if compact_path.is_symlink():
+                        raise TrackingError("Preview output must not be a symlink")
+                    compact = render_compact_preview(
+                        request, result, compiler_receipt, diff, tracking_status="confirmed")
                     _atomic_bytes(preview_path, preview)
+                    _atomic_bytes(compact_path, compact)
                 print(f"Tracking confirmed: run {receipt['run_id']}, trace {receipt['trace_id']}")
                 print("Claims remain inferred; no publication performed")
                 return 0
             except TrackingError as error:
-                print(f"HyperReview: {error}; tracking remains pending", file=sys.stderr)
+                status = "tracking confirmed; preview refresh incomplete" if receipt is not None else "tracking remains pending"
+                print(f"HyperReview: {error}; {status}", file=sys.stderr)
                 return 1
         if args.command == "compile":
             from .compiled_preview import PreviewError, compile_preview
-            from .render import render_preview
+            from .render import render_preview, render_compact_preview
             import json
             evidence = read_json(args.evidence)
             request = read_json(args.request)
@@ -133,6 +142,8 @@ def main():
             artifacts = compiled["artifacts"]
             semantic_diff = json.loads(artifacts["diff.json"])
             artifacts["preview.md"] = render_preview(request, result, compiled["receipt"], semantic_diff)
+            artifacts["preview-compact.md"] = render_compact_preview(
+                request, result, compiled["receipt"], semantic_diff)
             artifacts["evidence.json"] = encoded(evidence)
             artifacts["generation-receipt.json"] = encoded(generation_receipt)
             from uuid import uuid4
@@ -143,7 +154,7 @@ def main():
                 "delivery_mode": "preview", "attempt": 1,
             })
             destination = write_bundle(artifacts, args.output_root)
-            print(f"Validated structural preview: {destination / 'preview.md'}")
+            print(f"Validated structural preview: {destination / 'preview-compact.md'}")
             print("Stage: projections_validated; claims remain inferred; tracking not started")
             return 0
         if args.command == "generate":
@@ -153,7 +164,7 @@ def main():
                 "ollama": "http://127.0.0.1:11434/api",
             }[args.provider]
             config = ProviderConfig(args.provider, endpoint, args.model,
-                                    args.context_tokens, args.max_tokens, args.timeout_seconds)
+                                    args.context_tokens, args.max_tokens, args.timeout_seconds, args.instruction_role)
             request = read_json(args.request)
             try:
                 proposed = generate(request, config)
@@ -163,6 +174,7 @@ def main():
             receipt = {**proposed["receipt"], "stage": "model_generated",
                        "hypercode_validation": "not_started", "tracking_status": "not_started"}
             destination = write_bundle({"request.json": encoded(request),
+                                        "composition-plan.json": encoded(proposed["plan"]),
                                         "result.json": encoded(proposed["result"]),
                                         "receipt.json": encoded(receipt)}, args.output_root)
             print(f"Proposed result: {destination / 'result.json'}")

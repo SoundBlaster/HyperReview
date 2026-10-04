@@ -58,6 +58,13 @@ def main():
     tracking.add_argument("--spool-root", type=Path,
                           default=Path.home() / ".local/share/hyperreview/tracking-spool")
     tracking.add_argument("--timeout-seconds", type=int, default=120)
+    feedback = commands.add_parser("feedback", help="Save a local assessment of one compact preview")
+    feedback.add_argument("--bundle", required=True, type=Path)
+    feedback.add_argument("--assessment", required=True, choices=("ok", "not_ok"))
+    feedback.add_argument("--note")
+    feedback.add_argument("--expected-preview-sha256")
+    feedback.add_argument("--output-root", type=Path,
+                          default=Path.home() / ".local/share/hyperreview/feedback")
     pilot = commands.add_parser("pilot", help="Run controlled boundaries and prepare an unfilled human worksheet")
     pilot.add_argument("--compiler", required=True, type=Path)
     pilot.add_argument("--compiler-sha256", required=True)
@@ -65,6 +72,19 @@ def main():
                        default=Path.home() / ".local/share/hyperreview/pilot")
     args = parser.parse_args()
     try:
+        if args.command == "feedback":
+            from .feedback import FeedbackError, save_feedback
+            try:
+                destination = save_feedback(
+                    args.bundle, args.assessment, note=args.note,
+                    expected_preview_sha256=args.expected_preview_sha256,
+                    output_root=args.output_root)
+            except (FeedbackError, StorageError, ContractError, OSError, ValueError, KeyError, TypeError) as error:
+                print(f"HyperReview: {type(error).__name__}; feedback was not saved", file=sys.stderr)
+                return 1
+            print(f"Feedback saved: {destination / 'feedback.json'}")
+            print(f"Assessment: {args.assessment}; local only; no publication performed")
+            return 0
         if args.command == "pilot":
             from .pilot import run_pilot
             completed = run_pilot(args.compiler, args.compiler_sha256, args.output_root)

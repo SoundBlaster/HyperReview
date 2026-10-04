@@ -42,8 +42,8 @@ implementation obligations.
 The product feedback loop is a small assessment of one preview on the user's own
 PR: `ok` or `not_ok`, with an optional note. Associate it with the exact PR
 base/head revisions and projection version shown to the user. This feedback
-capture path is not implemented; this specification does not claim that a CLI or
-feedback UI exists. Feedback records describe the user's assessment of that
+capture path is implemented by the local `feedback` CLI
+([contract](16-preview-feedback.md)); no feedback UI or remote export is provided. Feedback records describe the user's assessment of that
 preview and do not prove architectural correctness.
 
 The deterministic compiler, source-ID/provenance validation, and controlled

@@ -8,6 +8,9 @@ from urllib.parse import quote
 from . import intake, model_contract
 
 
+COMPACT_RENDER_VERSION = "compact-v1"
+
+
 def _text(value):
     value = html.escape(value, quote=True).replace("@", "&#64;")
     return re.sub(r"([\\`*_{}\[\]()#+.!|>~-])", r"\\\1", value)

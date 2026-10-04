@@ -56,8 +56,9 @@ feedback is one user's assessment of a preview for their own PR: `ok` or
 PR base/head revisions and projection version shown. The verdict and revision
 lineage MAY be associated with the MLflow preview record; free-text notes MUST
 remain in the local result store by default and MUST NOT enter the default
-metadata-only MLflow payload. This feedback-capture path is planned and is not
-implemented by the current CLI. Separately, deterministic compiler, source-ID,
+metadata-only MLflow payload. The local `feedback` CLI implements capture
+([contract](16-preview-feedback.md)); associating its verdict with an MLflow run
+is not implemented and records remain local. Separately, deterministic compiler, source-ID,
 provenance, and technical-quality fixtures MUST retain their version and
 assessment type. Their metrics include grammar/reference validity, missing
 coverage, and structural changes; they are engineering evidence, not user

@@ -31,7 +31,7 @@ identity/provenance checks, and local Markdown explanation boundary.
 retrospective workflow traces, and the bounded recovery outbox.
 
 [Controlled pilot boundaries](13-pilot-boundaries.md) defines synthetic cases,
-numeric local Evidently reports, and the planned own-PR feedback loop.
+numeric local Evidently reports, and local own-PR feedback capture.
 
 [Evaluation handoff](14-evaluation-handoff.md) defines the local sanitized report
 export and its recovery limits.
@@ -49,3 +49,5 @@ Manual intake uses Python 3.10+ with its standard library and `gh`; the exact
 model and isolated backend remain open choices. These documents
 are plain Markdown specifications, not a SpecPM package or registered SpecGraph
 nodes. Future tooling integration must preserve their IDs and status.
+
+- [Local preview feedback](16-preview-feedback.md): revision-bound `ok`/`not_ok` records, with optional local notes.

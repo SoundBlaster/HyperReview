@@ -8,7 +8,7 @@ prepares a filtered request, proposes a result through LM Studio or Ollama,
 and validates paired projections before rendering a local explanation.
 Metadata-only MLflow delivery and recovery are implemented. Controlled pilot
 fixtures, local Evidently reports, and explicit sanitized evaluation export to
-MLflow are available. A simple own-PR feedback capture, scheduler, and publisher
+MLflow are available. Local own-PR feedback capture is available; scheduler and publisher
 remain implementation work. The Hypercode
 model describes the proposed full reviewer, not an installed service.
 
@@ -214,6 +214,23 @@ displayed status, and does not establish program behavior or authorize a GitHub
 comment. For a preview bundle, `track --bundle` re-renders both Markdown views
 after tracking confirmation. See [local tracking and recovery](SPECS/12-local-tracking.md).
 
+## Assess a compact preview
+
+After reading `preview-compact.md`, record `ok` or `not_ok` with an optional note:
+
+```sh
+python3 -m hyperreview feedback \
+  --bundle "$HOME/.local/share/hyperreview/previews/<bundle>" \
+  --assessment ok
+```
+
+For a correction, use `--assessment not_ok --note "The scope comparison is unclear"`.
+An optional `--expected-preview-sha256 <shown-file-hash>` rejects a changed
+preview. Each submission creates a separate private local record with exact
+revision, result, projection and preview fingerprints. It performs no inference
+or network calls, changes no analysis artifact, and exports no notes to
+MLflow/Evidently. See [local feedback](SPECS/16-preview-feedback.md).
+
 ## Controlled pilot and local Evidently report
 
 Generate six synthetic boundary cases using the trusted compiler:
@@ -229,9 +246,9 @@ fixtures, not measured LLM output or a completed human evaluation. An unchanged
 composition deliberately accompanies an approval bypass in one case.
 
 The intended P2 product loop is lightweight: after viewing a preview for their
-own PR, a user can mark it `ok` or `not_ok` and optionally leave a note. Any
-feedback record must stay tied to the PR revisions and projection version that
-were shown. This feedback capture is not implemented yet. Comparative accuracy
+own PR, a user can mark it `ok` or `not_ok` and optionally leave a note. Each
+feedback record is tied to the PR revisions, projection and exact compact preview
+shown. The local `feedback` command implements this capture. Comparative accuracy
 or review-time studies are optional research, not a product, scheduler, or
 publication prerequisite; the current technical reports make no model
 superiority claim.

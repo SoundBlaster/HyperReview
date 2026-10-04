@@ -4,8 +4,8 @@
 and a manual Python pipeline through filtered requests, local HTTP inference,
 and compiled paired projections with local Markdown output and metadata-only
 MLflow delivery. Six controlled pilot cases and local Evidently reports are
-implemented, with explicit sanitized report export to local MLflow. Feedback
-capture, scheduler, and publishing remain open.
+implemented, with explicit sanitized report export to local MLflow. Local feedback
+capture is implemented; scheduler and publishing remain open.
 
 | Phase | Work | Exit evidence |
 |---|---|---|
@@ -22,7 +22,7 @@ standard library and `gh`.
 SpecGraph PR #761 is the first intake smoke case. Its selected slice was analyzed
 with the existing local LM Studio gpt-oss-20b model, explicit API alias and context
 16384. The alias fingerprint is recorded; a weights revision remains unavailable.
-Codex isolation and P2 feedback capture remain open. Comparative accuracy or
+Codex isolation and controlled publishing remain open. Comparative accuracy or
 review-time studies are optional research, not release or publication gates.
 Executable presence alone does not choose a backend.
 
@@ -44,9 +44,13 @@ Executable presence alone does not choose a backend.
    a manual rewrite; semantic usefulness is still for the user to assess.
 5. Controlled versioned cases and sanitized local Evidently reports:
    [pilot subset](SPECS/13-pilot-boundaries.md) and [local evaluation handoff](SPECS/14-evaluation-handoff.md).
-   Next: implement the simple own-PR `ok`/`not_ok` feedback record with optional
-   local note and revision/projection-version lineage. This capture path is not
-   implemented. Evaluation delivery has no durable retry outbox yet.
+6. Local own-PR `ok`/`not_ok` feedback with optional notes and exact
+   revision/projection/preview fingerprints:
+   [feedback record](SPECS/16-preview-feedback.md). This captures usefulness,
+   without quality thresholds or publication authority.
+   Next: controlled publishing with explicit authorization, fresh revision checks,
+   and confirmed metadata-only tracking. Evaluation delivery has no durable retry
+   outbox yet.
 
 A later optional phase may compare explicit SpecGraph architectural intent
 against source-derived evidence. It must preserve accepted intent and inferred

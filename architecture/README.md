@@ -42,7 +42,8 @@ this baseline or any model instructions.
 
 `#tracking` and `#mlflow` describe the selected local experiment backend.
 `#traces` captures the reviewer workflow; it is not a trace of PR program
-execution. `#evaluation` holds versioned cases, scorers, and feedback.
+execution. `#evaluation` holds versioned technical cases and scorers; `#feedback` records
+local `ok`/`not_ok` preview assessments independently of comparative research.
 `#tracking-spool` recovers sanitized tracking delivery. Metadata-only capture
 and disabled LLM judging are the initial policy; MLflow does not own job leases
 or GitHub publication authority. See [the MLflow contract](../SPECS/06-mlflow.md).

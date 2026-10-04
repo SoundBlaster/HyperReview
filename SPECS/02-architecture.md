@@ -27,7 +27,7 @@ projections HyperReview will create for analyzed PRs.
 | `#publication-gate` | Recheck operator authorization and PR state | HR-SEC-005 |
 | `#publisher` | Maintain the tool's ordinary PR comment | HR-DATA-006 |
 | `#tracking` / `#mlflow` / `#traces` | Record MLflow runs and sanitized workflow spans | HR-TRACK-001, HR-TRACK-002, HR-TRACK-003 |
-| `#evaluation` / `#cases` / `#scorers` / `#feedback` | Evaluate versioned PR cases and record assessments | HR-TRACK-004, HR-TRACK-005 |
+| `#evaluation` / `#cases` / `#scorers` / `#feedback` | Run technical fixture assessments and record local preview usefulness | HR-TRACK-004, HR-TRACK-005 |
 | `#reports` / `#evidently` | Produce local quality reports and sanitized MLflow artifacts | HR-EVAL-002, HR-EVAL-004, HR-EVAL-005 |
 | `#baseline` / `#regression` | Compare matched cases using reviewed metric definitions | HR-EVAL-001, HR-EVAL-003 |
 | `#tracking-spool` | Recover bounded tracking delivery without repeat inference | HR-TRACK-006 |

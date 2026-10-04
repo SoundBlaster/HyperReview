@@ -54,6 +54,7 @@ shows the confirmed tracking status.
 
 The practical acceptance is a compiled, compact preview that the operator can
 mark **ok** or **not ok**, optionally identifying an unclear or incorrect node.
-The feedback capture path is not yet implemented. No independent reviewer or
+The local `feedback` CLI implements capture
+([contract](16-preview-feedback.md)). No independent reviewer or
 accuracy/time experiment is required. User feedback does not replace
 compiler/provenance checks or separately authorize publication.

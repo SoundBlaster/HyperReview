@@ -26,8 +26,8 @@ Outputs include a reviewer worksheet, a separate answer key, and an unfilled
 scorecard. They support inspection of the fixed fixtures, not a required study.
 The intended P2 product feedback is one user's `ok` or `not_ok` assessment of a
 preview on their own PR, with an optional note tied to the exact base/head
-revisions and projection version shown. This feedback-capture path is not
-implemented. Optional accuracy or review-time research is separate from the
+revisions and projection version shown. The separate local `feedback` CLI
+implements capture ([contract](16-preview-feedback.md)). Optional accuracy or review-time research is separate from the
 product loop and is not a release, scheduler, or publication gate.
 
 ## Reporting subset
@@ -55,5 +55,5 @@ The optional report environment uses Python 3.12+ and SciPy `1.18.1`, separately
 from the Python 3.10+ core CLI and MLflow runtime. Dependency versions do not
 constitute a complete transitive lock. Reports are report-only; no regression or
 publication gate is enabled. MLflow evaluation-run artifact handoff is
-implemented; own-PR feedback capture remains unimplemented. Baseline comparisons
+implemented; local own-PR feedback capture is a separate command. Baseline comparisons
 and accuracy/review-time studies are optional research.

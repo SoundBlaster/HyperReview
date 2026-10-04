@@ -2,7 +2,7 @@
 
 This subset links deterministic boundary assessments to an MLflow evaluation
 run. It records technical diagnostics and lineage; it does not implement the
-planned own-PR user-feedback capture or enable publication.
+separate local own-PR user-feedback capture or enable publication.
 
 ## Trusted export boundary
 
@@ -32,10 +32,10 @@ evaluation run. This increment has no durable evaluation outbox or retry
 idempotency; the manual-preview tracking outbox does not cover evaluation runs.
 Do not use this export as a background retrying worker or a publication gate.
 
-The next P2 product increment is a simple feedback record for a preview on the
+The P2 product increment is a simple local feedback record for a preview on the
 user's own PR: `ok` or `not_ok`, optionally with a local note, tied to the exact
-base/head revisions and projection version shown. This capture path is not
-implemented. Comparative accuracy or review-time studies and baseline/current
+base/head revisions, projection and exact compact preview shown. The local
+`feedback` CLI implements this capture ([contract](16-preview-feedback.md)). Comparative accuracy or review-time studies and baseline/current
 experiments are optional research, not product, scheduler, or publication
 gates. Technical report outputs make no model-superiority claim. Publication
 continues to require its separate eligibility, explicit-authorization,

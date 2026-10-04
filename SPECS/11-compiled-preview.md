@@ -90,5 +90,6 @@ The earlier v2 result is not v3 evidence, and compiler acceptance does not
 establish semantic accuracy. Earlier v3 attempts were rejected or produced
 unhelpful inventories; this is a smoke result, not a reliability measurement.
 
-Next: a useful compact preview and own-PR feedback tied to its exact revisions
-and projection version. Metadata-only MLflow delivery is already implemented.
+Local own-PR feedback is now captured separately with exact revisions, projection
+and preview fingerprints ([contract](16-preview-feedback.md)). Metadata-only
+MLflow delivery is already implemented; controlled publishing remains next.

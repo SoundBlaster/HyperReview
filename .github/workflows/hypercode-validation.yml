@@ -50,6 +50,19 @@ jobs:
           HYPERREVIEW_TEST_COMPILER: ${{ github.workspace }}/.toolchain/hypercode/.build/debug/hypercode
         run: python3 -m unittest discover -s tests -p test_compiled_preview.py -v
 
+      - name: Validate six controlled pilot boundaries
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          from hyperreview.pilot import run_pilot
+          compiler = Path('.toolchain/hypercode/.build/debug/hypercode').resolve()
+          result = run_pilot(compiler, hashlib.sha256(compiler.read_bytes()).hexdigest(),
+                             Path('.artifacts/pilot').resolve())
+          assert result['all_expected_outcomes_matched'], 'Controlled pilot outcome mismatch'
+          print('Six controlled outcomes matched; human evaluation remains unmeasured.')
+          PY
+
       - name: Upload emitted IR and diff
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

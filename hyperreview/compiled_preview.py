@@ -17,13 +17,25 @@ from . import intake, model_contract
 
 
 MAX_PROCESS_OUTPUT_BYTES = 1024 * 1024
+MAX_DIAGNOSTICS_BYTES = 64 * 1024
 MAX_COMPILER_BYTES = 128 * 1024 * 1024
 _HEX_64 = re.compile(r"[0-9a-f]{64}\Z")
 _IR_ID = re.compile(r"[A-Za-z][A-Za-z0-9_.-]*\Z")
+_DIAGNOSTIC_CODES = frozenset(("HC1001", "HC1101"))
 
 
 class PreviewError(Exception):
     """Raised when compilation, IR validation, provenance, or diff checks fail."""
+
+
+class CompilerCommandError(PreviewError):
+    """Sanitized compiler subprocess failure with bounded diagnostic identity."""
+
+    def __init__(self, operation, return_code, diagnostic_codes=()):
+        super().__init__("Hypercode compiler command failed")
+        self.operation = operation
+        self.return_code = return_code
+        self.diagnostic_codes = tuple(diagnostic_codes)
 
 
 def _require(condition, message):
@@ -50,6 +62,40 @@ def _strict_json(raw, description):
         raise PreviewError(f"Compiler returned invalid {description} JSON") from error
     _require(type(value) is dict, f"Compiler {description} must be a JSON object")
     return value
+
+
+def _diagnostic_codes(raw):
+    """Extract only recognized stable codes from bounded compiler JSON."""
+    if len(raw) > MAX_DIAGNOSTICS_BYTES:
+        return ()
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON key")
+            result[key] = value
+        return result
+
+    def reject_constant(_value):
+        raise ValueError("non-finite number")
+
+    try:
+        diagnostics = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object,
+                                 parse_constant=reject_constant)
+    except (UnicodeError, ValueError, TypeError, RecursionError, OverflowError):
+        return ()
+    if type(diagnostics) is not list or not diagnostics or len(diagnostics) > 32:
+        return ()
+    codes = []
+    for item in diagnostics:
+        if (type(item) is not dict or type(item.get("code")) is not str
+                or item["code"] not in _DIAGNOSTIC_CODES
+                or type(item.get("severity")) is not int or item["severity"] != 1
+                or item.get("source") != "hypercode"):
+            return ()
+        codes.append(item["code"])
+    return tuple(codes)
 
 
 def _compiler_sha256(path):
@@ -162,9 +208,13 @@ def _run_compiler(path, args, *, workdir, deadline, expected_sha256, expected_co
     _require(time.monotonic() < deadline, "Compiler preview exceeded its total deadline")
     remaining = deadline - time.monotonic()
     _require(remaining > 0, "Compiler preview exceeded its total deadline")
+    command = [str(path)]
+    if args and args[0] == "parse":
+        command.extend(("--diagnostics", "json"))
+    command.extend(args)
     try:
         proc = subprocess.Popen(
-            [str(path), *args],
+            command,
             cwd=workdir,
             env={"PATH": os.defpath, "LANG": "C", "LC_ALL": "C"},
             stdin=subprocess.DEVNULL,
@@ -227,7 +277,6 @@ def _run_compiler(path, args, *, workdir, deadline, expected_sha256, expected_co
             raise PreviewError("Compiler output stream did not close")
         _require(not overflow.is_set(), "Compiler subprocess output exceeds 1 MiB")
         _require(not reader_error.is_set(), "Compiler subprocess output could not be read")
-        _require(return_code in expected_codes, "Hypercode compiler command failed")
     finally:
         if proc.poll() is None:
             _terminate(proc, force=True)
@@ -244,6 +293,10 @@ def _run_compiler(path, args, *, workdir, deadline, expected_sha256, expected_co
 
     _verify_compiler(path, expected_sha256)
     _require(time.monotonic() < deadline, "Compiler preview exceeded its total deadline")
+    if return_code not in expected_codes:
+        operation = args[0] if args else "unknown"
+        codes = _diagnostic_codes(bytes(buffers["stderr"])) if operation == "parse" else ()
+        raise CompilerCommandError(operation, return_code, codes)
     return bytes(buffers["stdout"]), return_code
 
 

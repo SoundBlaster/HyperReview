@@ -11,7 +11,7 @@ import unittest
 from unittest import mock
 
 from hyperreview import intake, model_contract
-from hyperreview.compiled_preview import PreviewError, compile_preview
+from hyperreview.compiled_preview import CompilerCommandError, PreviewError, compile_preview
 
 
 REPO = "0al-spec/SpecGraph"
@@ -95,6 +95,7 @@ MODE = {self.mode!r}
 BEFORE = json.loads({json.dumps(json.dumps(self.before))})
 AFTER = json.loads({json.dumps(json.dumps(self.after))})
 args = sys.argv[1:]
+if args[:2] == ["--diagnostics", "json"]: args = args[2:]
 command = args[0]
 if MODE == "timeout" and command == "parse":
     time.sleep(10)
@@ -110,6 +111,16 @@ if MODE == "stderr_limit" and command == "parse":
 if MODE == "fail_validate" and command == "validate":
     sys.stderr.write("PRIVATE DIAGNOSTIC CONTENT")
     sys.exit(2)
+if MODE == "fail_parse" and command == "parse":
+    sys.stderr.write("PRIVATE COMPILER FAILURE")
+    sys.exit(1)
+if MODE == "syntax_error" and command == "parse":
+    sys.stderr.write(json.dumps([{{"code": "HC1001", "severity": 1, "source": "hypercode", "message": "PRIVATE MESSAGE", "file": "/private/path"}}]))
+    sys.exit(1)
+if MODE == "mixed_syntax_error" and command == "parse":
+    sys.stderr.write(json.dumps([{{"code": "HC1001", "severity": 1, "source": "hypercode"}},
+                                 {{"code": "HC9999", "severity": 1, "source": "hypercode"}}]))
+    sys.exit(1)
 if command in ("parse", "validate"):
     print("ok")
 elif command == "emit":
@@ -254,9 +265,37 @@ class CompiledPreviewTests(unittest.TestCase):
 
     def test_compile_failure_diagnostics_are_not_returned(self):
         compiler, digest = self.compiler("fail_validate")
-        with self.assertRaises(PreviewError) as caught:
+        with self.assertRaises(CompilerCommandError) as caught:
             compile_preview(self.request, self.result, compiler=compiler, compiler_sha256=digest)
         self.assertNotIn("PRIVATE DIAGNOSTIC CONTENT", str(caught.exception))
+        self.assertEqual(caught.exception.operation, "validate")
+        self.assertEqual(caught.exception.return_code, 2)
+        self.assertEqual(caught.exception.diagnostic_codes, ())
+        self.assertNotIn("PRIVATE", repr(caught.exception.__dict__))
+
+    def test_parse_failure_exposes_only_allowlisted_diagnostic_codes(self):
+        compiler, digest = self.compiler("syntax_error")
+        with self.assertRaises(CompilerCommandError) as caught:
+            compile_preview(self.request, self.result, compiler=compiler, compiler_sha256=digest)
+        self.assertEqual(str(caught.exception), "Hypercode compiler command failed")
+        self.assertEqual(caught.exception.operation, "parse")
+        self.assertEqual(caught.exception.return_code, 1)
+        self.assertEqual(caught.exception.diagnostic_codes, ("HC1001",))
+        self.assertNotIn("PRIVATE", repr(caught.exception.__dict__))
+
+    def test_unstructured_parse_failure_has_no_diagnostic_identity(self):
+        compiler, digest = self.compiler("fail_parse")
+        with self.assertRaises(CompilerCommandError) as caught:
+            compile_preview(self.request, self.result, compiler=compiler, compiler_sha256=digest)
+        self.assertEqual(caught.exception.operation, "parse")
+        self.assertEqual(caught.exception.return_code, 1)
+        self.assertEqual(caught.exception.diagnostic_codes, ())
+
+    def test_mixed_parse_diagnostics_cannot_match_allowlisted_rejection(self):
+        compiler, digest = self.compiler("mixed_syntax_error")
+        with self.assertRaises(CompilerCommandError) as caught:
+            compile_preview(self.request, self.result, compiler=compiler, compiler_sha256=digest)
+        self.assertEqual(caught.exception.diagnostic_codes, ())
 
     def test_compiler_hash_is_checked_before_and_after_each_call(self):
         compiler, digest = self.compiler("tamper")
@@ -378,6 +417,16 @@ class RealCompilerIntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(PreviewError, "IR IDs do not match"):
             compile_preview(self.request, wrong, compiler=self.compiler,
                             compiler_sha256=self.compiler_sha256)
+
+    def test_real_compiler_arrow_syntax_has_expected_sanitized_parse_identity(self):
+        result = json.loads(intake.encoded(self.result))
+        result["after_hc"] = "Application#App -> Assessment#Assessment\n"
+        with self.assertRaises(CompilerCommandError) as caught:
+            compile_preview(self.request, result, compiler=self.compiler,
+                            compiler_sha256=self.compiler_sha256)
+        self.assertEqual(caught.exception.operation, "parse")
+        self.assertEqual(caught.exception.return_code, 1)
+        self.assertEqual(caught.exception.diagnostic_codes, ("HC1001",))
 
 
 if __name__ == "__main__":

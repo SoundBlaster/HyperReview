@@ -6,8 +6,9 @@ Hypercode projections, source references, and explicit evidence boundaries.
 **Status: manual compiled preview with local tracking.** A Python CLI collects pinned PR evidence,
 prepares a filtered request, proposes a result through LM Studio or Ollama,
 and validates paired projections before rendering a local explanation.
-Metadata-only MLflow delivery and recovery are implemented. Evidently, scheduler,
-and publisher remain implementation work. The Hypercode
+Metadata-only MLflow delivery and recovery are implemented. Controlled pilot
+fixtures and local Evidently reports are available; human comparison, evaluation
+artifact handoff to MLflow, scheduler, and publisher remain implementation work. The Hypercode
 model describes the proposed full reviewer, not an installed service.
 
 ## The pilot
@@ -199,6 +200,35 @@ child makes no HTTP tracking requests. Manual traces are retrospective workflow
 receipts with absent inputs/outputs. Confirmation updates preview metadata and
 displayed status, and does not establish program behavior or authorize a GitHub
 comment. See [local tracking and recovery](SPECS/12-local-tracking.md).
+
+## Controlled pilot and local Evidently report
+
+Generate six synthetic boundary cases using the trusted compiler:
+
+```sh
+python3 -m hyperreview pilot --compiler /absolute/path/hypercode \
+  --compiler-sha256 VERIFIED_BINARY_SHA256
+```
+
+The private bundle contains numeric assessments, a reviewer worksheet, a
+separate answer key, and an unfilled scorecard. These are hand-authored boundary
+fixtures, not measured LLM output or a completed human evaluation. An unchanged
+composition deliberately accompanies an approval bypass in one case.
+
+Install the optional reporting environment separately from MLflow:
+
+```sh
+python3.13 -m venv ~/.local/share/hyperreview/evaluation-runtime
+~/.local/share/hyperreview/evaluation-runtime/bin/python -m pip install -r requirements-evaluation.txt
+~/.local/share/hyperreview/evaluation-runtime/bin/python -m hyperreview.evaluation_report \
+  --input /absolute/path/pilot-bundle/assessments.json \
+  --output-root /absolute/operator/path/evaluation
+```
+
+The reporting runtime requires Python 3.12+; Python 3.13 was exercised on macOS
+ARM64. Evidently receives only fixed numeric columns, with telemetry disabled
+before import. Reports remain local, with no model calls or Cloud upload. Human
+accuracy and review time remain unmeasured. See [the pilot subset](SPECS/13-pilot-boundaries.md).
 
 ## Architecture validation
 

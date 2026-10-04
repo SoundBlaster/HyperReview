@@ -57,8 +57,20 @@ def main():
     tracking.add_argument("--spool-root", type=Path,
                           default=Path.home() / ".local/share/hyperreview/tracking-spool")
     tracking.add_argument("--timeout-seconds", type=int, default=120)
+    pilot = commands.add_parser("pilot", help="Run controlled boundaries and prepare an unfilled human worksheet")
+    pilot.add_argument("--compiler", required=True, type=Path)
+    pilot.add_argument("--compiler-sha256", required=True)
+    pilot.add_argument("--output-root", type=Path,
+                       default=Path.home() / ".local/share/hyperreview/pilot")
     args = parser.parse_args()
     try:
+        if args.command == "pilot":
+            from .pilot import run_pilot
+            completed = run_pilot(args.compiler, args.compiler_sha256, args.output_root)
+            print(f"Controlled cases: {completed['destination']}")
+            print(f"Expected validator outcomes: {'matched' if completed['all_expected_outcomes_matched'] else 'FAILED'}")
+            print("Human accuracy, missed violations and review time remain unmeasured")
+            return 0 if completed["all_expected_outcomes_matched"] else 1
         if args.command == "track":
             from .tracking import TrackingError, pending_events, reconcile, update_bundle_tracking
             options = {"spool_root": args.spool_root, "runtime_python": args.runtime_python,

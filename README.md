@@ -3,9 +3,10 @@
 A local PR reviewer that explains architectural changes using illustrative
 Hypercode projections, source references, and explicit evidence boundaries.
 
-**Status: manual local inference.** A Python CLI collects pinned PR evidence,
-prepares a filtered request, and proposes a result through LM Studio or Ollama.
-Compiled paired projections, MLflow, Evidently, scheduler, and publisher remain implementation work. The Hypercode
+**Status: manual compiled preview.** A Python CLI collects pinned PR evidence,
+prepares a filtered request, proposes a result through LM Studio or Ollama,
+and validates paired projections before rendering a local explanation.
+MLflow delivery, Evidently, scheduler, and publisher remain implementation work. The Hypercode
 model describes the proposed full reviewer, not an installed service.
 
 ## The pilot
@@ -132,13 +133,42 @@ completed review: the `.hc` strings still require compiler validation and the
 interpretation still requires review. No MLflow or GitHub publication occurs.
 See [the local inference contract](SPECS/10-local-inference.md).
 
+## Compile a paired preview
+
+Supply a trusted absolute compiler path and the SHA256 of that executable:
+
+```sh
+python3 -m hyperreview compile --evidence /absolute/path/evidence.json \
+  --request /absolute/path/request.json --result /absolute/path/result.json \
+  --generation-receipt /absolute/path/receipt.json \
+  --compiler /absolute/path/hypercode --compiler-sha256 VERIFIED_BINARY_SHA256
+```
+
+The compiler is an external trusted dependency. CI builds reference revision
+`7d23efdc9976226a21e1fc301730940d62097607`; the executable fingerprint alone
+does not prove source/build provenance. Parse, validation, emitted IR, semantic
+diff, and identity/source-side checks must all pass. Failed proposals produce
+no validated preview. Each compiled node must have an explicit ID and source
+references on its side; a genuinely empty side is a newline-only `.hc` string.
+
+Private bundles under `~/.local/share/hyperreview/previews/` contain evidence,
+paired projections and IR, semantic diff, proposed claims, receipts, and Markdown.
+All model interpretations remain `inferred`. The stage is `projections_validated`;
+tracking has not been confirmed and publication remains unavailable. See
+[the compiled-preview contract](SPECS/11-compiled-preview.md).
+
+Prompt `composition-v2` explicitly aligns projection IDs and revision-specific
+source references. Prepare a new request for this version; older prepared
+requests are rejected rather than silently reinterpreted under a changed prompt.
+
 ## Architecture validation
 
 [GitHub Actions](.github/workflows/hypercode-validation.yml) builds Hypercode
 at the pinned source revision using `Package.resolved`, then checks all seven
 profiles on PRs and pushes to `main`. It also checks rejection of an invalid
 concurrency value and semantic diff behavior. Emitted IR and backend diff are
-retained as CI artifacts. These checks validate the model, not worker behavior.
+retained as CI artifacts. Controlled paired projections also exercise the runtime
+compiler boundary. These checks do not establish unattended worker behavior.
 
 Run the same check locally after building the sibling Hypercode repository:
 

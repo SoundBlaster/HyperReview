@@ -45,6 +45,11 @@ jobs:
       - name: Validate architecture profiles
         run: python3 tools/validate_architecture.py --hypercode .toolchain/hypercode/.build/debug/hypercode
 
+      - name: Validate controlled paired projections with the real compiler
+        env:
+          HYPERREVIEW_TEST_COMPILER: ${{ github.workspace }}/.toolchain/hypercode/.build/debug/hypercode
+        run: python3 -m unittest discover -s tests -p test_compiled_preview.py -v
+
       - name: Upload emitted IR and diff
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

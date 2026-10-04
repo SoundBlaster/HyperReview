@@ -14,7 +14,7 @@ from . import intake
 MAX_BYTES = 262144
 REQUEST_SCHEMA = "hyperreview.request.v1"
 RESULT_SCHEMA = "hyperreview.result.v1"
-PROMPT_VERSION = "composition-v1"
+PROMPT_VERSION = "composition-v2"
 ABSTRACTION_PROFILE = "composition-v1"
 REQUEST_SCOPE = (
     "Analyze only the supplied changed-file source records.",

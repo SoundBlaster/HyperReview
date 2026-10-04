@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 import http.client
+import hashlib
 import ipaddress
 import json
 import socket
@@ -34,6 +35,18 @@ inferred. Mark unknown matters as limitations. References must use only source
 IDs in this request and must match their before/after side. Do not claim that
 the proposed .hc syntax or semantics have been validated; a later compiler
 checks syntax."""
+SYSTEM_PROMPT += """
+
+Every .hc node must have an explicit ID. The identity_map architecture_id is
+exactly '#' plus that ID, never the node's type. For example Assessment#assessment
+uses architecture_id '#assessment', not '#Assessment'. Every node present in
+before_hc requires nonempty before_refs; every node present in after_hc requires
+nonempty after_refs. The union of projection IDs must exactly match identity_map.
+When no source exists on a side, use the one-character newline string '\\n' for
+that side's .hc. Do not invent an earlier responsibility from after-only evidence.
+Hypercode .hc does not support comments. Identity reasons and claims stay inferred;
+cite only the supplied source IDs and state the selected-slice limitation.
+"""
 
 
 class ProviderError(Exception):
@@ -310,6 +323,9 @@ def generate(request, config):
         "model_revision": None,
         "elapsed_ms": elapsed_ms,
         "request_digest": request["request_digest"],
+        "result_digest": intake.digest(result),
+        "system_prompt_sha256": hashlib.sha256(SYSTEM_PROMPT.encode("utf-8")).hexdigest(),
+        "result_schema_sha256": intake.digest(schema),
         "prompt_version": request["prompt_version"],
         "abstraction_profile": request["abstraction_profile"],
         "input_tokens": token_counts[0],

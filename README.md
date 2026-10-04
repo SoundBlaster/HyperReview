@@ -133,7 +133,7 @@ tools, remote fallback, or automatic model downloads. The invocation has bounded
 context, response bytes, and time; `--max-tokens` and `--timeout-seconds` are
 trusted operator limits. The configured context must not exceed the loaded one.
 
-Prompt `composition-v3` asks the provider for structured
+Prompt `composition-v4` asks the provider for structured
 `hyperreview.composition-plan.v1` nodes. HyperReview validates the plan and
 deterministically converts it to the provider-neutral `hyperreview.result.v1`;
 the provider does not author `.hc` or identity-map strings directly. Private
@@ -143,7 +143,10 @@ and a sanitized `receipt.json`. The stage is `model_generated`, not a completed
 review: the derived `.hc` still requires compiler validation and the
 interpretation still requires review. No MLflow or GitHub publication occurs.
 For gpt-oss on LM Studio, use `--instruction-role developer` explicitly; the
-role is retained in the receipt. The four-file smoke selection was run with a
+role is retained in the receipt. A locally invalid composition plan gets one
+bounded regeneration with a fixed error code; transport and envelope failures
+are terminal. Both attempts share the timeout and retain per-attempt metadata.
+Prepare a fresh request after a prompt-version change. The four-file smoke selection was run with a
 loaded context of 32768 and an output limit of 3072; the conservative byte-budget
 preflight can require more context than the source text's tokenizer count.
 

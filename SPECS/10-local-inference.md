@@ -21,7 +21,7 @@ data. The result schema binds the request digest and constrains source-reference
 choices. Local result validation remains authoritative for semantic constraints
 that a provider's JSON Schema implementation cannot establish.
 
-The current `composition-v3` prompt requests
+The current `composition-v4` prompt requests
 `hyperreview.composition-plan.v1` structured nodes. HyperReview validates this
 plan and deterministically converts it to canonical `hyperreview.result.v1`
 with paired `.hc` projections and an identity map. The generated bundle keeps
@@ -44,9 +44,21 @@ invocation time are bounded. Non-success responses, malformed JSON, wrong model,
 tool/function calls, and incomplete generation are rejected without replaying
 inference or following server-provided instructions.
 
+A well-formed provider plan that fails local composition validation gets at most
+one regeneration using the original filtered request and a fixed diagnostic
+code, a fixed explanation and the allowed source IDs for each side derived from
+the validated schema. Repair feedback never copies arbitrary validator text, model output or
+source instructions into trusted instructions. Each call gets the same schema,
+provider, role and context preflight; both calls share one total timeout.
+Transport/envelope, malformed-JSON, model-identity, tool-call and truncation
+failures are terminal and do not trigger regeneration. The adapter never edits
+returned refs, IDs, parents or side membership to make a plan pass.
+
 The receipt records provider/model/endpoint, elapsed time, request and profile
 versions, and available numeric usage. Missing counts and model revisions remain
-unavailable rather than zero or invented values. Raw prompts, source, responses,
+unavailable rather than zero or invented values. Attempt counts, fixed repair
+codes and per-attempt plan fingerprints are recorded; usage is aggregated only
+when every attempt supplies it. Raw prompts, source, responses,
 and server error bodies do not enter the receipt. Full local proposed results
 remain in private operator-managed bundles and are not MLflow artifacts.
 

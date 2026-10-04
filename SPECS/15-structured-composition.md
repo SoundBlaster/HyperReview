@@ -1,6 +1,6 @@
 # Structured composition generation
 
-Prompt `composition-v3` asks a local model for
+Prompt `composition-v4` asks a local model for
 `hyperreview.composition-plan.v1`, not raw `.hc` and a separately authored
 identity map. The provider-neutral result remains `hyperreview.result.v1`.
 Prepare a new request; earlier prompt versions are rejected rather than silently
@@ -11,6 +11,10 @@ reinterpreted.
 Each node declares a bare stable ID, nullable before/after responsibility types,
 nullable parent IDs, revision-specific source references, and an inferred reason.
 An absent type means that node is absent on that side, with no parent or refs.
+Before and after are properties of one responsibility, not separate version
+objects. A responsibility present in both snapshots keeps one ID; its refs must
+be unique and belong to the respective side. A change to fixture documentation
+does not by itself imply removal or addition of the predicate responsibility.
 Present nodes require source references from that side. Parents must exist on
 the same side. Each nonempty side has exactly one root in this compact consumer
 profile; Hypercode itself may represent a forest. Duplicate identities, cycles, orphan parents, incompatible source
@@ -58,3 +62,19 @@ The local `feedback` CLI implements capture
 ([contract](16-preview-feedback.md)). No independent reviewer or
 accuracy/time experiment is required. User feedback does not replace
 compiler/provenance checks or separately authorize publication.
+
+## One bounded validation repair
+
+Prompt v4 emphasizes paired responsibilities and source-side invariants. A plan
+rejected by local conversion may be regenerated once with a trusted fixed
+diagnostic code, a fixed explanation, a schema-derived source-ID catalog and the
+same original request. The accepted plan is still model
+authored and fully revalidated; the adapter does not deduplicate refs or invent
+parents on the model's behalf. Two invalid plans fail without a result bundle.
+Both attempts share the operator's timeout; context/byte limits are checked
+before each request. Provider transport/envelope failures are not repaired.
+
+Generation receipts retain bounded attempt metadata and repair codes, without
+raw invalid plans or error text. This is invocation-local accounting, not a
+durable failed-job journal or a new MLflow attempt trace. Earlier request prompt
+versions must be prepared again; existing artifacts are not silently migrated.

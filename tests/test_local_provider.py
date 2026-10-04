@@ -43,6 +43,39 @@ def make_request(content="def assess():\n    return True\n"):
     return model_contract.prepare_request(evidence)
 
 
+def make_paired_request(before_contents=("def assess():\n    return True\n",),
+                        after_contents=("def assess():\n    return True\n",)):
+    files = []
+    for index in range(max(len(before_contents), len(after_contents))):
+        path = f"src/assessment_{index}.py"
+        records = []
+        for side, contents, revision in (("before", before_contents, BASE),
+                                         ("after", after_contents, HEAD)):
+            if index >= len(contents):
+                continue
+            content = contents[index]
+            raw = content.encode("utf-8")
+            records.append({
+                "side": side, "revision": revision, "path": path,
+                "content": content, "content_sha256": hashlib.sha256(raw).hexdigest(),
+                "content_bytes": len(raw), "line_start": 1,
+                "line_end": content.count("\n") + int(not content.endswith("\n")),
+                "trust": "untrusted_source_data", "url": "https://example.invalid/source",
+            })
+        files.append({"before_path": path if index < len(before_contents) else None,
+                      "after_path": path if index < len(after_contents) else None,
+                      "sources": records, "omissions": []})
+    evidence = {
+        "schema": intake.SCHEMA, "stage": "evidence_collected",
+        "repository": REPO, "pr": 17, "author": intake.AUTHOR,
+        "authenticated_account": intake.AUTHOR, "base_repo": REPO, "head_repo": REPO,
+        "state": "open", "draft": False, "base_sha": "c" * 40,
+        "merge_base_sha": BASE, "head_sha": HEAD, "files": files,
+    }
+    evidence["evidence_digest"] = intake.digest(evidence)
+    return model_contract.prepare_request(evidence)
+
+
 def make_plan(request):
     source_id = request["sources"][0]["id"]
     return {
@@ -53,6 +86,21 @@ def make_plan(request):
                    "after_refs": [source_id], "reason": "It owns the assessment responsibility."}],
         "summary": "One assessment responsibility is proposed.",
         "limitations": ["The compiler must validate Hypercode syntax."],
+    }
+
+
+def make_paired_plan(request):
+    refs = {side: [source["id"] for source in request["sources"] if source["side"] == side]
+            for side in ("before", "after")}
+    return {
+        "schema": "hyperreview.composition-plan.v1",
+        "request_digest": request["request_digest"],
+        "nodes": [{"id": "assessment", "before_type": "Assessment", "after_type": "Assessment",
+                   "before_parent": None, "after_parent": None,
+                   "before_refs": refs["before"], "after_refs": refs["after"],
+                   "reason": "The assessment responsibility is present on both sides."}],
+        "summary": "One assessment responsibility is preserved.",
+        "limitations": ["Only the selected source records were considered."],
     }
 
 
@@ -170,6 +218,13 @@ class LocalProviderTests(unittest.TestCase):
         receipt = outcome["receipt"]
         self.assertEqual((receipt["provider"], receipt["model"]), ("lmstudio", "fixture-model"))
         self.assertEqual((receipt["input_tokens"], receipt["output_tokens"]), (23, 11))
+        self.assertEqual(receipt["attempt_count"], 1)
+        self.assertEqual(receipt["repair_errors"], [])
+        self.assertEqual(receipt["attempts"], [{
+            "plan_digest": intake.digest(make_plan(self.request)),
+            "input_tokens": 23, "output_tokens": 11,
+            "elapsed_ms": receipt["attempts"][0]["elapsed_ms"],
+        }])
         self.assertIsNone(receipt["model_revision"])
         self.assertGreaterEqual(receipt["elapsed_ms"], 0)
         self.assertNotIn("content", receipt)
@@ -262,6 +317,133 @@ class LocalProviderTests(unittest.TestCase):
             generate(self.request, self.config)
         self.assertEqual(fixture.requests, [])
 
+    def test_repairs_duplicate_after_refs_for_a_paired_responsibility(self):
+        self.request = make_paired_request(after_contents=(
+            "def assess():\n    return True\n", "def audit():\n    return True\n"))
+        valid = make_paired_plan(self.request)
+        invalid = json.loads(intake.encoded(valid))
+        invalid["nodes"][0]["after_refs"].append(invalid["nodes"][0]["after_refs"][0])
+
+        def callback(_request):
+            result = invalid if len(self.fixture.requests) == 1 else valid
+            return 200, {"Content-Type": "application/json"}, self._envelope(self.config, result=result)
+
+        fixture = self._start(callback=callback, context_tokens=16384)
+        outcome = generate(self.request, self.config)
+        self.assertEqual(len(fixture.requests), 2)
+        self.assertEqual(outcome["plan"], valid)
+        self.assertEqual(outcome["receipt"]["attempt_count"], 2)
+        self.assertEqual(outcome["receipt"]["repair_errors"], ["duplicate_refs"])
+        self.assertEqual([item["plan_digest"] for item in outcome["receipt"]["attempts"]],
+                         [intake.digest(invalid), intake.digest(valid)])
+        self.assertEqual((outcome["receipt"]["input_tokens"], outcome["receipt"]["output_tokens"]),
+                         (46, 22))
+        repaired = json.loads(fixture.requests[1]["body"])
+        self.assertEqual(repaired["messages"][0]["role"], "system")
+        self.assertIn("duplicate_refs", repaired["messages"][0]["content"])
+        self.assertIn("В каждом refs-массиве ID уникальны", repaired["messages"][0]["content"])
+        for side in ("before", "after"):
+            for source in self.request["sources"]:
+                if source["side"] == side:
+                    self.assertIn(source["id"], repaired["messages"][0]["content"])
+        self.assertEqual(repaired["messages"][1]["content"], intake.encoded(self.request).decode())
+        self.assertNotIn(intake.encoded(invalid).decode(), fixture.requests[1]["body"].decode())
+        self.assertNotIn("tools", repaired)
+
+    def test_repairs_absent_before_parent_and_sanitizes_injected_parent_identifier(self):
+        invalid = make_plan(self.request)
+        injected_identifier = "PARENT_SECRET_DO_NOT_ECHO"
+        invalid["nodes"][0]["before_parent"] = injected_identifier
+        valid = make_plan(self.request)
+
+        def callback(_request):
+            result = invalid if len(self.fixture.requests) == 1 else valid
+            return 200, {"Content-Type": "application/json"}, self._envelope(self.config, result=result)
+
+        fixture = self._start(callback=callback)
+        outcome = generate(self.request, self.config)
+        self.assertEqual(outcome["receipt"]["repair_errors"], ["absent_side"])
+        repaired = json.loads(fixture.requests[1]["body"])
+        self.assertIn("absent_side", repaired["messages"][0]["content"])
+        self.assertNotIn(injected_identifier, repaired["messages"][0]["content"])
+        self.assertEqual(repaired["messages"][1]["content"], intake.encoded(self.request).decode())
+
+    def test_repairs_parent_missing_without_echoing_identifier(self):
+        valid = make_plan(self.request)
+        invalid = json.loads(intake.encoded(valid))
+        injected_identifier = "INJECTED_PARENT_IDENTIFIER"
+        invalid["nodes"][0]["after_parent"] = injected_identifier
+
+        def callback(_request):
+            result = invalid if len(self.fixture.requests) == 1 else valid
+            return 200, {"Content-Type": "application/json"}, self._envelope(self.config, result=result)
+
+        fixture = self._start(callback=callback)
+        outcome = generate(self.request, self.config)
+        self.assertEqual(outcome["receipt"]["repair_errors"], ["parent_missing"])
+        repaired_system = json.loads(fixture.requests[1]["body"])["messages"][0]["content"]
+        self.assertIn("parent_missing", repaired_system)
+        self.assertNotIn(injected_identifier, repaired_system)
+
+    def test_invalid_repair_stops_after_two_posts_with_fixed_codes(self):
+        invalid = make_plan(self.request)
+        invalid["nodes"][0]["after_refs"] = []
+        fixture = self._start(callback=lambda _request: (
+            200, {"Content-Type": "application/json"}, self._envelope(self.config, result=invalid)))
+        with self.assertRaisesRegex(ProviderError, r"failed local validation.*missing_refs"):
+            generate(self.request, self.config)
+        self.assertEqual(len(fixture.requests), 2)
+
+    def test_repair_context_preflight_fails_before_second_post(self):
+        from hyperreview import local_provider
+        from hyperreview.composition_plan import plan_schema
+
+        valid = make_plan(self.request)
+        invalid = json.loads(intake.encoded(valid))
+        invalid["nodes"][0]["after_refs"] = []
+        schema = plan_schema(self.request)
+        content = intake.encoded(self.request).decode()
+        initial, _ = local_provider._attempt_payload(self.config or ProviderConfig(
+            "lmstudio", "http://127.0.0.1:1234/v1", "fixture-model"), schema, content)
+        repaired, _ = local_provider._attempt_payload(
+            self.config or ProviderConfig("lmstudio", "http://127.0.0.1:1234/v1", "fixture-model"),
+            schema, content, ("missing_refs", ""))
+        base = len(local_provider._wire_bytes(initial["messages"])) + len(local_provider._wire_bytes(schema)) + 1024 + 512
+        repair = len(local_provider._wire_bytes(repaired["messages"])) + len(local_provider._wire_bytes(schema)) + 1024 + 512
+        self.assertGreater(repair, base)
+        self.config = ProviderConfig("lmstudio", "http://127.0.0.1:1234/v1", "fixture-model",
+                                     context_tokens=repair - 1)
+        fixture = self._start(callback=lambda _request: (
+            200, {"Content-Type": "application/json"}, self._envelope(self.config, result=invalid)),
+            context_tokens=repair - 1)
+        with self.assertRaisesRegex(ProviderError, "context budget"):
+            generate(self.request, self.config)
+        self.assertEqual(len(fixture.requests), 1)
+
+    def test_shared_deadline_bounds_repair_request(self):
+        invalid = make_plan(self.request)
+        invalid["nodes"][0]["after_refs"] = []
+        raw_invalid = self._envelope(self.config or ProviderConfig(
+            "lmstudio", "http://127.0.0.1:1234/v1", "fixture-model"), result=invalid)
+        raw_valid = self._envelope(self.config or ProviderConfig(
+            "lmstudio", "http://127.0.0.1:1234/v1", "fixture-model"), result=make_plan(self.request))
+
+        def slow(captured):
+            raw = raw_invalid if len(self.fixture.requests) == 1 else raw_valid
+            return 200, {}, SlowHeaders([
+                ("Content-Type: application/json", 0.18),
+                (f"Content-Length: {len(raw)}", 0.18),
+                ("Connection: close", 0.18),
+                ("", 0),
+            ], raw)
+
+        fixture = self._start(callback=slow, timeout_seconds=1)
+        started = time.monotonic()
+        with self.assertRaisesRegex(ProviderError, "transport failed or timed out"):
+            generate(self.request, self.config)
+        self.assertEqual(len(fixture.requests), 2)
+        self.assertLess(time.monotonic() - started, 1.5)
+
     def test_rejects_redirect_and_non_200_without_following(self):
         fixture = self._start(callback=lambda _request: (302, {"Location": "http://example.com/"}, b""))
         with self.assertRaisesRegex(ProviderError, "HTTP 302"):
@@ -281,9 +463,10 @@ class LocalProviderTests(unittest.TestCase):
             chunks = [(0.35, raw[index:index + 256]) for index in range(0, len(raw), 256)]
             return 200, {"Content-Type": "application/json", "Content-Length": str(len(raw))}, chunks
 
-        self._start(callback=slow, timeout_seconds=1)
+        fixture = self._start(callback=slow, timeout_seconds=1)
         with self.assertRaisesRegex(ProviderError, "transport failed or timed out"):
             generate(self.request, self.config)
+        self.assertEqual(len(fixture.requests), 1)
 
     def test_total_deadline_covers_slow_header_lines(self):
         def slow_headers(_request):
@@ -296,10 +479,11 @@ class LocalProviderTests(unittest.TestCase):
             ]
             return 200, {}, SlowHeaders(lines, raw)
 
-        self._start(callback=slow_headers, timeout_seconds=1)
+        fixture = self._start(callback=slow_headers, timeout_seconds=1)
         started = time.monotonic()
         with self.assertRaisesRegex(ProviderError, "transport failed or timed out"):
             generate(self.request, self.config)
+        self.assertEqual(len(fixture.requests), 1)
         self.assertLess(time.monotonic() - started, 1.5)
 
     def test_rejects_malformed_duplicate_and_nonfinite_json(self):
@@ -310,6 +494,7 @@ class LocalProviderTests(unittest.TestCase):
                                   (200, {"Content-Type": "application/json"}, raw))
             with self.subTest(raw=raw), self.assertRaises(ProviderError):
                 generate(self.request, self.config)
+            self.assertEqual(len(fixture.requests), 1)
             fixture.close()
             self.fixture = None
 
@@ -323,6 +508,7 @@ class LocalProviderTests(unittest.TestCase):
                                   (200, {"Content-Type": "application/json"}, intake.encoded(envelope)))
             with self.subTest(content=content), self.assertRaisesRegex(ProviderError, "content is invalid JSON"):
                 generate(self.request, self.config)
+            self.assertEqual(len(fixture.requests), 1)
             fixture.close()
             self.fixture = None
 
@@ -343,6 +529,7 @@ class LocalProviderTests(unittest.TestCase):
                                   (200, {"Content-Type": "application/json"}, intake.encoded(envelope())))
             with self.subTest(provider=provider, envelope=envelope), self.assertRaises(ProviderError):
                 generate(self.request, self.config)
+            self.assertEqual(len(fixture.requests), 1)
             fixture.close()
             self.fixture = None
 

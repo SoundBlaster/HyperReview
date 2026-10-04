@@ -59,3 +59,7 @@ Executable presence alone does not choose a backend.
 A later optional phase may compare explicit SpecGraph architectural intent
 against source-derived evidence. It must preserve accepted intent and inferred
 projections as separate artifacts and cannot assume graph-shape equality.
+
+Current inference increment: composition-v4 paired-side instructions and one
+bounded validation regeneration, with fixed diagnostic codes and per-attempt
+metadata. This does not add a durable failed-job journal or unattended worker.

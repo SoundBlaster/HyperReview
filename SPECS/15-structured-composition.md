@@ -1,6 +1,6 @@
 # Structured composition generation
 
-Prompt `composition-v4` asks a local model for
+Prompt `composition-v5` asks a local model for
 `hyperreview.composition-plan.v1`, not raw `.hc` and a separately authored
 identity map. The provider-neutral result remains `hyperreview.result.v1`.
 Prepare a new request; earlier prompt versions are rejected rather than silently
@@ -65,7 +65,7 @@ compiler/provenance checks or separately authorize publication.
 
 ## One bounded validation repair
 
-Prompt v4 emphasizes paired responsibilities and source-side invariants. A plan
+The prompt emphasizes paired responsibilities and source-side invariants. A plan
 rejected by local conversion may be regenerated once with a trusted fixed
 diagnostic code, a fixed explanation, a schema-derived source-ID catalog and the
 same original request. The accepted plan is still model
@@ -81,3 +81,37 @@ versions must be prepared again; existing artifacts are not silently migrated.
 Each attempt records the SHA256 of the complete system message actually sent,
 including bounded repair instructions. The top-level prompt fingerprint names
 the attempt that produced the accepted result.
+
+## Responsibility explanations
+
+Prompt v5 and provider-schema descriptions ask for domain responsibilities,
+stable IDs and concrete explanations of changed or preserved code. Files,
+functions and version containers are not the intended unit of explanation.
+One supported responsibility may remain a single node; larger trees require
+distinct tasks supported by the selected sources.
+The provider schema declares the concise factual explanation before the ID and
+types, so a constrained decoder can describe the task before naming its node.
+IDs still precede parent references. This changes provider declaration order,
+not canonical JSON digests or the provider-neutral result contract.
+
+Comments can explain a stated intent or describe another system, but do not
+establish that system's behavior. A documentation-only change should preserve
+the responsibility and describe the updated documentation separately from the
+unchanged predicate. A changed condition can preserve the same responsibility
+type and ID, with the actual difference described in its reason and summary.
+Limitations should identify missing evidence specific to the interpretation;
+the preview already includes the request's general limitations.
+
+These are generation instructions, not deterministic semantic validation.
+Compiler success and source-reference checks do not prove that the model chose
+the right abstraction or accurately described its source. Live examples must
+be inspected before treating them as useful explanations.
+
+The compact review adapter additionally rejects six generic type labels
+(case-insensitive): `File`, `PythonFile`, `Function`, `Module`, `Documentation`
+and `Comment`. They describe source containers rather than the responsibility
+requested by this profile. The fixed `generic_responsibility` repair hint asks
+for the task of the executable code, including unchanged code; comment edits
+belong in its explanation. More specific names such as `DocumentationGeneration`
+are allowed. This small naming filter does not validate architectural meaning,
+and is a consumer-profile rule, not a Hypercode language restriction.

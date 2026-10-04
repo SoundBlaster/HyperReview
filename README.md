@@ -133,10 +133,13 @@ tools, remote fallback, or automatic model downloads. The invocation has bounded
 context, response bytes, and time; `--max-tokens` and `--timeout-seconds` are
 trusted operator limits. The configured context must not exceed the loaded one.
 
-Prompt `composition-v4` asks the provider for structured
+Prompt `composition-v5` asks the provider for structured
 `hyperreview.composition-plan.v1` nodes. HyperReview validates the plan and
 deterministically converts it to the provider-neutral `hyperreview.result.v1`;
-the provider does not author `.hc` or identity-map strings directly. Private
+the provider does not author `.hc` or identity-map strings directly.
+The prompt and schema guide domain responsibility names and explain what changed
+or remained in the selected code. Comment descriptions are kept separate from
+behavior evidence; these instructions are not a semantic correctness check. Private
 bundles under `~/.local/share/hyperreview/generated/` retain the original plan
 as `composition-plan.json`, the canonical result as `result.json`, the request,
 and a sanitized `receipt.json`. The stage is `model_generated`, not a completed

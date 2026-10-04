@@ -11,10 +11,11 @@ from . import intake, model_contract
 
 PLAN_SCHEMA = "hyperreview.composition-plan.v1"
 _BARE_ID = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,79}\Z")
+_GENERIC_TYPES = frozenset({"file", "pythonfile", "function", "module", "documentation", "comment"})
 _MAX_WIRE_BYTES = 1024 * 1024
 _MAX_HC_BYTES = 64 * 1024
-_NODE_FIELDS = ("id", "before_type", "after_type", "before_parent", "after_parent",
-                "before_refs", "after_refs", "reason")
+_NODE_FIELDS = ("reason", "id", "before_type", "after_type", "before_parent", "after_parent",
+                "before_refs", "after_refs")
 _PLAN_FIELDS = ("schema", "request_digest", "nodes", "summary", "limitations")
 
 
@@ -78,6 +79,8 @@ def _validate_plan(plan, request):
         for side in ("before", "after"):
             node_type = node[f"{side}_type"]
             _id(node_type, f"nodes[{index}].{side}_type", nullable=True)
+            _require(node_type is None or node_type.casefold() not in _GENERIC_TYPES,
+                     f"nodes[{index}].{side}_type is a generic container, not a domain responsibility")
             parent = node[f"{side}_parent"]
             _id(parent, f"nodes[{index}].{side}_parent", nullable=True)
             refs = node[f"{side}_refs"]
@@ -162,9 +165,13 @@ def plan_schema(request):
     canonical = model_contract.result_schema()["properties"]
     identifier = {"type": "string", "pattern": r"^[A-Za-z][A-Za-z0-9_]{0,79}$", "maxLength": 80}
     node_properties = {
-        "id": identifier,
-        "before_type": {"anyOf": [identifier, {"type": "null"}]},
-        "after_type": {"anyOf": [identifier, {"type": "null"}]},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 2000,
+                   "description": "Write in Russian: the concrete task and what changed/remained. Explain comment changes separately from code behavior. Never merely unchanged or file changed."},
+        "id": {**identifier, "description": "Stable responsibility ID in lower_snake_case; not a file path or version name."},
+        "before_type": {"anyOf": [identifier, {"type": "null"}],
+                        "description": "Domain responsibility in English CamelCase, not PythonFile, Function or Module. If its code exists before, set its type even when unchanged. Null means absent, not unchanged."},
+        "after_type": {"anyOf": [identifier, {"type": "null"}],
+                       "description": "Domain responsibility in English CamelCase; preserve before_type when the responsibility is unchanged."},
         "before_parent": {"anyOf": [identifier, {"type": "null"}]},
         "after_parent": {"anyOf": [identifier, {"type": "null"}]},
         "before_refs": {"type": "array", "maxItems": 100 if source_ids["before"] else 0,
@@ -175,8 +182,6 @@ def plan_schema(request):
                         "uniqueItems": True,
                         "items": ({"type": "string", "enum": source_ids["after"]}
                                   if source_ids["after"] else {"type": "string"})},
-        "reason": {"type": "string", "minLength": 1, "maxLength": 2000,
-                   "description": "Краткое объяснение ответственности на русском языке."},
     }
     for side in ("before", "after"):
         if not source_ids[side]:
@@ -194,8 +199,8 @@ def plan_schema(request):
             "schema": {"type": "string", "const": PLAN_SCHEMA},
             "request_digest": {"type": "string", "const": request["request_digest"]},
             "nodes": {"type": "array", "maxItems": 100, "items": node_schema},
-            "summary": canonical["summary"],
-            "limitations": canonical["limitations"],
+            "summary": {**canonical["summary"], "description": "Russian: start with the actual code/comment difference, then preserved responsibility and knowledge boundary. Do not just describe function purpose."},
+            "limitations": {**canonical["limitations"], "description": "Write missing evidence specific to this interpretation in Russian; do not repeat request boilerplate."},
         },
     }
 

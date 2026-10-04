@@ -63,3 +63,10 @@ projections as separate artifacts and cannot assume graph-shape equality.
 Current inference increment: composition-v4 paired-side instructions and one
 bounded validation regeneration, with fixed diagnostic codes and per-attempt
 metadata. This does not add a durable failed-job journal or unattended worker.
+
+Next inference increment: composition-v5 domain responsibility explanations,
+with explicit separation of code changes and comment descriptions. Evaluate
+the actual local-model output; structural validity alone is insufficient.
+The local gpt-oss-20b pilot still produces generic nodes after regeneration.
+Keep this increment in draft until a real selected-source preview explains the
+code responsibility accurately; passing fixture/transport tests is insufficient.

@@ -97,13 +97,50 @@ class CompositionPlanTests(unittest.TestCase):
     def test_schema_is_strict_and_binds_source_enums(self):
         schema = plan_schema(self.request)
         self.assertFalse(schema["additionalProperties"])
-        self.assertNotIn("allOf", schema["properties"]["nodes"]["items"])
+        node_schema = schema["properties"]["nodes"]["items"]
+        self.assertNotIn("allOf", node_schema)
+        self.assertEqual(node_schema["required"][:2], ["reason", "id"])
         self.assertNotIn("claims", schema["properties"])
         self.assertEqual(schema["properties"]["request_digest"]["const"],
                          self.request["request_digest"])
-        refs = schema["properties"]["nodes"]["items"]["properties"]
+        refs = node_schema["properties"]
         self.assertEqual(refs["before_refs"]["items"]["enum"], [self.before_ref])
         self.assertEqual(refs["after_refs"]["items"]["enum"], [self.after_ref])
+
+    def test_schema_explains_responsibility_and_review_context(self):
+        schema = plan_schema(self.request)
+        properties = schema["properties"]
+        node_properties = properties["nodes"]["items"]["properties"]
+
+        self.assertIn("responsibility", node_properties["id"]["description"])
+        self.assertIn("Domain responsibility", node_properties["before_type"]["description"])
+        self.assertIn("Domain responsibility", node_properties["after_type"]["description"])
+        self.assertIn("not PythonFile", node_properties["before_type"]["description"])
+        self.assertIn("preserve before_type", node_properties["after_type"]["description"])
+        self.assertIn("Write in Russian", node_properties["reason"]["description"])
+        self.assertIn("concrete task and what changed/remained",
+                      node_properties["reason"]["description"])
+        self.assertIn("Explain comment changes separately from code behavior",
+                      node_properties["reason"]["description"])
+        self.assertIn("start with the actual code/comment difference",
+                      properties["summary"]["description"])
+        self.assertIn("preserved responsibility and knowledge boundary",
+                      properties["summary"]["description"])
+        self.assertIn("missing evidence specific to this interpretation",
+                      properties["limitations"]["description"])
+        self.assertIn("do not repeat request boilerplate",
+                      properties["limitations"]["description"])
+
+    def test_composition_schema_keeps_canonical_result_contract_unchanged(self):
+        result_schema = model_contract.result_schema()
+        self.assertEqual(result_schema["title"], model_contract.RESULT_SCHEMA)
+        self.assertEqual(set(result_schema["required"]), {
+            "schema", "request_digest", "before_hc", "after_hc", "identity_map",
+            "claims", "summary", "limitations",
+        })
+        self.assertEqual(set(plan_schema(self.request)["properties"]), {
+            "schema", "request_digest", "nodes", "summary", "limitations",
+        })
 
     def test_rejects_missing_refs_or_refs_from_wrong_side(self):
         cases = [
@@ -146,6 +183,20 @@ class CompositionPlanTests(unittest.TestCase):
                                  after_refs=[self.after_ref])
                 with self.assertRaises(CompositionPlanError):
                     to_result(base_plan(self.request, [candidate]), self.request)
+
+    def test_rejects_generic_container_types_but_allows_task_names(self):
+        for label in ("File", "PythonFile", "Function", "Module", "Documentation", "Comment",
+                      "PYTHONFILE"):
+            with self.subTest(label=label):
+                candidate = node("Task", after_type=label, after_refs=[self.after_ref])
+                with self.assertRaisesRegex(CompositionPlanError, "generic container"):
+                    to_result(base_plan(self.request, [candidate]), self.request)
+
+        for label in ("DocumentationGeneration", "ModuleDiscovery"):
+            with self.subTest(label=label):
+                candidate = node("Task", after_type=label, after_refs=[self.after_ref])
+                result = to_result(base_plan(self.request, [candidate]), self.request)
+                self.assertEqual(result["after_hc"], f"{label}#Task\n")
 
     def test_rejects_malformed_extra_fields_wrong_digest_and_unknown_refs(self):
         valid = node("App", after_type="Application", after_refs=[self.after_ref])

@@ -49,6 +49,12 @@ and disabled LLM judging are the initial policy; MLflow does not own job leases
 or GitHub publication authority. See [the MLflow contract](../SPECS/06-mlflow.md).
 No MLflow server is started by resolving this model.
 
+The implemented read-only `publish-plan` command exercises part of
+`#publication-gate`: preview/tracking bindings, live eligibility, revisions and
+owned-comment inventory. It prepares a private draft for `#publisher` without
+performing that responsibility's GitHub writes. See
+[the implemented dry-run boundary](../SPECS/17-publication-dry-run.md).
+
 `#reports` and `#evidently` produce local evaluation reports over shared
 assessment data; `#baseline` and `#regression` define comparable cases and
 operator-reviewed comparison policy. Report-only operation is the initial

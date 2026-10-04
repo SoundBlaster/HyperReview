@@ -65,6 +65,11 @@ def main():
     feedback.add_argument("--expected-preview-sha256")
     feedback.add_argument("--output-root", type=Path,
                           default=Path.home() / ".local/share/hyperreview/feedback")
+    publication = commands.add_parser("publish-plan", help="Check live PR state and prepare a local comment dry-run")
+    publication.add_argument("--bundle", required=True, type=Path)
+    publication.add_argument("--expected-preview-sha256", required=True)
+    publication.add_argument("--output-root", type=Path,
+                             default=Path.home() / ".local/share/hyperreview/publication-plans")
     pilot = commands.add_parser("pilot", help="Run controlled boundaries and prepare an unfilled human worksheet")
     pilot.add_argument("--compiler", required=True, type=Path)
     pilot.add_argument("--compiler-sha256", required=True)
@@ -72,6 +77,22 @@ def main():
                        default=Path.home() / ".local/share/hyperreview/pilot")
     args = parser.parse_args()
     try:
+        if args.command == "publish-plan":
+            from .publication import PublicationError, plan_publication
+            try:
+                destination, plan = plan_publication(
+                    args.bundle, expected_preview_sha256=args.expected_preview_sha256,
+                    output_root=args.output_root)
+            except (PublicationError, IntakeError, StorageError, ContractError,
+                    OSError, ValueError, KeyError, TypeError) as error:
+                print(f"HyperReview: {type(error).__name__}; publication plan was not saved", file=sys.stderr)
+                return 1
+            print(f"Publication dry-run: {destination / 'plan.json'}")
+            print(f"Comment draft: {destination / 'comment.md'}")
+            print(f"Status: {plan['status']}; GitHub writes: 0")
+            if plan["blockers"]:
+                print("Blocked: " + ", ".join(plan["blockers"]))
+            return 0 if plan["status"] == "ready" else 2
         if args.command == "feedback":
             from .feedback import FeedbackError, save_feedback
             try:

@@ -5,7 +5,8 @@ and a manual Python pipeline through filtered requests, local HTTP inference,
 and compiled paired projections with local Markdown output and metadata-only
 MLflow delivery. Six controlled pilot cases and local Evidently reports are
 implemented, with explicit sanitized report export to local MLflow. Local feedback
-capture is implemented; scheduler and publishing remain open.
+capture and read-only publication planning are implemented; scheduler and
+GitHub comment writes remain open.
 
 | Phase | Work | Exit evidence |
 |---|---|---|
@@ -48,8 +49,11 @@ Executable presence alone does not choose a backend.
    revision/projection/preview fingerprints:
    [feedback record](SPECS/16-preview-feedback.md). This captures usefulness,
    without quality thresholds or publication authority.
-   Next: controlled publishing with explicit authorization, fresh revision checks,
-   and confirmed metadata-only tracking. Evaluation delivery has no durable retry
+7. Read-only publication planning with exact preview binding, confirmed tracking,
+   current PR eligibility/revisions and marked-comment inventory:
+   [dry-run](SPECS/17-publication-dry-run.md).
+   Next: authorized comment writes with serialization, post-write checks and
+   uncertain-response recovery. Evaluation delivery has no durable retry
    outbox yet.
 
 A later optional phase may compare explicit SpecGraph architectural intent

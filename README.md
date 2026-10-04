@@ -8,8 +8,8 @@ prepares a filtered request, proposes a result through LM Studio or Ollama,
 and validates paired projections before rendering a local explanation.
 Metadata-only MLflow delivery and recovery are implemented. Controlled pilot
 fixtures, local Evidently reports, and explicit sanitized evaluation export to
-MLflow are available. Local own-PR feedback capture is available; scheduler and publisher
-remain implementation work. The Hypercode
+MLflow are available. Local own-PR feedback capture and a read-only publication dry-run are available;
+scheduler and GitHub comment writes remain implementation work. The Hypercode
 model describes the proposed full reviewer, not an installed service.
 
 ## The pilot
@@ -230,6 +230,28 @@ preview. Each submission creates a separate private local record with exact
 revision, result, projection and preview fingerprints. It performs no inference
 or network calls, changes no analysis artifact, and exports no notes to
 MLflow/Evidently. See [local feedback](SPECS/16-preview-feedback.md).
+
+## Plan publication without GitHub writes
+
+```sh
+python3 -m hyperreview publish-plan \
+  --bundle /absolute/path/compiled-preview-bundle \
+  --expected-preview-sha256 SHA256_OF_SHOWN_COMPACT_PREVIEW
+```
+
+The command validates the exact compact preview and confirmed MLflow receipt,
+then reads the authenticated account, live PR eligibility, base/head and
+merge-base revisions, and existing comments. It rechecks PR state before saving.
+A private `plan.json` records `ready` or `blocked`; `comment.md` contains the
+marked comment draft. Exit codes are 0 for ready, 2 for a blocked plan, and 1 for
+an invalid input or failed operation. The command makes no GitHub writes.
+
+Only the authenticated operator's comment bearing the fixed HyperReview marker
+is an update candidate. Duplicate owned markers or an incomplete comment
+inventory block planning. Feedback `ok` does not grant publication authority.
+A ready plan is a snapshot, not an execution ticket: a future writer must obtain
+explicit authorization and repeat live checks, serialize writes and recover
+uncertain responses. See [publication dry-run](SPECS/17-publication-dry-run.md).
 
 ## Controlled pilot and local Evidently report
 

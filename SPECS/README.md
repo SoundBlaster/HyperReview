@@ -51,3 +51,5 @@ are plain Markdown specifications, not a SpecPM package or registered SpecGraph
 nodes. Future tooling integration must preserve their IDs and status.
 
 - [Local preview feedback](16-preview-feedback.md): revision-bound `ok`/`not_ok` records, with optional local notes.
+
+- [Publication dry-run](17-publication-dry-run.md): local comment plans with live eligibility and revision checks; no GitHub writes.

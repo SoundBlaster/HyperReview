@@ -67,7 +67,7 @@ def validate_event(event):
              "Tracking repository or PR is invalid")
     _require(metadata["abstraction_profile"] == model_contract.ABSTRACTION_PROFILE
              and metadata["prompt_version"] == model_contract.PROMPT_VERSION
-             and metadata["provider"] in ("lmstudio", "ollama")
+             and metadata["provider"] in ("codex", "lmstudio", "ollama")
              and metadata["delivery_mode"] == "preview"
              and metadata["compiler_resolver_name"] == "hypercode-swift"
              and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?",
@@ -160,13 +160,19 @@ def build_event(bundle):
                  "Compiled artifact fingerprint mismatch")
     resolver = compiler["after_resolver"]
     _require(compiler["before_resolver"] == resolver, "Compiler resolver identity changed between sides")
+    model_identity = generation["model"].encode("utf-8")
+    if generation["provider"] == "codex":
+        _require(generation.get("reasoning_effort") in ("low", "medium", "high"),
+                 "Codex tracking requires a recorded reasoning effort")
+        model_identity = intake.encoded({"model": generation["model"],
+                                         "reasoning_effort": generation["reasoning_effort"]})
     values = {
         "repository": request["repository"], "pr": str(request["pr"]),
         "merge_base_sha": request["merge_base_sha"], "head_sha": request["head_sha"],
         "evidence_digest": request["evidence_digest"], "request_digest": request["request_digest"],
         "result_digest": result_digest, "abstraction_profile": request["abstraction_profile"],
         "prompt_version": request["prompt_version"], "provider": generation["provider"],
-        "model_identity_sha256": hashlib.sha256(generation["model"].encode("utf-8")).hexdigest(),
+        "model_identity_sha256": hashlib.sha256(model_identity).hexdigest(),
         "compiler_sha256": compiler["compiler_sha256"],
         "compiler_resolver_name": resolver["name"], "compiler_resolver_version": resolver["version"],
         "delivery_mode": "preview",

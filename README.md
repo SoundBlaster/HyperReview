@@ -116,7 +116,25 @@ to the request digest, checks identities/references, and keeps model claims
 `inferred`. Result-shape validation is separate from Hypercode parsing and
 source interpretation quality.
 
-## Explicit local inference
+## Generate with Codex
+
+The pilot defaults to the installed Codex CLI, `gpt-6-luna`, reasoning `low`,
+using the operator's existing Codex authentication:
+
+```sh
+python3 -m hyperreview generate --request /absolute/path/request.json
+```
+
+Use `--model`, `--reasoning-effort`, `--codex-executable` and
+`--timeout-seconds` for explicit operator settings. Codex inference sends the
+filtered source to the configured Codex service; it is not an on-device model.
+The runner uses a private temporary directory, ignores user/project instruction
+configuration, disables tools/integrations, and audits JSONL events. Process
+output, input bytes and total time are bounded. Local HTTP context/output-token
+flags are rejected for Codex; those limits are managed by Codex rather than
+claimed as locally enforced. See [the Codex invocation contract](SPECS/18-codex-generation.md).
+
+## Explicit local HTTP inference
 
 Load a local model with an appropriate context using the provider's own tools,
 then select that exact API model ID:

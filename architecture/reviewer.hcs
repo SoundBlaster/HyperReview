@@ -34,6 +34,8 @@ HyperReview:
   endpoint: ""
   configured: false
   model_selection: "operator-required"
+  model: ""
+  reasoning_effort: ""
 
 '#projection':
   interpretation_status: "illustrative"
@@ -108,6 +110,9 @@ HyperReview:
     provider: "codex"
     transport: "codex-exec"
     configured: true
+    model_selection: "pilot-default"
+    model: "gpt-6-luna"
+    reasoning_effort: "low"
 
 @backend[lmstudio]:
   '#backend':
@@ -154,6 +159,8 @@ HyperReview:
     endpoint: string
     configured: bool
     model_selection: string
+    model: string
+    reasoning_effort: string
   '#hypercode-validator':
     ir_version: int >= 2 <= 2
   '#publication-gate':

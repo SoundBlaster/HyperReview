@@ -1,7 +1,7 @@
 # HyperReview implementation workplan
 
 **Current delivery:** specifications, a parsable desired-system Hypercode model,
-and a manual Python pipeline through filtered requests, local HTTP inference,
+and a manual Python pipeline through filtered requests, Codex inference,
 and compiled paired projections with local Markdown output and metadata-only
 MLflow delivery. Six controlled pilot cases and local Evidently reports are
 implemented, with explicit sanitized report export to local MLflow. Local feedback
@@ -23,7 +23,7 @@ standard library and `gh`.
 SpecGraph PR #761 is the first intake smoke case. Its selected slice was analyzed
 with the existing local LM Studio gpt-oss-20b model, explicit API alias and context
 16384. The alias fingerprint is recorded; a weights revision remains unavailable.
-Codex isolation and controlled publishing remain open. Comparative accuracy or
+Unattended Codex isolation and controlled publishing remain open. Comparative accuracy or
 review-time studies are optional research, not release or publication gates.
 Executable presence alone does not choose a backend.
 
@@ -64,9 +64,20 @@ Current inference increment: composition-v4 paired-side instructions and one
 bounded validation regeneration, with fixed diagnostic codes and per-attempt
 metadata. This does not add a durable failed-job journal or unattended worker.
 
-Next inference increment: composition-v5 domain responsibility explanations,
+Explanation increment: composition-v5 domain responsibility explanations,
 with explicit separation of code changes and comment descriptions. Evaluate
 the actual local-model output; structural validity alone is insufficient.
 The local gpt-oss-20b pilot still produces generic nodes after regeneration.
-Keep this increment in draft until a real selected-source preview explains the
-code responsibility accurately; passing fixture/transport tests is insufficient.
+This failure prompted the selected Codex pilot below; passing fixture/transport
+tests alone does not establish explanation quality.
+
+Selected pilot path: direct Codex CLI generation, `gpt-6-luna` with reasoning
+`low`, after a successful isolated probe on PR #769's selected source pair.
+The common compilation/tracking pipeline is retained; generic model adapters
+are deferred. [Invocation contract](SPECS/18-codex-generation.md).
+The integrated default path generated a locally valid plan in one attempt on
+the same PR #769 source pair, correctly distinguishing a comment change from
+unchanged comparison code and marking external catalog behavior unavailable.
+The paired Hypercode projections passed the real compiler and metadata-only
+MLflow delivery was confirmed. This is one observed slice, not a general model
+quality claim. Next: exercise the publication dry-run using this compiled bundle.

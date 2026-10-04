@@ -24,14 +24,16 @@ def main():
     prepare.add_argument("--max-source-bytes", type=int, default=4096)
     prepare.add_argument("--output-root", type=Path,
                          default=Path.home() / ".local/share/hyperreview/requests")
-    generation = commands.add_parser("generate", help="Propose a result using an explicit local HTTP model")
+    generation = commands.add_parser("generate", help="Propose a result with Codex (Luna 6 low by default)")
     generation.add_argument("--request", required=True, type=Path)
-    generation.add_argument("--provider", required=True, choices=("lmstudio", "ollama"))
+    generation.add_argument("--provider", default="codex", choices=("codex", "lmstudio", "ollama"))
     generation.add_argument("--endpoint")
-    generation.add_argument("--model", required=True)
-    generation.add_argument("--instruction-role", choices=("system", "developer"), default="system")
-    generation.add_argument("--context-tokens", type=int, default=8192)
-    generation.add_argument("--max-tokens", type=int, default=1024)
+    generation.add_argument("--model")
+    generation.add_argument("--reasoning-effort", choices=("low", "medium", "high"))
+    generation.add_argument("--codex-executable", type=Path)
+    generation.add_argument("--instruction-role", choices=("system", "developer"))
+    generation.add_argument("--context-tokens", type=int)
+    generation.add_argument("--max-tokens", type=int)
     generation.add_argument("--timeout-seconds", type=int, default=120)
     generation.add_argument("--output-root", type=Path,
                             default=Path.home() / ".local/share/hyperreview/generated")
@@ -201,16 +203,36 @@ def main():
             return 0
         if args.command == "generate":
             from .local_provider import ProviderConfig, ProviderError, generate
-            endpoint = args.endpoint or {
-                "lmstudio": "http://127.0.0.1:1234/v1",
-                "ollama": "http://127.0.0.1:11434/api",
-            }[args.provider]
-            config = ProviderConfig(args.provider, endpoint, args.model,
-                                    args.context_tokens, args.max_tokens, args.timeout_seconds, args.instruction_role)
             request = read_json(args.request)
+            if args.provider == "codex":
+                from .codex_provider import CodexConfig, CodexError, generate as generate_codex
+                if any(value is not None for value in
+                       (args.endpoint, args.instruction_role, args.context_tokens, args.max_tokens)):
+                    parser.error("Codex does not accept local HTTP endpoint, role, context or output-token options")
+                config = CodexConfig(model=args.model or "gpt-6-luna",
+                                     reasoning_effort=args.reasoning_effort or "low",
+                                     executable=str(args.codex_executable) if args.codex_executable is not None else None,
+                                     timeout_seconds=args.timeout_seconds)
+                generator = generate_codex
+                provider_errors = (CodexError,)
+            else:
+                if args.reasoning_effort is not None or args.codex_executable is not None:
+                    parser.error("Codex executable and reasoning options require --provider codex")
+                if not args.model:
+                    parser.error("Local HTTP generation requires --model")
+                endpoint = args.endpoint or {
+                    "lmstudio": "http://127.0.0.1:1234/v1",
+                    "ollama": "http://127.0.0.1:11434/api",
+                }[args.provider]
+                config = ProviderConfig(args.provider, endpoint, args.model,
+                                        args.context_tokens if args.context_tokens is not None else 8192,
+                                        args.max_tokens if args.max_tokens is not None else 1024,
+                                        args.timeout_seconds, args.instruction_role or "system")
+                generator = generate
+                provider_errors = (ProviderError,)
             try:
-                proposed = generate(request, config)
-            except ProviderError as error:
+                proposed = generator(request, config)
+            except provider_errors as error:
                 print(f"HyperReview: {error}; no result bundle saved", file=sys.stderr)
                 return 1
             receipt = {**proposed["receipt"], "stage": "model_generated",

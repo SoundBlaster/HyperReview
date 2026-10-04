@@ -59,6 +59,14 @@ class TrackingTests(unittest.TestCase):
             with self.subTest(area=area, name=name), self.assertRaises(TrackingError):
                 validate_event(candidate)
 
+    def test_codex_provider_is_an_explicit_tracking_identity(self):
+        candidate = event()
+        candidate["metadata"]["provider"] = "codex"
+        self.assertEqual(validate_event(candidate), candidate)
+        candidate["metadata"]["provider"] = "automatic_fallback"
+        with self.assertRaises(TrackingError):
+            validate_event(candidate)
+
     def test_event_is_persisted_before_delivery_and_receipt_survives_replay(self):
         value = event()
         calls = []
@@ -200,6 +208,18 @@ class TrackingTests(unittest.TestCase):
                          "private_model_name_sentinel", "private_preview_sentinel", "src/app.py"):
             self.assertNotIn(sentinel, serialized)
         self.assertNotIn("input_tokens", exported["metrics"])
+        generation = values["generation-receipt.json"]
+        generation.update(provider="codex", reasoning_effort="low")
+        (self.root / "generation-receipt.json").write_bytes(intake.encoded(generation))
+        codex_event = build_event(self.root)
+        self.assertEqual(codex_event["metadata"]["provider"], "codex")
+        self.assertEqual(codex_event["metadata"]["model_identity_sha256"],
+                         intake.digest({"model": generation["model"], "reasoning_effort": "low"}))
+        self.assertNotIn("private_model_name_sentinel", intake.encoded(codex_event).decode())
+        generation.pop("reasoning_effort")
+        (self.root / "generation-receipt.json").write_bytes(intake.encoded(generation))
+        with self.assertRaisesRegex(TrackingError, "reasoning effort"):
+            build_event(self.root)
         (self.root / "after.ir.json").write_bytes(b"modified")
         with self.assertRaisesRegex(TrackingError, "fingerprint mismatch"):
             build_event(self.root)

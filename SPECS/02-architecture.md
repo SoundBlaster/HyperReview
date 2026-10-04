@@ -51,6 +51,9 @@ available, prompt version, and isolation capabilities MUST be recorded. HTTP
 adapters MUST use structured inference without executing model-requested tools.
 Codex requires a separately verified restricted invocation profile before it
 may run unattended. Unsupported isolation MUST disable that backend.
+The manual pilot now selects Codex Luna 6 with reasoning `low` by default;
+its direct restricted invocation is described in
+[Codex generation](18-codex-generation.md). A generic adapter framework is deferred.
 
 **HR-ARCH-003 — Local worker.** A future `launchd` service MUST invoke the same
 bounded one-shot worker available manually. Polling defaults to 300 seconds;

@@ -62,5 +62,8 @@ an intentional fresh analysis and MUST be documented.
 input bytes, retries, and analysis duration. Initial values are one concurrent
 job, 30 source files, 262144 evidence bytes, a 300-second analysis deadline, and
 two model attempts total. Oversized packs MUST record omissions or skip rather
-than silently truncate. Provider token limits MUST be checked in addition to
-byte limits. Exceeding a limit MUST stop the job before publication.
+than silently truncate. Where the provider exposes configurable token limits,
+they MUST be checked in addition to byte limits. Codex CLI token controls are
+not enforced by this manual invocation and MUST NOT be presented as local bounds;
+input/process/output byte limits and the shared deadline still apply.
+Exceeding a limit MUST stop the job before publication.

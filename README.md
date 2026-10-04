@@ -3,8 +3,8 @@
 A local PR reviewer that explains architectural changes using illustrative
 Hypercode projections, source references, and explicit evidence boundaries.
 
-**Status: manual evidence intake.** A Python CLI collects pinned PR evidence
-and writes a local intake preview. Model adapters, paired projections, MLflow,
+**Status: evidence intake and model contract.** A Python CLI collects pinned PR
+evidence and prepares a filtered, provider-neutral request. Model adapters, paired projections, MLflow,
 Evidently, scheduler, and publisher remain implementation work. The Hypercode
 model describes the proposed full reviewer, not an installed service.
 
@@ -90,6 +90,24 @@ python3 -m unittest discover -s tests -v
 
 [Intake CI](.github/workflows/intake-validation.yml) runs these fixtures without
 GitHub credentials, real PR reads, or model calls.
+
+## Prepare a model request
+
+```sh
+python3 -m hyperreview prepare --evidence /absolute/path/evidence.json \
+  --include-path tools/subject_human_approval_spec.py --max-source-bytes 4096
+```
+
+This verifies pack/source digests and pinned provenance, filters known sensitive
+forms, and selects whole source records within the trusted slice/byte budget.
+It writes a private `request.json` under `~/.local/share/hyperreview/requests/`
+without inference or tracking calls. Omissions and unavailable context are
+explicit. Filtering uses heuristics; it does not guarantee absence of all secrets.
+
+The [provider-neutral contract](SPECS/09-model-contract.md) binds proposed results
+to the request digest, checks identities/references, and keeps model claims
+`inferred`. Result-shape validation is separate from Hypercode parsing and
+source interpretation quality.
 
 ## Architecture validation
 

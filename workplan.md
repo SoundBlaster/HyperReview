@@ -21,8 +21,9 @@ before model analysis. Executable presence alone does not choose a backend.
 ## P1 increments
 
 1. Evidence intake: implemented; [scope and limitations](SPECS/08-intake-milestone.md).
-2. Next: provider-neutral request/result schema and a credential-free, content-filtered
-   model input boundary. Verify a configured local HTTP backend.
+2. Provider-neutral request/result schema and a content-filtered model input
+   boundary: [contract](SPECS/09-model-contract.md). Next: implement and verify a
+   configured local HTTP backend with a controlled fixture.
 3. Paired Hypercode projection, identity/provenance validation, and explanation.
 4. Local MLflow tracking and bounded recovery; complete P1 acceptance fixtures.
 

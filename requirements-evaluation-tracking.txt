@@ -1,0 +1,3 @@
+# Optional evaluation handoff runtime (Python 3.12+).
+-r requirements-evaluation.txt
+mlflow==3.16.1

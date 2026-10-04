@@ -401,6 +401,21 @@ class MlflowDeliveryTests(unittest.TestCase):
                         self.event, database, self.artifacts, client_factory=self.factory
                     )
 
+    def test_sqlite_uri_metacharacters_and_controls_rejected_before_sdk_factory(self):
+        for character in ("?", "#", "%", "\x00", "\n", "\x7f", "\x85"):
+            with self.subTest(character=repr(character)):
+                called = []
+                database = self.root / f"tracking{character}.db"
+                with self.assertRaises(delivery.DeliveryError) as raised:
+                    delivery.deliver(
+                        self.event,
+                        database,
+                        self.artifacts,
+                        client_factory=lambda uri: called.append(uri),
+                    )
+                self.assertEqual(raised.exception.code, "unsafe_database_path")
+                self.assertEqual(called, [])
+
     def test_cli_failure_is_one_sanitized_json_receipt_on_stdout(self):
         stdin = types.SimpleNamespace(buffer=io.BytesIO(b"{bad json"))
         stdout_bytes = io.BytesIO()

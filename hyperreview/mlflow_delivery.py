@@ -161,9 +161,18 @@ def _safe_event(event):
     return checked
 
 
-def _absolute_path(value, *, is_directory, code):
+def _absolute_path(value, *, is_directory, code, reject_uri_chars=False):
     try:
-        raw = Path(os.fspath(value))
+        path_value = os.fspath(value)
+        if reject_uri_chars:
+            if type(path_value) is not str or any(
+                char in "?#%" or ord(char) < 0x20 or 0x7F <= ord(char) <= 0x9F
+                for char in path_value
+            ):
+                raise DeliveryError(code)
+        raw = Path(path_value)
+    except DeliveryError:
+        raise
     except (TypeError, ValueError, OSError):
         raise DeliveryError(code) from None
     if not raw.is_absolute() or ".." in raw.parts:
@@ -513,7 +522,12 @@ def deliver(event, database, artifacts_root, client_factory=None):
     correlation_id = checked["correlation_id"]
     attempt = checked["attempt"]
     try:
-        database = _absolute_path(database, is_directory=False, code="unsafe_database_path")
+        database = _absolute_path(
+            database,
+            is_directory=False,
+            code="unsafe_database_path",
+            reject_uri_chars=True,
+        )
         artifacts_root = _absolute_path(
             artifacts_root, is_directory=True, code="unsafe_artifact_path"
         )

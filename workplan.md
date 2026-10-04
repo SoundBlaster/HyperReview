@@ -4,8 +4,8 @@
 and a manual Python pipeline through filtered requests, local HTTP inference,
 and compiled paired projections with local Markdown output and metadata-only
 MLflow delivery. Six controlled pilot cases and local Evidently reports are
-implemented. Human comparison, evaluation artifact handoff, scheduler, and
-publishing remain open.
+implemented, with explicit sanitized report export to local MLflow. Human
+comparison, scheduler, and publishing remain open.
 
 | Phase | Work | Exit evidence |
 |---|---|---|
@@ -37,8 +37,9 @@ alone does not choose a backend.
 4. Local MLflow tracking and bounded recovery:
    [delivery profile](SPECS/12-local-tracking.md), exercised on the compiled real slice.
 5. Controlled versioned cases and sanitized local Evidently reports:
-   [pilot subset](SPECS/13-pilot-boundaries.md). Next: MLflow evaluation artifact
-   handoff and independent human comparison on matched real cases.
+   [pilot subset](SPECS/13-pilot-boundaries.md) and [local evaluation handoff](SPECS/14-evaluation-handoff.md).
+   Next: independent human comparison on matched real cases. Evaluation delivery
+   has no durable retry outbox yet.
 
 A later optional phase may compare explicit SpecGraph architectural intent
 against source-derived evidence. It must preserve accepted intent and inferred

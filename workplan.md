@@ -2,8 +2,8 @@
 
 **Current delivery:** specifications, a parsable desired-system Hypercode model,
 and a manual Python pipeline through filtered requests, local HTTP inference,
-and compiled paired projections with local Markdown output.
-Tracking, evaluation, scheduler, and publishing are
+and compiled paired projections with local Markdown output and metadata-only
+MLflow delivery. Evaluation, scheduler, and publishing are
 not implemented.
 
 | Phase | Work | Exit evidence |
@@ -14,11 +14,14 @@ not implemented.
 | P3 — Controlled publishing | Implement explicit authorization, marked-comment upsert, revision checks, deduplication, and recovery | Authorized test PR receives one comment; stale/race/retry and MLflow-delivery-gate scenarios pass |
 | P4 — Local worker | Install a `launchd` job using the proven one-shot path | Serialized polling, wake/restart recovery, resource bounds, logs and retention verified |
 
-MLflow and Evidently are selected; their installation and integration remain
+MLflow `3.16.1` is installed in an isolated optional runtime; its local SQLite
+delivery and loopback UI have been exercised. Evidently integration remains
 implementation work. Intake uses Python 3.10+ standard library and `gh`.
-SpecGraph PR #761 is the first intake smoke case. The exact local model, Codex
-isolation mechanism, and evaluation corpus remain open; choose and record these
-before model analysis. Executable presence alone does not choose a backend.
+SpecGraph PR #761 is the first intake smoke case. Its selected slice was analyzed
+with the existing local LM Studio gpt-oss-20b model, explicit API alias and context
+16384. The alias fingerprint is recorded; a weights revision remains unavailable.
+Codex isolation and the human evaluation corpus remain open. Executable presence
+alone does not choose a backend.
 
 ## P1 increments
 
@@ -29,7 +32,9 @@ before model analysis. Executable presence alone does not choose a backend.
    controlled local readiness probe.
 3. Paired Hypercode compilation, identity/provenance validation, and explanation:
    [compiled preview](SPECS/11-compiled-preview.md).
-4. Next: local MLflow tracking and bounded recovery; complete P1 acceptance fixtures.
+4. Local MLflow tracking and bounded recovery:
+   [delivery profile](SPECS/12-local-tracking.md), exercised on the compiled real slice.
+5. Next: versioned pilot cases, sanitized Evidently reports, and human comparison.
 
 A later optional phase may compare explicit SpecGraph architectural intent
 against source-derived evidence. It must preserve accepted intent and inferred

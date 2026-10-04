@@ -27,6 +27,9 @@ boundary and its readiness/receipt limits.
 [Paired compilation](11-compiled-preview.md) defines the external compiler,
 identity/provenance checks, and local Markdown explanation boundary.
 
+[Local tracking](12-local-tracking.md) defines metadata-only MLflow delivery,
+retrospective workflow traces, and the bounded recovery outbox.
+
 The `.hc` model names architecture responsibilities with explicit IDs.
 [SPECS/02-architecture.md](02-architecture.md) maps those IDs to requirements.
 Markdown specifications supply behavioral semantics; `.hcs` supplies values and

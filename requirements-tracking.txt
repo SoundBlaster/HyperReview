@@ -1,0 +1,2 @@
+# Optional, isolated local tracking runtime; the CLI's core needs no packages.
+mlflow==3.16.1

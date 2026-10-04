@@ -3,9 +3,9 @@
 A local PR reviewer that explains architectural changes using illustrative
 Hypercode projections, source references, and explicit evidence boundaries.
 
-**Status: evidence intake and model contract.** A Python CLI collects pinned PR
-evidence and prepares a filtered, provider-neutral request. Model adapters, paired projections, MLflow,
-Evidently, scheduler, and publisher remain implementation work. The Hypercode
+**Status: manual local inference.** A Python CLI collects pinned PR evidence,
+prepares a filtered request, and proposes a result through LM Studio or Ollama.
+Compiled paired projections, MLflow, Evidently, scheduler, and publisher remain implementation work. The Hypercode
 model describes the proposed full reviewer, not an installed service.
 
 ## The pilot
@@ -108,6 +108,29 @@ The [provider-neutral contract](SPECS/09-model-contract.md) binds proposed resul
 to the request digest, checks identities/references, and keeps model claims
 `inferred`. Result-shape validation is separate from Hypercode parsing and
 source interpretation quality.
+
+## Explicit local inference
+
+Load a local model with an appropriate context using the provider's own tools,
+then select that exact API model ID:
+
+```sh
+python3 -m hyperreview generate --request /absolute/path/request.json \
+  --provider lmstudio --model hyperreview-gpt-oss-20b --context-tokens 8192
+```
+
+LM Studio defaults to `http://127.0.0.1:1234/v1`; Ollama defaults to
+`http://127.0.0.1:11434/api`. An explicit `--endpoint` must use a literal loopback
+IP with the provider's exact API path. There are no redirects, proxy routing,
+tools, remote fallback, or automatic model downloads. The invocation has bounded
+context, response bytes, and time; `--max-tokens` and `--timeout-seconds` are
+trusted operator limits. The configured context must not exceed the loaded one.
+
+Private bundles under `~/.local/share/hyperreview/generated/` contain the request,
+proposed result, and a sanitized receipt. The stage is `model_generated`, not a
+completed review: the `.hc` strings still require compiler validation and the
+interpretation still requires review. No MLflow or GitHub publication occurs.
+See [the local inference contract](SPECS/10-local-inference.md).
 
 ## Architecture validation
 

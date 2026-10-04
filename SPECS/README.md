@@ -21,6 +21,9 @@ and its boundaries; it does not relax the full MVP requirements.
 [The model contract](09-model-contract.md) defines the provider-neutral request
 and proposed-result boundary for the next P1 increment.
 
+[Local HTTP inference](10-local-inference.md) defines the loopback provider
+boundary and its readiness/receipt limits.
+
 The `.hc` model names architecture responsibilities with explicit IDs.
 [SPECS/02-architecture.md](02-architecture.md) maps those IDs to requirements.
 Markdown specifications supply behavioral semantics; `.hcs` supplies values and

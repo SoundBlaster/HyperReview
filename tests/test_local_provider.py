@@ -153,7 +153,6 @@ class LocalProviderTests(unittest.TestCase):
         if callback is None:
             callback = lambda _request: (200, {"Content-Type": "application/json"},
                                          self._envelope(self.config))
-        config_values.setdefault("context_tokens", 16384)
         self.fixture = FixtureServer(callback)
         prefix = "/v1" if provider == "lmstudio" else "/api"
         self.config = ProviderConfig(provider, f"http://127.0.0.1:{self.fixture.port}{prefix}",
@@ -180,6 +179,10 @@ class LocalProviderTests(unittest.TestCase):
         body = json.loads(posted["body"])
         self.assertEqual(body["model"], "fixture-model")
         self.assertFalse(body["stream"])
+        self.assertNotIn(b"\\u", posted["body"].split(b'"messages":', 1)[0])
+        from hyperreview.local_provider import SYSTEM_PROMPT
+        self.assertIn(SYSTEM_PROMPT.encode("utf-8")[:20], posted["body"])
+        self.assertEqual(self.config.context_tokens, 8192)
         self.assertEqual(body["temperature"], 0)
         self.assertEqual(body["max_tokens"], 1024)
         self.assertEqual(body["messages"][1]["content"], intake.encoded(self.request).decode())
@@ -219,7 +222,11 @@ class LocalProviderTests(unittest.TestCase):
         self.assertEqual(posted["path"], "/api/chat")
         body = json.loads(posted["body"])
         self.assertFalse(body["stream"])
-        self.assertEqual(body["options"], {"temperature": 0, "num_predict": 1024, "num_ctx": 16384})
+        self.assertNotIn(b"\\u", posted["body"].split(b'"messages":', 1)[0])
+        from hyperreview.local_provider import SYSTEM_PROMPT
+        self.assertIn(SYSTEM_PROMPT.encode("utf-8")[:20], posted["body"])
+        self.assertEqual(self.config.context_tokens, 8192)
+        self.assertEqual(body["options"], {"temperature": 0, "num_predict": 1024, "num_ctx": 8192})
         self.assertEqual(body["keep_alive"], 0)
         self.assertIsInstance(body["format"], dict)
         self.assertNotIn("tools", body)

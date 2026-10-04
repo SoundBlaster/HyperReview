@@ -111,9 +111,10 @@ def main():
                 print(f"Tracking confirmed: run {receipt['run_id']}, trace {receipt['trace_id']}")
                 print("Claims remain inferred; no publication performed")
                 return 0
-            except TrackingError as error:
+            except (TrackingError, StorageError, ContractError, OSError, ValueError, KeyError, TypeError) as error:
                 status = "tracking confirmed; preview refresh incomplete" if receipt is not None else "tracking remains pending"
-                print(f"HyperReview: {error}; {status}", file=sys.stderr)
+                detail = str(error) if isinstance(error, TrackingError) else type(error).__name__
+                print(f"HyperReview: {detail}; {status}", file=sys.stderr)
                 return 1
         if args.command == "compile":
             from .compiled_preview import PreviewError, compile_preview

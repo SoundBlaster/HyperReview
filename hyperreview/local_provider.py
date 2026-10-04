@@ -178,7 +178,7 @@ def _shutdown_socket(sock):
 def _wire_bytes(payload):
     # Preserve schema declaration order for providers that generate fields in order.
     # Artifact digests continue to use the canonical, sorted encoding.
-    return json.dumps(payload, ensure_ascii=True, separators=(",", ":"),
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"),
                       allow_nan=False).encode("utf-8")
 
 
@@ -300,7 +300,7 @@ def generate(request, config):
     user_content = intake.encoded(request).decode("utf-8")
     schema = _specialized_schema(request)
     payload, post_path = _provider_payload(config, schema, user_content)
-    message_bytes = len(intake.encoded(payload["messages"])) + len(intake.encoded(schema))
+    message_bytes = len(_wire_bytes(payload["messages"])) + len(_wire_bytes(schema))
     _require(message_bytes + config.max_tokens + 512 <= config.context_tokens,
              "Request exceeds the configured context budget")
     request_body = _wire_bytes(payload)

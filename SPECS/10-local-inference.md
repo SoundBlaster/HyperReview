@@ -35,7 +35,8 @@ changes source-data trust or permits tools and has no automatic role fallback.
 
 ## Bounds and receipts
 
-Context preflight uses a conservative serialized byte budget plus output tokens
+Context preflight uses the actual UTF-8 provider encoding for messages/schema
+(without ASCII-escaping Russian instructions), plus output tokens
 and a template reserve. It is a guard, not an exact tokenizer count. The operator
 must configure a context no larger than the loaded model's context; an oversized
 request fails before transmission. HTTP request/response bytes and total

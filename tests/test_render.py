@@ -65,6 +65,8 @@ class RenderTests(unittest.TestCase):
         preview = render_compact_preview(self.request, self.result, self.receipt, self.diff).decode()
         self.assertNotIn("```diff", preview)
         self.assertIn("Структурных изменений в проекции нет", preview)
+        self.assertIn("Текущая проекция:\n```hc\n", preview)
+        self.assertIn(self.result["after_hc"].rstrip(), preview)
 
     def test_unvalidated_or_unbound_receipt_is_rejected(self):
         for field, invalid in (("stage", "model_generated"), ("request_digest", "0" * 64)):

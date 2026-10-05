@@ -222,9 +222,13 @@ class LocalProviderTests(unittest.TestCase):
         self.assertEqual(receipt["repair_errors"], [])
         self.assertEqual(receipt["attempts"], [{
             "plan_digest": intake.digest(make_plan(self.request)),
+            "system_prompt_sha256": hashlib.sha256(
+                json.loads(fixture.requests[0]["body"])["messages"][0]["content"].encode("utf-8")
+            ).hexdigest(),
             "input_tokens": 23, "output_tokens": 11,
             "elapsed_ms": receipt["attempts"][0]["elapsed_ms"],
         }])
+        self.assertEqual(receipt["system_prompt_sha256"], receipt["attempts"][0]["system_prompt_sha256"])
         self.assertIsNone(receipt["model_revision"])
         self.assertGreaterEqual(receipt["elapsed_ms"], 0)
         self.assertNotIn("content", receipt)
@@ -336,6 +340,13 @@ class LocalProviderTests(unittest.TestCase):
         self.assertEqual(outcome["receipt"]["repair_errors"], ["duplicate_refs"])
         self.assertEqual([item["plan_digest"] for item in outcome["receipt"]["attempts"]],
                          [intake.digest(invalid), intake.digest(valid)])
+        sent_prompts = [json.loads(request["body"])["messages"][0]["content"]
+                        for request in fixture.requests]
+        self.assertEqual(
+            [item["system_prompt_sha256"] for item in outcome["receipt"]["attempts"]],
+            [hashlib.sha256(prompt.encode("utf-8")).hexdigest() for prompt in sent_prompts])
+        self.assertEqual(outcome["receipt"]["system_prompt_sha256"],
+                         outcome["receipt"]["attempts"][1]["system_prompt_sha256"])
         self.assertEqual((outcome["receipt"]["input_tokens"], outcome["receipt"]["output_tokens"]),
                          (46, 22))
         repaired = json.loads(fixture.requests[1]["body"])

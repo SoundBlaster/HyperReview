@@ -78,3 +78,6 @@ Generation receipts retain bounded attempt metadata and repair codes, without
 raw invalid plans or error text. This is invocation-local accounting, not a
 durable failed-job journal or a new MLflow attempt trace. Earlier request prompt
 versions must be prepared again; existing artifacts are not silently migrated.
+Each attempt records the SHA256 of the complete system message actually sent,
+including bounded repair instructions. The top-level prompt fingerprint names
+the attempt that produced the accepted result.

@@ -372,6 +372,8 @@ def generate(request, config):
     for attempt in range(2):
         issue = None if attempt == 0 else (repair_errors[-1], issue_location)
         payload, post_path = _attempt_payload(config, schema, user_content, issue)
+        attempt_prompt_sha256 = hashlib.sha256(
+            payload["messages"][0]["content"].encode("utf-8")).hexdigest()
         _preflight(payload, schema, config)
         attempt_started = time.monotonic()
         _remaining(deadline)
@@ -389,6 +391,7 @@ def generate(request, config):
             _remaining(deadline)
             audit_attempts.append({
                 "plan_digest": candidate_digest,
+                "system_prompt_sha256": attempt_prompt_sha256,
                 "input_tokens": attempt_tokens[0],
                 "output_tokens": attempt_tokens[1],
                 "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
@@ -403,6 +406,7 @@ def generate(request, config):
         _remaining(deadline)
         audit_attempts.append({
             "plan_digest": candidate_digest,
+            "system_prompt_sha256": attempt_prompt_sha256,
             "input_tokens": attempt_tokens[0],
             "output_tokens": attempt_tokens[1],
             "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
@@ -427,7 +431,7 @@ def generate(request, config):
         "attempts": audit_attempts,
         "request_digest": request["request_digest"],
         "result_digest": intake.digest(result),
-        "system_prompt_sha256": hashlib.sha256(SYSTEM_PROMPT.encode("utf-8")).hexdigest(),
+        "system_prompt_sha256": audit_attempts[-1]["system_prompt_sha256"],
         "result_schema_sha256": intake.digest(model_contract.result_schema()),
         "provider_schema_sha256": intake.digest(schema),
         "provider_plan_digest": intake.digest(plan),

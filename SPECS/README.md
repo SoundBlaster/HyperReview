@@ -45,7 +45,7 @@ Markdown specifications supply behavioral semantics; `.hcs` supplies values and
 property contracts. Neither node names nor property values enforce runtime
 behavior by themselves.
 
-Manual intake uses Python 3.10+ with its standard library and `gh`; the exact
+Manual intake uses Python 3.10+ with its standard library, pinned SpecificationCore and `gh`; the exact
 pilot model is Codex Luna 6 with reasoning `low`; unattended isolation remains
 an operational obligation. These documents
 are plain Markdown specifications, not a SpecPM package or registered SpecGraph
@@ -56,3 +56,5 @@ nodes. Future tooling integration must preserve their IDs and status.
 - [Publication dry-run](17-publication-dry-run.md): local comment plans with live eligibility and revision checks; no GitHub writes.
 
 - [Codex generation](18-codex-generation.md): the selected manual pilot, restricted CLI invocation and standard validated artifacts.
+
+- [19 — SpecificationCore and project quality](19-specification-quality.md).

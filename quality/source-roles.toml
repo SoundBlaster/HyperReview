@@ -1,0 +1,17 @@
+schema_version = 1
+
+[liveness]
+closed_world = false
+
+[[source_sets]]
+role = "application"
+paths = ["hyperreview"]
+
+[[source_sets]]
+role = "test"
+paths = ["tests"]
+
+[[source_sets]]
+role = "excluded"
+paths = ["tools"]
+reason = "Development and compiler/measurement tooling; outside product policy scope."

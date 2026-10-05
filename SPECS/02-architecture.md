@@ -67,3 +67,12 @@ Contracts remain applicable by selector matching across contexts; context may
 change whether resolved values satisfy those same contracts. Any boolean
 policy invariant or enum semantics not expressible by current property
 contracts MUST be enforced by HyperReview's trusted policy validator.
+
+## Implemented policy and developer measurements
+
+`#eligibility` uses the commit-pinned Python SpecificationCore package for the
+pure PR metadata rule. Allowlist/account authority, revision parsing and effects
+remain in intake. `#development-tools` describes measurements of HyperReview
+itself: `#project-quality`, `#specificationmetrics` and `#quality-history` run in
+developer/CI tooling, outside the model review worker. See
+[the integration contract](19-specification-quality.md).

@@ -1,0 +1,86 @@
+name: Specification quality observations
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: SpecificationMetrics observations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout HyperReview
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve pinned metrics source
+        id: toolchain
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          pin = json.loads(Path('quality/toolchain.json').read_text())['specification_metrics']
+          assert pin['repository'] == 'SoundBlaster/SpecificationMetrics'
+          assert len(pin['revision']) == 40 and all(c in '0123456789abcdef' for c in pin['revision'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"revision={pin['revision']}\n")
+          PYTHON
+
+      - name: Checkout pinned SpecificationMetrics
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: SoundBlaster/SpecificationMetrics
+          ref: ${{ steps.toolchain.outputs.revision }}
+          path: .toolchain/specificationmetrics
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.10"
+
+      - name: Install pinned Python measurement tools
+        run: python3 -m pip install -r requirements-quality.txt
+
+      - name: Build pinned metrics CLI with locked dependencies
+        working-directory: .toolchain/specificationmetrics
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal
+          cargo +1.97.0 build --release --locked
+
+      - name: Collect project quality observations
+        run: |
+          .toolchain/specificationmetrics/target/release/specification-metrics collect \
+            --config quality/collection.toml \
+            --output .artifacts/quality/current.json \
+            --store .artifacts/quality/history.sqlite
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          report = json.loads(Path('.artifacts/quality/current.json').read_text())
+          primary = report['primary']
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## HyperReview quality observations\n\n')
+              summary.write(f"S / U: {primary['specification_definitions']} / {primary['remaining_opportunities']}\n\n")
+              summary.write(f"Collection status: {report['status']}\n\n")
+              summary.write('Inspect JSON for LOC/CC/Cog, liveness and tool diagnostics. No aggregate quality score or ratio threshold is enforced.\n')
+          assert not primary['parse_issues'], 'Source parse diagnostics must be addressed'
+          assert not primary['scope_issues'], 'Source ownership diagnostics must be addressed'
+          assert not primary.get('marker_issues', []), 'Specification marker diagnostics must be addressed'
+          PYTHON
+
+      - name: Upload versioned observations
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: specification-quality-${{ github.sha }}
+          path: .artifacts/quality/
+          if-no-files-found: ignore
+          retention-days: 14

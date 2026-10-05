@@ -62,7 +62,17 @@ installed executable alone does not establish a safe unattended setup.
 ## Manual evidence preview
 
 Requirements: Python 3.10+ and an authenticated `gh` CLI for `github.com`.
-Run from this repository; there are no Python package dependencies to install.
+Install into a Python 3.10+ environment before running from this repository:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+The runtime uses the commit-pinned `specification-core` package from
+[SpycificationCore](https://github.com/SoundBlaster/SpycificationCore) for named
+eligibility policy. Optional tracking and measurement dependencies stay separate.
 
 ```sh
 python3 -m hyperreview review --repo 0al-spec/SpecGraph --pr 761 --preview
@@ -203,7 +213,7 @@ unavailable. See [the compiled-preview contract](SPECS/11-compiled-preview.md).
 
 ## Deliver local tracking metadata
 
-The core CLI still uses the standard library; tracking runs in a separate
+The core CLI uses the standard library and SpecificationCore; tracking runs in a separate
 optional environment. Install and run the UI outside analyzed checkouts:
 
 ```sh
@@ -363,3 +373,14 @@ runner image, not a fully reproducible operating-system/toolchain pin.
 [MIT](LICENSE). The license covers these specifications and examples as well as
 future project code. Hypercode remains an external dependency with its own
 [licenses](https://github.com/0al-spec/Hypercode#license).
+
+## Project code quality
+
+[SpecificationMetrics](https://github.com/SoundBlaster/SpecificationMetrics)
+collects S/U adoption, Python LOC, cyclomatic complexity and cognitive complexity
+for `hyperreview/`. Tests and development tools have separate roles. CI uploads
+revision-bound JSON/SQLite observations; it does not enforce a ratio threshold.
+These code observations do not measure the accuracy of generated explanations.
+
+See [setup, local history and comparison](quality/README.md) and the
+[quality integration contract](SPECS/19-specification-quality.md).

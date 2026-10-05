@@ -47,3 +47,7 @@ HyperReview#hyperreview
     AuditLog#audit
     CredentialBroker#credentials
     RuntimeIsolation#isolation
+  DevelopmentTooling#development-tools
+    ProjectQualityMeasurement#project-quality
+      SpecificationMetricsTool#specificationmetrics
+      QualitySnapshotHistory#quality-history

@@ -18,10 +18,21 @@ HyperReview:
   enabled: true
 
 '#eligibility':
+  policy_library: "specification-core"
   author_login: "SoundBlaster"
   same_repository_required: true
   include_drafts: false
   include_closed: false
+
+# Developer/CI measurement of this repository, not analyzed PR execution.
+'#project-quality':
+  source_scope: "hyperreview"
+  execution: "developer-and-ci"
+  combined_score: false
+
+'#specificationmetrics':
+  transport: "local-cli"
+  hosted_classification_enabled: false
 
 '#evidence':
   max_files: 30

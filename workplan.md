@@ -19,7 +19,7 @@ GitHub comment writes remain open.
 MLflow `3.16.1` is installed in an isolated optional runtime; its local SQLite
 delivery and loopback UI have been exercised. The local Evidently reporting
 subset uses a separate optional Python 3.12+ runtime. Intake uses Python 3.10+
-standard library and `gh`.
+standard library, the pinned SpecificationCore policy package and `gh`.
 SpecGraph PR #761 is the first intake smoke case. Its selected slice was analyzed
 with the existing local LM Studio gpt-oss-20b model, explicit API alias and context
 16384. The alias fingerprint is recorded; a weights revision remains unavailable.
@@ -81,3 +81,9 @@ unchanged comparison code and marking external catalog behavior unavailable.
 The paired Hypercode projections passed the real compiler and metadata-only
 MLflow delivery was confirmed. This is one observed slice, not a general model
 quality claim. Next: exercise the publication dry-run using this compiled bundle.
+
+Project quality integration: one behavior-preserving PR metadata eligibility
+Specification backed by SpycificationCore; pinned SpecificationMetrics collection
+of application S/U and Python LOC/CC/Cog. CI and local SQLite snapshots retain
+scope/status rather than introducing a composite score or quality threshold.
+See [contract](SPECS/19-specification-quality.md).

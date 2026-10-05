@@ -49,7 +49,9 @@ separate increments.
 Russian review aid with a paired structural diff, per-node reasons, and
 revision-specific source links. Both separate inferred model interpretations
 from compiler-derived structure, escape prose, and keep the scope limitation
-visible. The compact view is for review and does not represent a publication
+visible. When the paired trees are identical, the compact view says there is no
+structural change and includes the current `.hc` tree so readers can see what
+was compared. The compact view is for review and does not represent a publication
 decision. Neither an unchanged tree nor a missing witness establishes unchanged
 program behavior. `track --bundle` refreshes both files when tracking is
 confirmed; `track --reconcile` alone only reconciles the outbox.

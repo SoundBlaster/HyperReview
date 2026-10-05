@@ -104,7 +104,9 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
     lines = ["# HyperReview — архитектурный эскиз изменения\n",
              _text(result["summary"]) + "\n",
              "Интерпретация выбранных исходников; порядок узлов не означает порядок выполнения.\n",
-             _fence(change, "diff") if change else "Структурных изменений в проекции нет.\n"]
+             (_fence(change, "diff") if change else
+              "Структурных изменений в проекции нет. Текущая проекция:\n"
+              + _fence(result["after_hc"]))]
     sources = {source["id"]: source for source in request["sources"]}
     for identity in result["identity_map"]:
         links = []

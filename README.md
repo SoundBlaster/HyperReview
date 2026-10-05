@@ -8,9 +8,11 @@ prepares a filtered request, proposes a result through LM Studio or Ollama,
 and validates paired projections before rendering a local explanation.
 Metadata-only MLflow delivery and recovery are implemented. Controlled pilot
 fixtures, local Evidently reports, and explicit sanitized evaluation export to
-MLflow are available. Local own-PR feedback capture and a read-only publication dry-run are available;
-scheduler and GitHub comment writes remain implementation work. The Hypercode
-model describes the proposed full reviewer, not an installed service.
+MLflow are available. Local own-PR feedback capture, a read-only publication dry-run,
+and the one-shot publisher implementation are available. Live publication still
+requires an exact operator-authorized plan; the launchd worker remains future
+work. The Hypercode model describes the proposed full reviewer, not an installed
+service.
 
 ## The pilot
 
@@ -278,15 +280,34 @@ The command validates the exact compact preview and confirmed MLflow receipt,
 then reads the authenticated account, live PR eligibility, base/head and
 merge-base revisions, and existing comments. It rechecks PR state before saving.
 A private `plan.json` records `ready` or `blocked`; `comment.md` contains the
-marked comment draft. Exit codes are 0 for ready, 2 for a blocked plan, and 1 for
-an invalid input or failed operation. The command makes no GitHub writes.
+marked comment draft. The command prints SHA256 digests for both files so they
+can be reviewed and bound into the later authorization invocation. Exit codes
+are 0 for ready, 2 for a blocked plan, and 1 for an invalid input or failed
+operation. It makes no GitHub writes.
 
 Only the authenticated operator's comment bearing the fixed HyperReview marker
 is an update candidate. Duplicate owned markers or an incomplete comment
 inventory block planning. Feedback `ok` does not grant publication authority.
-A ready plan is a snapshot, not an execution ticket: a future writer must obtain
-explicit authorization and repeat live checks, serialize writes and recover
-uncertain responses. See [publication dry-run](SPECS/17-publication-dry-run.md).
+A ready plan is a snapshot, not an execution ticket. The one-shot `publish`
+command requires the exact plan and comment hashes shown to the operator, plus
+the exact repository and `comment` mode. It serializes per PR, repeats live
+eligibility/revision/comment checks, and uses a private receipt to recover an
+uncertain create or update without blindly appending. It only creates or edits
+the authenticated operator's marked issue comment. It never approves, merges,
+pushes, or resolves review threads.
+
+```sh
+python3 -m hyperreview publish \
+  --plan-dir /absolute/path/to/ready-plan \
+  --expected-plan-sha256 SHA256_OF_REVIEWED_PLAN_JSON \
+  --expected-comment-sha256 SHA256_OF_REVIEWED_COMMENT_MD \
+  --authorize-repository 0al-spec/SpecGraph \
+  --authorize-mode comment
+```
+
+This command performs a live GitHub write when all gates pass. Local and CI
+verification use offline fakes; running it against a real PR requires a fresh
+explicit operator decision for that exact plan. See [controlled publication](SPECS/20-controlled-publication.md).
 
 ## Controlled pilot and local Evidently report
 

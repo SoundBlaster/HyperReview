@@ -8,6 +8,7 @@ import unittest
 
 from hyperreview import intake, model_contract
 from hyperreview.local_provider import ProviderConfig, ProviderError, generate
+from hyperreview.composition_plan import PLAN_SCHEMA
 
 
 REPO = "0al-spec/SpecGraph"
@@ -101,7 +102,7 @@ def with_distinct_source_paths(request):
 def make_plan(request):
     source_id = request["sources"][0]["id"]
     return {
-        "schema": "hyperreview.composition-plan.v1",
+        "schema": PLAN_SCHEMA,
         "request_digest": request["request_digest"],
         "nodes": [{"id": "assessment", "before_type": None, "after_type": "Assessment",
                    "before_parent": None, "after_parent": None, "before_refs": [],
@@ -115,7 +116,7 @@ def make_paired_plan(request):
     refs = {side: [source["id"] for source in request["sources"] if source["side"] == side]
             for side in ("before", "after")}
     return {
-        "schema": "hyperreview.composition-plan.v1",
+        "schema": PLAN_SCHEMA,
         "request_digest": request["request_digest"],
         "nodes": [{"id": "assessment", "before_type": "Assessment", "after_type": "Assessment",
                    "before_parent": None, "after_parent": None,

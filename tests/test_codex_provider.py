@@ -9,6 +9,7 @@ import unittest
 
 from hyperreview import intake, model_contract
 from hyperreview.codex_provider import CodexConfig, CodexError, generate, _decode_events
+from hyperreview.composition_plan import PLAN_SCHEMA
 
 
 REPO = "0al-spec/SpecGraph"
@@ -49,7 +50,7 @@ def make_plan(request, *, valid=True, bound=True):
     before = [source["id"] for source in request["sources"] if source["side"] == "before"]
     after = [source["id"] for source in request["sources"] if source["side"] == "after"]
     return {
-        "schema": "hyperreview.composition-plan.v1",
+        "schema": PLAN_SCHEMA,
         "request_digest": request["request_digest"] if bound else "0" * 64,
         "nodes": [{"id": "assessment", "before_type": "Assessment" if before else None,
                    "after_type": "Assessment", "before_parent": None, "after_parent": None,

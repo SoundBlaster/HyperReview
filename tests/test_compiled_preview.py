@@ -228,7 +228,7 @@ class CompiledPreviewTests(unittest.TestCase):
         added_request = make_request(include_before=False)
         added_result = make_result(added_request, before_hc="\n")
         compiler, digest = self.compiler()
-        with self.assertRaisesRegex(PreviewError, "Before-side identity references"):
+        with self.assertRaisesRegex(PreviewError, "Before IR roles do not match the identity map"):
             compile_preview(added_request, added_result, compiler=compiler, compiler_sha256=digest)
 
     def test_added_node_can_use_empty_before_ir_and_newline_source(self):

@@ -192,6 +192,8 @@ import hyperreview.tracking
         result["summary"] = "private_model_summary_sentinel"
         result["before_hc"] = "\n"
         result["after_hc"] = "Application#App\n"
+        result["identity_map"][0]["before_role"] = None
+        result["identity_map"][0]["before_refs"] = []
         bound = {"request_digest": request["request_digest"], "result_digest": intake.digest(result)}
         compiler = {**bound, "stage": "projections_validated", "compiler_sha256": "a" * 64,
                     "before_resolver": {"name": "hypercode-swift", "version": "0.6.0-dev"},

@@ -119,10 +119,11 @@ source interpretation quality.
 ## Generate with Codex
 
 The pilot defaults to the installed Codex CLI, `gpt-6-luna`, reasoning `low`,
-using the operator's existing Codex authentication:
+using the operator's existing Codex authentication. Each invocation requires
+`--allow-cloud-source` to acknowledge sending filtered source to the cloud:
 
 ```sh
-python3 -m hyperreview generate --request /absolute/path/request.json
+python3 -m hyperreview generate --request /absolute/path/request.json --allow-cloud-source
 ```
 
 Use `--model`, `--reasoning-effort`, `--codex-executable` and

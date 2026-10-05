@@ -7,14 +7,26 @@ The canonical request, composition plan and result contracts remain unchanged.
 
 ## Invocation and authority
 
+Codex remains the selected default, but generation requires the trusted operator
+flag `--allow-cloud-source` acknowledging source transmission (HR-SEC-004).
+Explicit `--provider codex` alone is insufficient. The direct Python API also
+requires `CodexConfig(allow_cloud_source=True)`; missing acknowledgement stops
+before executable resolution or inference. Receipts record this acknowledgement.
+The flag is rejected for local HTTP providers, which do not send source to Codex.
+
 The runner resolves the operator's executable, records its launcher fingerprint,
 and starts `codex exec` with an argument array, never a shell command. It uses a
 private temporary working directory, read-only sandbox, ephemeral session and
 ignored user configuration. Project instructions are disabled with
 `project_doc_max_bytes=0`; shell/unified exec, hooks, plugins, apps, browser,
 computer, image, agent and other tool features are explicitly disabled, with
-web search disabled separately. The source pack and optional diff are data in
-the prompt, not executable instructions or workspace files from the PR.
+web search disabled separately. A bounded `codex features list` preflight selects
+the registered `view_image` or older `view_image_tool` disable switch. No unknown
+image feature is passed; if neither is registered the invocation stops before
+inference. The selected switch is recorded in the receipt, and the preflight
+shares the same private working directory, filtered environment and deadline.
+The source pack and optional diff are data in the prompt, not executable
+instructions or workspace files from the PR.
 
 Only the filtered runtime/authentication environment needed by Codex is retained.
 GitHub publication credentials and unrelated environment variables are excluded.

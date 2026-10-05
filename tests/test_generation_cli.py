@@ -23,11 +23,12 @@ class GenerationCLITests(unittest.TestCase):
         return status, generate, write
 
     def test_default_generation_uses_codex_luna_low_and_standard_bundle(self):
-        status, generate, write = self.invoke([])
+        status, generate, write = self.invoke(["--allow-cloud-source"])
         self.assertEqual(status, 0)
         config = generate.call_args.args[1]
         self.assertEqual(config.model, "gpt-6-luna")
         self.assertEqual(config.reasoning_effort, "low")
+        self.assertIs(config.allow_cloud_source, True)
         artifacts = write.call_args.args[0]
         self.assertEqual(set(artifacts), {"request.json", "composition-plan.json", "result.json", "receipt.json"})
         import json
@@ -37,7 +38,7 @@ class GenerationCLITests(unittest.TestCase):
         self.assertEqual(receipt["hypercode_validation"], "not_started")
 
     def test_explicit_codex_operator_settings_are_forwarded(self):
-        _, generate, _ = self.invoke(["--model", "gpt-6-luna", "--reasoning-effort", "high",
+        _, generate, _ = self.invoke(["--allow-cloud-source", "--model", "gpt-6-luna", "--reasoning-effort", "high",
                                      "--codex-executable", "/trusted/codex", "--timeout-seconds", "90"])
         config = generate.call_args.args[1]
         self.assertEqual(config.reasoning_effort, "high")
@@ -60,4 +61,19 @@ class GenerationCLITests(unittest.TestCase):
                                     (["--provider", "ollama", "--model", "m", "--reasoning-effort", "low"], "ollama"),
                                     (["--provider", "lmstudio", "--model", "m", "--codex-executable", "/x"], "lmstudio")):
             with self.subTest(arguments=arguments), self.assertRaises(SystemExit):
-                self.invoke(arguments, provider)
+                self.invoke((["--allow-cloud-source"] if provider == "codex" else []) + arguments, provider)
+
+    def test_cloud_acknowledgement_is_required_before_generation_or_delivery(self):
+        for arguments in ([], ["--provider", "codex"],
+                          ["--provider", "lmstudio", "--model", "local", "--allow-cloud-source"]):
+            module = "hyperreview.local_provider" if "lmstudio" in arguments else "hyperreview.codex_provider"
+            with self.subTest(arguments=arguments), \
+                    patch("sys.argv", ["hyperreview", "generate", "--request", "/private/request.json", *arguments]), \
+                    patch("hyperreview.__main__.read_json", return_value=make_request()), \
+                    patch(module + ".generate") as generate, \
+                    patch("hyperreview.__main__.write_bundle") as write, \
+                    contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    main()
+                generate.assert_not_called()
+                write.assert_not_called()

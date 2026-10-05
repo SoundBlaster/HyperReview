@@ -31,6 +31,8 @@ def main():
     generation.add_argument("--model")
     generation.add_argument("--reasoning-effort", choices=("low", "medium", "high"))
     generation.add_argument("--codex-executable", type=Path)
+    generation.add_argument("--allow-cloud-source", action="store_true",
+                            help="Acknowledge sending filtered source to the Codex cloud service")
     generation.add_argument("--instruction-role", choices=("system", "developer"))
     generation.add_argument("--context-tokens", type=int)
     generation.add_argument("--max-tokens", type=int)
@@ -206,16 +208,21 @@ def main():
             request = read_json(args.request)
             if args.provider == "codex":
                 from .codex_provider import CodexConfig, CodexError, generate as generate_codex
+                if not args.allow_cloud_source:
+                    parser.error("Codex requires --allow-cloud-source to acknowledge source transmission")
                 if any(value is not None for value in
                        (args.endpoint, args.instruction_role, args.context_tokens, args.max_tokens)):
                     parser.error("Codex does not accept local HTTP endpoint, role, context or output-token options")
                 config = CodexConfig(model=args.model or "gpt-6-luna",
                                      reasoning_effort=args.reasoning_effort or "low",
                                      executable=str(args.codex_executable) if args.codex_executable is not None else None,
-                                     timeout_seconds=args.timeout_seconds)
+                                     timeout_seconds=args.timeout_seconds,
+                                     allow_cloud_source=args.allow_cloud_source)
                 generator = generate_codex
                 provider_errors = (CodexError,)
             else:
+                if args.allow_cloud_source:
+                    parser.error("--allow-cloud-source is only supported with --provider codex")
                 if args.reasoning_effort is not None or args.codex_executable is not None:
                     parser.error("Codex executable and reasoning options require --provider codex")
                 if not args.model:

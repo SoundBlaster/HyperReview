@@ -38,7 +38,7 @@ Source IDs из проверенной схемы: before={before_ids}; after={a
 Примени правила исходной инструкции; верни только JSON по схеме. Не используй прежний ответ."""
 _DISABLED_FEATURES = (
     "shell_tool", "unified_exec", "plugins", "apps", "hooks", "multi_agent",
-    "browser_use", "computer_use", "image_generation", "view_image", "code_mode_host",
+    "browser_use", "computer_use", "image_generation", "code_mode_host",
     "code_mode", "code_mode_only",
     "memories", "goals", "workspace_dependencies", "in_app_browser", "shell_snapshot",
 )
@@ -61,6 +61,7 @@ class CodexConfig:
     reasoning_effort: str = "low"
     executable: Optional[str] = None
     timeout_seconds: int = 120
+    allow_cloud_source: bool = False
 
 
 def _require(condition, message):
@@ -70,6 +71,8 @@ def _require(condition, message):
 
 def _validate_config(config):
     _require(type(config) is CodexConfig, "Codex config has an invalid type")
+    _require(config.allow_cloud_source is True,
+             "Codex requires explicit acknowledgement that filtered source is sent to its cloud service")
     _require(type(config.model) is str and 1 <= len(config.model) <= 128
              and not any(ord(ch) < 32 or ord(ch) == 127 for ch in config.model),
              "Codex model name is invalid")
@@ -187,14 +190,28 @@ def _cli_environment(workdir, executable):
     return env
 
 
-def _command(executable, schema_path, output_path, config):
+def _image_feature(executable, workdir, deadline):
+    """Select only an image-tool feature actually registered by this installed CLI."""
+    raw = _run_cli([str(executable), "features", "list"], "",
+                   executable=executable, workdir=workdir, deadline=deadline)
+    try:
+        names = {line.split()[0] for line in raw.decode("utf-8").splitlines() if line.split()}
+    except UnicodeError as error:
+        raise CodexError("Codex feature inventory is not UTF-8") from error
+    for name in ("view_image", "view_image_tool"):
+        if name in names:
+            return name
+    raise CodexError("Codex does not expose a supported image-tool disable feature")
+
+
+def _command(executable, schema_path, output_path, config, image_feature):
     command = [str(executable), "exec", "--ignore-user-config", "--ephemeral",
                "--skip-git-repo-check", "--sandbox", "read-only", "--model", config.model,
                "-c", f"model_reasoning_effort={config.reasoning_effort}",
                "-c", "project_doc_max_bytes=0", "-c", 'web_search="disabled"',
                "--json", "--output-schema", str(schema_path), "--output-last-message",
                str(output_path)]
-    for feature in _DISABLED_FEATURES:
+    for feature in (*_DISABLED_FEATURES, image_feature):
         command.extend(("--disable", feature))
     command.append("-")
     return command
@@ -394,7 +411,7 @@ def _decode_events(raw):
     return messages[0], usage, disabled_code_mode_reported
 
 
-def _one_attempt(executable, expected_sha256, config, schema, prompt, workdir, deadline):
+def _one_attempt(executable, expected_sha256, config, schema, prompt, workdir, deadline, image_feature):
     _verify_executable(executable, expected_sha256, deadline)
     schema_path = workdir / "plan.schema.json"
     output_path = workdir / "final-message.json"
@@ -409,7 +426,7 @@ def _one_attempt(executable, expected_sha256, config, schema, prompt, workdir, d
     schema_path.chmod(0o600)
     _require(len(prompt.encode("utf-8")) <= MAX_REQUEST_BYTES,
              "Codex prompt exceeds 1 MiB")
-    events = _run_cli(_command(executable, schema_path, output_path, config), prompt,
+    events = _run_cli(_command(executable, schema_path, output_path, config, image_feature), prompt,
                       executable=executable,
                       workdir=workdir, deadline=deadline)
     event_message, counts, disabled_code_mode_reported = _decode_events(events)
@@ -456,10 +473,12 @@ def generate(request, config):
         with tempfile.TemporaryDirectory(prefix="hyperreview-codex-") as temporary:
             workdir = Path(temporary)
             os.chmod(workdir, 0o700)
+            _verify_executable(executable, executable_sha256, deadline)
+            image_feature = _image_feature(executable, workdir, deadline)
             for attempt in range(2):
                 attempt_started = time.monotonic()
                 candidate, attempt_tokens, disabled_code_mode_reported = _one_attempt(
-                    executable, executable_sha256, config, schema, prompt, workdir, deadline)
+                    executable, executable_sha256, config, schema, prompt, workdir, deadline, image_feature)
                 candidate_digest = intake.digest(candidate)
                 try:
                     result = to_result(candidate, request)
@@ -511,6 +530,8 @@ def generate(request, config):
         "endpoint": None,
         "model_revision": None,
         "reasoning_effort": config.reasoning_effort,
+        "cloud_source_acknowledged": config.allow_cloud_source,
+        "image_disable_feature": image_feature,
         "executable_sha256": executable_sha256,
         "elapsed_ms": max(0, int((time.monotonic() - started) * 1000)),
         "attempt_count": len(audit_attempts),

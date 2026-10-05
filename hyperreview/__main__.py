@@ -29,6 +29,7 @@ def main():
     generation.add_argument("--provider", required=True, choices=("lmstudio", "ollama"))
     generation.add_argument("--endpoint")
     generation.add_argument("--model", required=True)
+    generation.add_argument("--instruction-role", choices=("system", "developer"), default="system")
     generation.add_argument("--context-tokens", type=int, default=8192)
     generation.add_argument("--max-tokens", type=int, default=1024)
     generation.add_argument("--timeout-seconds", type=int, default=120)
@@ -57,6 +58,18 @@ def main():
     tracking.add_argument("--spool-root", type=Path,
                           default=Path.home() / ".local/share/hyperreview/tracking-spool")
     tracking.add_argument("--timeout-seconds", type=int, default=120)
+    feedback = commands.add_parser("feedback", help="Save a local assessment of one compact preview")
+    feedback.add_argument("--bundle", required=True, type=Path)
+    feedback.add_argument("--assessment", required=True, choices=("ok", "not_ok"))
+    feedback.add_argument("--note")
+    feedback.add_argument("--expected-preview-sha256")
+    feedback.add_argument("--output-root", type=Path,
+                          default=Path.home() / ".local/share/hyperreview/feedback")
+    publication = commands.add_parser("publish-plan", help="Check live PR state and prepare a local comment dry-run")
+    publication.add_argument("--bundle", required=True, type=Path)
+    publication.add_argument("--expected-preview-sha256", required=True)
+    publication.add_argument("--output-root", type=Path,
+                             default=Path.home() / ".local/share/hyperreview/publication-plans")
     pilot = commands.add_parser("pilot", help="Run controlled boundaries and prepare an unfilled human worksheet")
     pilot.add_argument("--compiler", required=True, type=Path)
     pilot.add_argument("--compiler-sha256", required=True)
@@ -64,6 +77,35 @@ def main():
                        default=Path.home() / ".local/share/hyperreview/pilot")
     args = parser.parse_args()
     try:
+        if args.command == "publish-plan":
+            from .publication import PublicationError, plan_publication
+            try:
+                destination, plan = plan_publication(
+                    args.bundle, expected_preview_sha256=args.expected_preview_sha256,
+                    output_root=args.output_root)
+            except (PublicationError, IntakeError, StorageError, ContractError,
+                    OSError, ValueError, KeyError, TypeError) as error:
+                print(f"HyperReview: {type(error).__name__}; publication plan was not saved", file=sys.stderr)
+                return 1
+            print(f"Publication dry-run: {destination / 'plan.json'}")
+            print(f"Comment draft: {destination / 'comment.md'}")
+            print(f"Status: {plan['status']}; GitHub writes: 0")
+            if plan["blockers"]:
+                print("Blocked: " + ", ".join(plan["blockers"]))
+            return 0 if plan["status"] == "ready" else 2
+        if args.command == "feedback":
+            from .feedback import FeedbackError, save_feedback
+            try:
+                destination = save_feedback(
+                    args.bundle, args.assessment, note=args.note,
+                    expected_preview_sha256=args.expected_preview_sha256,
+                    output_root=args.output_root)
+            except (FeedbackError, StorageError, ContractError, OSError, ValueError, KeyError, TypeError) as error:
+                print(f"HyperReview: {type(error).__name__}; feedback was not saved", file=sys.stderr)
+                return 1
+            print(f"Feedback saved: {destination / 'feedback.json'}")
+            print(f"Assessment: {args.assessment}; local only; no publication performed")
+            return 0
         if args.command == "pilot":
             from .pilot import run_pilot
             completed = run_pilot(args.compiler, args.compiler_sha256, args.output_root)
@@ -76,6 +118,7 @@ def main():
             options = {"spool_root": args.spool_root, "runtime_python": args.runtime_python,
                        "database": args.database, "artifacts_root": args.artifacts_root,
                        "timeout_seconds": args.timeout_seconds}
+            receipt = None
             try:
                 if args.bundle:
                     event = update_bundle_tracking(args.bundle)
@@ -87,7 +130,7 @@ def main():
                 receipt = reconcile(event, **options)
                 if args.bundle:
                     update_bundle_tracking(args.bundle, receipt)
-                    from .render import render_preview
+                    from .render import render_preview, render_compact_preview
                     from .tracking import _atomic_bytes
                     request = read_json(args.bundle / "request.json")
                     result = read_json(args.bundle / "result.json", max_bytes=1024 * 1024)
@@ -99,16 +142,24 @@ def main():
                     preview_path = args.bundle / "preview.md"
                     if preview_path.is_symlink():
                         raise TrackingError("Preview output must not be a symlink")
+                    compact_path = args.bundle / "preview-compact.md"
+                    if compact_path.is_symlink():
+                        raise TrackingError("Preview output must not be a symlink")
+                    compact = render_compact_preview(
+                        request, result, compiler_receipt, diff, tracking_status="confirmed")
                     _atomic_bytes(preview_path, preview)
+                    _atomic_bytes(compact_path, compact)
                 print(f"Tracking confirmed: run {receipt['run_id']}, trace {receipt['trace_id']}")
                 print("Claims remain inferred; no publication performed")
                 return 0
-            except TrackingError as error:
-                print(f"HyperReview: {error}; tracking remains pending", file=sys.stderr)
+            except (TrackingError, StorageError, ContractError, OSError, ValueError, KeyError, TypeError) as error:
+                status = "tracking confirmed; preview refresh incomplete" if receipt is not None else "tracking remains pending"
+                detail = str(error) if isinstance(error, TrackingError) else type(error).__name__
+                print(f"HyperReview: {detail}; {status}", file=sys.stderr)
                 return 1
         if args.command == "compile":
             from .compiled_preview import PreviewError, compile_preview
-            from .render import render_preview
+            from .render import render_preview, render_compact_preview
             import json
             evidence = read_json(args.evidence)
             request = read_json(args.request)
@@ -133,6 +184,8 @@ def main():
             artifacts = compiled["artifacts"]
             semantic_diff = json.loads(artifacts["diff.json"])
             artifacts["preview.md"] = render_preview(request, result, compiled["receipt"], semantic_diff)
+            artifacts["preview-compact.md"] = render_compact_preview(
+                request, result, compiled["receipt"], semantic_diff)
             artifacts["evidence.json"] = encoded(evidence)
             artifacts["generation-receipt.json"] = encoded(generation_receipt)
             from uuid import uuid4
@@ -143,7 +196,7 @@ def main():
                 "delivery_mode": "preview", "attempt": 1,
             })
             destination = write_bundle(artifacts, args.output_root)
-            print(f"Validated structural preview: {destination / 'preview.md'}")
+            print(f"Validated structural preview: {destination / 'preview-compact.md'}")
             print("Stage: projections_validated; claims remain inferred; tracking not started")
             return 0
         if args.command == "generate":
@@ -153,7 +206,7 @@ def main():
                 "ollama": "http://127.0.0.1:11434/api",
             }[args.provider]
             config = ProviderConfig(args.provider, endpoint, args.model,
-                                    args.context_tokens, args.max_tokens, args.timeout_seconds)
+                                    args.context_tokens, args.max_tokens, args.timeout_seconds, args.instruction_role)
             request = read_json(args.request)
             try:
                 proposed = generate(request, config)
@@ -163,6 +216,7 @@ def main():
             receipt = {**proposed["receipt"], "stage": "model_generated",
                        "hypercode_validation": "not_started", "tracking_status": "not_started"}
             destination = write_bundle({"request.json": encoded(request),
+                                        "composition-plan.json": encoded(proposed["plan"]),
                                         "result.json": encoded(proposed["result"]),
                                         "receipt.json": encoded(receipt)}, args.output_root)
             print(f"Proposed result: {destination / 'result.json'}")

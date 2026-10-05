@@ -50,18 +50,26 @@ of analyzed checkouts.
 
 ## Evaluation contract
 
-**HR-TRACK-004 — Versioned pilot cases.** Evaluation cases MUST identify pinned
-PR revisions or controlled fixtures, question set, expected answers/violations,
-input scope, and dataset version/digest. Keep reviewer condition and order in
-assessment records. Log deterministic metrics such as grammar validity,
-reference validity, coverage omissions, and false/missing structural changes
-alongside human accuracy, missed violations, review time, and correction effort.
-The metric definition and assessor identity/type MUST be recorded.
+**HR-TRACK-004 — Preview feedback and technical evaluation.** The P2 product
+feedback is one user's assessment of a preview for their own PR: `ok` or
+`not_ok`, with an optional note. Every feedback record MUST identify the exact
+PR base/head revisions and projection version shown. The verdict and revision
+lineage MAY be associated with the MLflow preview record; free-text notes MUST
+remain in the local result store by default and MUST NOT enter the default
+metadata-only MLflow payload. The local `feedback` CLI implements capture
+([contract](16-preview-feedback.md)); associating its verdict with an MLflow run
+is not implemented and records remain local. Separately, deterministic compiler, source-ID,
+provenance, and technical-quality fixtures MUST retain their version and
+assessment type. Their metrics include grammar/reference validity, missing
+coverage, and structural changes; they are engineering evidence, not user
+feedback or a comparative quality study.
 
 **HR-TRACK-005 — Assessment authority.** MLflow GenAI evaluation may use custom
 scorers and recorded feedback. Deterministic checks, human judgments, and
 LLM-judge scores MUST be labelled separately. No MLflow score establishes
-architecture conformance by itself. A judge model requires an explicitly
+architecture conformance by itself; an `ok` feedback verdict also does not
+establish conformance. Comparative accuracy or review-time studies are optional
+research, not a product or publication gate. A judge model requires an explicitly
 configured backend and the same source-transmission policy as analysis; a
 built-in scorer MUST NOT silently invoke a cloud model. Metadata-only tracking
 must use sanitized evaluation records; evaluation over full prompts/traces needs

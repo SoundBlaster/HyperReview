@@ -38,18 +38,21 @@ and original selection settings. Mismatched packs, modified requests, malformed
 projections, dangling IDs, or unsupported side mappings fail without a preview.
 
 Successful private bundles include evidence, request, proposed result, a bound
-generation receipt, persisted tracking correlation metadata, paired
-`.hc`, paired IR, semantic diff, a compiler receipt, and `preview.md`. The receipt
-binds request/result digests, compiler fingerprint, and emitted artifacts. Its
-stage is `projections_validated`, not the full pipeline's `ready` state: tracking
-and operational recovery remain separate increments.
+generation receipt, persisted tracking correlation metadata, paired `.hc`,
+paired IR, semantic diff, a compiler receipt, `preview.md`, and
+`preview-compact.md`. The receipt binds request/result digests, compiler
+fingerprint, and emitted artifacts. Its stage is `projections_validated`, not
+the full pipeline's `ready` state: tracking and operational recovery remain
+separate increments.
 
-The preview separates model summaries/claims/identity decisions from
-compiler-derived structural change records. Source links are built from
-validated repository, revision, and path fields. Model prose is escaped and
-projection fences adapt to embedded backticks. Omissions and limited analysis
-scope remain visible. Neither an unchanged tree nor a missing witness establishes
-unchanged program behavior.
+`preview.md` is the verbose diagnostic view. `preview-compact.md` is a concise
+Russian review aid with a paired structural diff, per-node reasons, and
+revision-specific source links. Both separate inferred model interpretations
+from compiler-derived structure, escape prose, and keep the scope limitation
+visible. The compact view is for review and does not represent a publication
+decision. Neither an unchanged tree nor a missing witness establishes unchanged
+program behavior. `track --bundle` refreshes both files when tracking is
+confirmed; `track --reconcile` alone only reconciles the outbox.
 
 ## Evidence
 
@@ -63,14 +66,30 @@ invented the same responsibility in the unsupported before projection. These
 are validation failures, not acceptable architectural explanations. This case
 motivates the boundary rather than demonstrating interpretation quality.
 
-Prompt `composition-v2` makes ID and per-side provenance instructions explicit;
-older requests are rejected rather than silently receiving a different prompt.
-A fresh analysis of the same pinned slice produced a newline-only before
+An earlier `composition-v2` analysis of the same pinned slice produced a newline-only before
 projection and one after-side responsibility whose ID matched its source-backed
 identity entry. That proposal passed the real compiler and rendered locally.
 The success establishes this narrow pipeline path, not reviewer usefulness or
 semantic correctness across the PR. The first failed proposal remains stored
 separately and is not treated as a successful repair within its expired budget.
 
-Next: sanitized local MLflow delivery, persisted correlation/recovery receipts,
-and an end-to-end accepted preview with explicit inference limitations.
+Prompt `composition-v3` now uses a
+[structured composition plan](15-structured-composition.md) to derive IDs and
+per-side provenance consistently. Older requests are rejected rather than
+silently receiving a different prompt. This change has its own fixtures and
+was exercised independently on four after-only source records from the historical
+PR #761 head `06efdb7ea0de52610211a72183d5866491e8b104` (merge base
+`ff1f89ea11eeeabaf003698d33cf56641a5aa101`). The PR has since been merged with a
+different final head; this is a historical slice, not an analysis of that final
+head. LM Studio gpt-oss-20b with explicit `developer` instructions, context
+32768, and output limit 3072 generated one publication-policy root with three
+children. The ordinary `generate` and `compile` commands accepted this result
+without a manual rewrite. The trusted executable SHA256 was
+`6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f`.
+The earlier v2 result is not v3 evidence, and compiler acceptance does not
+establish semantic accuracy. Earlier v3 attempts were rejected or produced
+unhelpful inventories; this is a smoke result, not a reliability measurement.
+
+Local own-PR feedback is now captured separately with exact revisions, projection
+and preview fingerprints ([contract](16-preview-feedback.md)). Metadata-only
+MLflow delivery is already implemented; controlled publishing remains next.

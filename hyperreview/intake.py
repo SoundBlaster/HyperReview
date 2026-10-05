@@ -15,7 +15,6 @@ from urllib.parse import quote
 from uuid import uuid4
 
 from . import __version__
-from .pr_eligibility import PullRequestEligibilityContext, PullRequestMetadataEligibility
 
 
 ALLOWLIST = frozenset(("0al-spec/SpecGraph", "0al-spec/Hypercode"))
@@ -112,6 +111,10 @@ def eligible(repo, number, pr, account):
         raise IntakeError("Repository or PR is outside the initial operator policy")
     if account != AUTHOR:
         raise IntakeError("Authenticated GitHub account differs from the configured author")
+    # Keep metadata-only tracking usable in its isolated MLflow runtime, which
+    # does not install the core CLI's SpecificationCore policy dependency.
+    from .pr_eligibility import PullRequestEligibilityContext, PullRequestMetadataEligibility
+
     context = PullRequestEligibilityContext(
         requested_number=number,
         requested_repository=repo,

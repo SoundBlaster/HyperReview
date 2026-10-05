@@ -2,6 +2,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import sys
 import unittest
@@ -58,6 +59,19 @@ class TrackingTests(unittest.TestCase):
             candidate[area][name] = value
             with self.subTest(area=area, name=name), self.assertRaises(TrackingError):
                 validate_event(candidate)
+
+    def test_tracking_import_does_not_require_specification_core(self):
+        script = """
+import sys
+class BlockSpecificationCore:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'specification_core' or fullname.startswith('specification_core.'):
+            raise ModuleNotFoundError('blocked for isolated-runtime check', name=fullname)
+sys.meta_path.insert(0, BlockSpecificationCore())
+import hyperreview.tracking
+"""
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_codex_provider_is_an_explicit_tracking_identity(self):
         candidate = event()

@@ -40,7 +40,7 @@ class GitHubPublisher:
         endpoint = f"repos/{repo}/issues/{number}/comments"
         method = "POST"
         if comment_id is not None:
-            endpoint += f"/{comment_id}"
+            endpoint = f"repos/{repo}/issues/comments/{comment_id}"
             method = "PATCH"
         payload = json.dumps({"body": body}, ensure_ascii=True).encode()
         try:
@@ -196,6 +196,47 @@ def _comments(api, repo, number, account):
         if len(response) < 100:
             return all_comments
     raise _CommentInventoryError
+
+
+def _reconcile_stale_comment(api, writer, repo, number, account, body,
+                             comment_id, receipt_path, operation):
+    stale_body = ("**Stale preview: PR revisions changed during publication.**\n\n"
+                  + body)
+    try:
+        comments = _comments(api, repo, number, account)
+    except _CommentInventoryError:
+        raise PublicationError("Stale publication comment requires reconciliation") from None
+    matches = [item for item in comments if item["id"] == comment_id
+               and item["user"] == account and COMMENT_MARKER in item["body"]]
+    _require(len(matches) == 1)
+    if matches[0]["body"] == stale_body:
+        operation.update(status="stale_after_write", comment_id=comment_id)
+        _atomic_private_json(receipt_path, operation)
+        return {"status": "stale_after_write", "comment_id": comment_id}
+    _require(matches[0]["body"] == body)
+    try:
+        writer.write_comment(repo, number, stale_body, comment_id)
+    except PublicationError:
+        # Reconcile a lost PATCH response only from a complete, exact inventory.
+        try:
+            comments = _comments(api, repo, number, account)
+        except _CommentInventoryError:
+            raise PublicationError("Stale publication comment requires reconciliation") from None
+        matches = [item for item in comments if item["id"] == comment_id
+                   and item["user"] == account and item["body"] == stale_body]
+        if len(matches) != 1:
+            raise PublicationError("Stale publication comment requires reconciliation") from None
+    else:
+        try:
+            comments = _comments(api, repo, number, account)
+        except _CommentInventoryError:
+            raise PublicationError("Stale publication comment requires reconciliation") from None
+        matches = [item for item in comments if item["id"] == comment_id
+                   and item["user"] == account and item["body"] == stale_body]
+        _require(len(matches) == 1)
+    operation.update(status="stale_after_write", comment_id=comment_id)
+    _atomic_private_json(receipt_path, operation)
+    return {"status": "stale_after_write", "comment_id": comment_id}
 
 
 def _comment_action(comments, account, body):
@@ -467,6 +508,7 @@ def publish_comment(plan_dir, *, expected_plan_sha256, expected_comment_sha256,
                      "comment_sha256": expected_comment_sha256, "status": "pending",
                      "comment_id": planned_id, "updated_at": datetime.now(timezone.utc).isoformat()}
         previous_pending = False
+        previous_stale_pending = None
         if receipt_path.exists():
             previous = read_json(receipt_path, max_bytes=65536)
             _require(type(previous) is dict
@@ -481,17 +523,32 @@ def publish_comment(plan_dir, *, expected_plan_sha256, expected_comment_sha256,
                     and previous.get("comment_sha256") == expected_comment_sha256):
                 return {"status": "already_published", "comment_id": previous.get("comment_id")}
             if (type(previous) is dict and previous.get("status") in
-                    ("pending", "stale_reconciliation_pending")
-                    and previous.get("plan_sha256") == expected_plan_sha256
-                    and previous.get("comment_sha256") == expected_comment_sha256):
-                previous_pending = True
+                    ("pending", "stale_reconciliation_pending")):
+                same_operation = (previous.get("plan_sha256") == expected_plan_sha256
+                                  and previous.get("comment_sha256") == expected_comment_sha256)
+                _require(same_operation)
+                if previous["status"] == "pending":
+                    previous_pending = True
+                else:
+                    previous_stale_pending = previous
             if (type(previous) is dict and previous.get("status") == "stale_after_write"
                     and previous.get("plan_sha256") == expected_plan_sha256
                     and previous.get("comment_sha256") == expected_comment_sha256):
                 return {"status": "stale_after_write", "comment_id": previous.get("comment_id")}
-        _atomic_private_json(receipt_path, operation)
         api = api or intake.GitHub()
         writer = writer or GitHubPublisher()
+        if previous_stale_pending is not None:
+            stale_comment_id = previous_stale_pending.get("comment_id")
+            _require(type(stale_comment_id) is int and stale_comment_id > 0)
+            try:
+                account = _api_get(api, "user", "{login}")["login"]
+            except (intake.IntakeError, KeyError, TypeError, AttributeError):
+                raise PublicationError("Stale publication comment requires reconciliation") from None
+            operation = dict(previous_stale_pending)
+            operation["updated_at"] = datetime.now(timezone.utc).isoformat()
+            return _reconcile_stale_comment(api, writer, repo, number, account, body,
+                                            stale_comment_id, receipt_path, operation)
+        _atomic_private_json(receipt_path, operation)
         try:
             account, revisions = _live_publication_state(api, repo, number, plan)
             comments = _comments(api, repo, number, account)
@@ -516,7 +573,7 @@ def publish_comment(plan_dir, *, expected_plan_sha256, expected_comment_sha256,
                 try:
                     recovered = _comments(api, repo, number, account)
                 except _CommentInventoryError:
-                    raise
+                    raise PublicationError("GitHub comment write outcome is uncertain") from None
                 matches = [item for item in recovered if item["user"] == account
                            and COMMENT_MARKER in item["body"] and item["body"] == body]
                 if len(matches) != 1:

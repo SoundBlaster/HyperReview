@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from hyperreview import intake, tracking
 from hyperreview.publication import (COMMENT_MARKER, PublicationError,
-                                    plan_publication)
+                                    plan_publication, publish_comment)
 from test_feedback import make_bundle
 
 
@@ -75,6 +75,24 @@ class FakeGitHub:
         raise AssertionError(f"Unexpected GitHub read: {endpoint}")
 
 
+class RecordingWriter:
+    def __init__(self, api, *, fail_after_write=False):
+        self.api = api
+        self.calls = []
+        self.fail_after_write = fail_after_write
+
+    def write_comment(self, repo, number, body, comment_id=None):
+        self.calls.append((repo, number, body, comment_id))
+        if comment_id is None:
+            comment_id = max([item["id"] for item in self.api.comments] or [0]) + 1
+            self.api.comments.append({"id": comment_id, "user": intake.AUTHOR, "body": body})
+        else:
+            next(item for item in self.api.comments if item["id"] == comment_id)["body"] = body
+        if self.fail_after_write:
+            raise PublicationError("simulated lost response")
+        return {"id": comment_id, "body": body}
+
+
 class PublicationTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="hyperreview-publication-")
@@ -92,6 +110,15 @@ class PublicationTests(unittest.TestCase):
         return plan_publication(
             self.bundle, expected_preview_sha256=self.expected_hash,
             output_root=self.output_root, api=api or FakeGitHub(), **kwargs)
+
+    def publish(self, directory, api, writer, **kwargs):
+        raw_plan = (directory / "plan.json").read_bytes()
+        body = (directory / "comment.md").read_bytes()
+        return publish_comment(
+            directory, expected_plan_sha256=hashlib.sha256(raw_plan).hexdigest(),
+            expected_comment_sha256=hashlib.sha256(body).hexdigest(),
+            authorized_repository="0al-spec/SpecGraph", authorized_mode="comment",
+            state_root=self.root / "publish-state", api=api, writer=writer, **kwargs)
 
     def test_create_update_and_unchanged_match_own_marked_comment_exactly(self):
         destination, plan = self.plan()
@@ -249,6 +276,95 @@ class PublicationTests(unittest.TestCase):
         self.output_root.chmod(0o755)
         with self.assertRaises(PublicationError):
             self.plan()
+
+    def test_publish_requires_reviewed_digests_exact_authorization_and_fresh_state(self):
+        api = FakeGitHub()
+        directory, plan = self.plan(api)
+        writer = RecordingWriter(api)
+        result = self.publish(directory, api, writer)
+        self.assertEqual(result["status"], "published")
+        self.assertEqual(len(writer.calls), 1)
+        self.assertEqual(writer.calls[0][3], None)
+        self.assertTrue(writer.calls[0][2].startswith(COMMENT_MARKER))
+        self.assertEqual((directory / "plan.json").stat().st_mode & 0o777, 0o600)
+
+        with self.assertRaises(PublicationError):
+            publish_comment(directory, expected_plan_sha256="0" * 64,
+                            expected_comment_sha256=hashlib.sha256((directory / "comment.md").read_bytes()).hexdigest(),
+                            authorized_repository="0al-spec/SpecGraph", authorized_mode="comment",
+                            state_root=self.root / "other-state", api=FakeGitHub(), writer=RecordingWriter(FakeGitHub()))
+        self.assertEqual(plan["status"], "ready")
+
+    def test_publish_recovers_lost_post_response_without_duplicate(self):
+        api = FakeGitHub()
+        directory, _plan = self.plan(api)
+        writer = RecordingWriter(api, fail_after_write=True)
+        result = self.publish(directory, api, writer)
+        self.assertEqual(result["status"], "published")
+        self.assertEqual(len(api.comments), 1)
+        self.assertEqual(len(writer.calls), 1)
+
+    def test_publish_recovers_marker_after_restart_from_pending_receipt(self):
+        api = FakeGitHub()
+        directory, _plan = self.plan(api)
+        expected_body = (directory / "comment.md").read_text()
+        api.comments.append({"id": 29, "user": intake.AUTHOR, "body": expected_body})
+        raw_plan = (directory / "plan.json").read_bytes()
+        body_bytes = (directory / "comment.md").read_bytes()
+        state_root = self.root / "publish-state"
+        state_root.mkdir(mode=0o700)
+        key = hashlib.sha256(b"0al-spec/SpecGraph#42").hexdigest()
+        (state_root / (key + ".json")).write_bytes(intake.encoded({
+            "schema": "hyperreview.publication-receipt.v1",
+            "repository": "0al-spec/SpecGraph", "pr": 42,
+            "plan_sha256": hashlib.sha256(raw_plan).hexdigest(),
+            "comment_sha256": hashlib.sha256(body_bytes).hexdigest(),
+            "status": "pending", "comment_id": None,
+        }))
+        writer = RecordingWriter(api)
+        result = publish_comment(
+            directory, expected_plan_sha256=hashlib.sha256(raw_plan).hexdigest(),
+            expected_comment_sha256=hashlib.sha256(body_bytes).hexdigest(),
+            authorized_repository="0al-spec/SpecGraph", authorized_mode="comment",
+            state_root=state_root, api=api, writer=writer)
+        self.assertEqual(result, {"status": "published", "comment_id": 29})
+        self.assertEqual(writer.calls, [])
+        self.assertEqual(len(api.comments), 1)
+
+    def test_publish_updates_only_the_reviewed_comment_id_and_repeat_is_idempotent(self):
+        old = {"id": 77, "user": intake.AUTHOR,
+               "body": COMMENT_MARKER + "\n\nprevious preview"}
+        api = FakeGitHub(comments=[old])
+        directory, _plan = self.plan(api)
+        writer = RecordingWriter(api)
+        first = self.publish(directory, api, writer)
+        second = self.publish(directory, api, writer)
+        self.assertEqual(first["status"], "published")
+        self.assertEqual(second, {"status": "already_published", "comment_id": 77})
+        self.assertEqual([call[3] for call in writer.calls], [77])
+        self.assertEqual(len(api.comments), 1)
+
+    def test_revision_race_marks_the_same_comment_stale(self):
+        api = FakeGitHub()
+        directory, _plan = self.plan(api)
+        changed_pr = {**api.pr, "head_sha": "f" * 40}
+        raced_api = FakeGitHub(final_pr=changed_pr)
+        writer = RecordingWriter(raced_api)
+        result = self.publish(directory, raced_api, writer)
+        self.assertEqual(result["status"], "stale_after_write")
+        self.assertEqual(result["comment_id"], 1)
+        self.assertEqual(len(raced_api.comments), 1)
+        self.assertIn("Stale preview", raced_api.comments[0]["body"])
+        self.assertEqual([call[3] for call in writer.calls], [None, 1])
+
+    def test_publish_rejects_stale_plan_before_any_write(self):
+        api = FakeGitHub()
+        directory, _plan = self.plan(api)
+        stale_api = FakeGitHub(pr={**api.pr, "head_sha": "f" * 40})
+        writer = RecordingWriter(stale_api)
+        with self.assertRaises(PublicationError):
+            self.publish(directory, stale_api, writer)
+        self.assertEqual(writer.calls, [])
 
 
 if __name__ == "__main__":

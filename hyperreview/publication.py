@@ -1,10 +1,14 @@
 """Read-only GitHub publication planning for a bound private preview."""
 
 from datetime import datetime, timezone
+import fcntl
 import hashlib
+import json
+import os
 from pathlib import Path
 import re
 import stat
+import subprocess
 
 from . import intake, render, tracking
 from .feedback import (FeedbackError, _MAX_PREVIEW_BYTES, _parse_json_bytes,
@@ -27,6 +31,35 @@ class PublicationError(Exception):
 
 class _CommentInventoryError(Exception):
     pass
+
+
+class GitHubPublisher:
+    """Narrow write client: only create/update an ordinary issue comment."""
+
+    def write_comment(self, repo, number, body, comment_id=None):
+        endpoint = f"repos/{repo}/issues/{number}/comments"
+        method = "POST"
+        if comment_id is not None:
+            endpoint += f"/{comment_id}"
+            method = "PATCH"
+        payload = json.dumps({"body": body}, ensure_ascii=True).encode()
+        try:
+            result = subprocess.run(
+                ["gh", "api", "--hostname", "github.com", "--method", method,
+                 endpoint, "--input", "-"], input=payload, capture_output=True,
+                timeout=60, check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            raise PublicationError("GitHub comment write outcome is uncertain") from None
+        if result.returncode != 0:
+            raise PublicationError("GitHub comment write failed")
+        try:
+            value = json.loads(result.stdout)
+        except (ValueError, UnicodeError):
+            raise PublicationError("GitHub comment write outcome is uncertain") from None
+        _require(type(value) is dict and type(value.get("id")) is int
+                 and value["id"] > 0 and value.get("body") == body)
+        return value
 
 
 def _require(condition):
@@ -322,3 +355,201 @@ def plan_publication(bundle, *, expected_preview_sha256, output_root, api=None):
     except (StorageError, OSError, ValueError, TypeError):
         raise PublicationError("Publication plan could not be saved privately") from None
     return destination, plan
+
+
+def _private_state_root(path):
+    root = Path(path)
+    _require(root.is_absolute() and ".." not in root.parts)
+    for parent in (*reversed(root.parents), root):
+        _require(not parent.is_symlink())
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    _require(root.is_dir() and stat.S_IMODE(root.stat().st_mode) & 0o077 == 0)
+    return root
+
+
+def _atomic_private_json(path, value):
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    temporary = path.with_name(path.name + ".tmp")
+    _require(not path.is_symlink() and not temporary.is_symlink())
+    if temporary.exists():
+        temporary.unlink()
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                         | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _safe_plan_directory(path):
+    directory = Path(path)
+    _require(directory.is_absolute() and ".." not in directory.parts)
+    for parent in (*reversed(directory.parents), directory):
+        _require(not parent.is_symlink())
+    _require(directory.is_dir() and stat.S_IMODE(directory.stat().st_mode) & 0o077 == 0)
+    return directory
+
+
+def _live_publication_state(api, repo, number, expected):
+    account = _api_get(api, "user", "{login}")["login"]
+    pr = intake.metadata(api, repo, number)
+    blockers = _eligibility_blockers(repo, number, pr, account)
+    if not _revision(pr.get("base_sha")) or not _revision(pr.get("head_sha")):
+        blockers.append("live_revision_invalid")
+        merge_base = None
+    else:
+        compare = _api_get(api, f"repos/{repo}/compare/{pr['base_sha']}...{pr['head_sha']}",
+                           "{merge_base_sha:.merge_base_commit.sha}")
+        merge_base = compare.get("merge_base_sha")
+    revisions = {"base_sha": pr.get("base_sha"), "head_sha": pr.get("head_sha"),
+                 "merge_base_sha": merge_base}
+    for field in revisions:
+        if not _revision(revisions[field]) or revisions[field] != expected.get(field):
+            blockers.append(field.replace("_sha", "") + "_revision_changed")
+    if blockers:
+        raise PublicationError("Publication authorization or PR state is no longer valid")
+    return account, revisions
+
+
+def publish_comment(plan_dir, *, expected_plan_sha256, expected_comment_sha256,
+                    authorized_repository, authorized_mode, state_root, api=None,
+                    writer=None):
+    """Publish one reviewed comment after explicit local authorization and fresh gates."""
+    _require(type(expected_plan_sha256) is str and _HEX64.fullmatch(expected_plan_sha256)
+             and type(expected_comment_sha256) is str
+             and _HEX64.fullmatch(expected_comment_sha256))
+    _require(authorized_mode == "comment")
+    try:
+        directory = _safe_plan_directory(plan_dir)
+        raw_plan = _read_bounded_regular(directory / "plan.json", 262144)
+        body_bytes = _read_bounded_regular(directory / "comment.md", MAX_COMMENT_BYTES)
+        _require(hashlib.sha256(raw_plan).hexdigest() == expected_plan_sha256
+                 and hashlib.sha256(body_bytes).hexdigest() == expected_comment_sha256)
+        plan = _parse_json_bytes(raw_plan)
+        body = body_bytes.decode("utf-8", errors="strict")
+    except PublicationError:
+        raise
+    except (FeedbackError, OSError, ValueError, TypeError, UnicodeError):
+        raise PublicationError("Reviewed publication artifacts are invalid") from None
+    _require(type(plan) is dict and plan.get("schema") == PLAN_SCHEMA
+             and plan.get("mode") == "dry_run" and plan.get("status") == "ready"
+             and plan.get("blockers") == [] and plan.get("tracking_status") == "confirmed"
+             and plan.get("authorization_required") is True
+             and plan.get("writes_performed") is False
+             and plan.get("repository") == authorized_repository
+             and authorized_repository in intake.ALLOWLIST
+             and type(plan.get("pr")) is int and plan["pr"] > 0
+             and body.startswith(COMMENT_MARKER + "\n\n")
+             and hashlib.sha256(body.split("\n\n", 1)[1].encode()).hexdigest()
+                 == plan.get("preview_sha256"))
+    action, planned_id = plan.get("action"), plan.get("comment_id")
+    _require(action in ("create", "update", "unchanged")
+             and ((action == "create" and planned_id is None)
+                  or (action in ("update", "unchanged") and type(planned_id) is int
+                      and planned_id > 0)))
+
+    repo, number = authorized_repository, plan["pr"]
+    root = _private_state_root(state_root)
+    key = hashlib.sha256(f"{repo}#{number}".encode()).hexdigest()
+    lock_path, receipt_path = root / (key + ".lock"), root / (key + ".json")
+    _require(not lock_path.is_symlink() and not receipt_path.is_symlink())
+    descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        operation = {"schema": "hyperreview.publication-receipt.v1", "repository": repo,
+                     "pr": number, "plan_sha256": expected_plan_sha256,
+                     "comment_sha256": expected_comment_sha256, "status": "pending",
+                     "comment_id": planned_id, "updated_at": datetime.now(timezone.utc).isoformat()}
+        previous_pending = False
+        if receipt_path.exists():
+            previous = read_json(receipt_path, max_bytes=65536)
+            _require(type(previous) is dict
+                     and previous.get("schema") == "hyperreview.publication-receipt.v1"
+                     and previous.get("repository") == repo and previous.get("pr") == number
+                     and type(previous.get("plan_sha256")) is str
+                     and _HEX64.fullmatch(previous["plan_sha256"]) is not None
+                     and type(previous.get("comment_sha256")) is str
+                     and _HEX64.fullmatch(previous["comment_sha256"]) is not None)
+            if (type(previous) is dict and previous.get("status") == "completed"
+                    and previous.get("plan_sha256") == expected_plan_sha256
+                    and previous.get("comment_sha256") == expected_comment_sha256):
+                return {"status": "already_published", "comment_id": previous.get("comment_id")}
+            if (type(previous) is dict and previous.get("status") in
+                    ("pending", "stale_reconciliation_pending")
+                    and previous.get("plan_sha256") == expected_plan_sha256
+                    and previous.get("comment_sha256") == expected_comment_sha256):
+                previous_pending = True
+            if (type(previous) is dict and previous.get("status") == "stale_after_write"
+                    and previous.get("plan_sha256") == expected_plan_sha256
+                    and previous.get("comment_sha256") == expected_comment_sha256):
+                return {"status": "stale_after_write", "comment_id": previous.get("comment_id")}
+        _atomic_private_json(receipt_path, operation)
+        api = api or intake.GitHub()
+        writer = writer or GitHubPublisher()
+        try:
+            account, revisions = _live_publication_state(api, repo, number, plan)
+            comments = _comments(api, repo, number, account)
+        except (_CommentInventoryError, intake.IntakeError, KeyError, TypeError, AttributeError):
+            raise PublicationError("Fresh publication checks failed") from None
+        fresh_action, fresh_id, comment_blocker = _comment_action(comments, account, body)
+        _require(comment_blocker is None)
+        recovered_pending = (previous_pending and fresh_action == "unchanged"
+                             and (action == "create" or fresh_id == planned_id))
+        _require(recovered_pending or (fresh_action == action and fresh_id == planned_id))
+        if recovered_pending:
+            comment_id = fresh_id
+        elif action == "unchanged":
+            comment_id = planned_id
+        else:
+            try:
+                response = writer.write_comment(repo, number, body, planned_id)
+                comment_id = response["id"]
+            except PublicationError:
+                # A timed-out POST may already have succeeded. Recover only by a
+                # complete inventory and a unique exact body match.
+                try:
+                    recovered = _comments(api, repo, number, account)
+                except _CommentInventoryError:
+                    raise
+                matches = [item for item in recovered if item["user"] == account
+                           and COMMENT_MARKER in item["body"] and item["body"] == body]
+                if len(matches) != 1:
+                    raise PublicationError("GitHub comment write outcome is uncertain") from None
+                comment_id = matches[0]["id"]
+        # Confirm server state before marking the operation complete.
+        try:
+            confirmed = _comments(api, repo, number, account)
+        except _CommentInventoryError:
+            raise PublicationError("GitHub comment write requires reconciliation") from None
+        matches = [item for item in confirmed if item["user"] == account
+                   and COMMENT_MARKER in item["body"] and item["id"] == comment_id]
+        _require(len(matches) == 1 and matches[0]["body"] == body)
+        try:
+            _live_publication_state(api, repo, number, plan)
+        except PublicationError:
+            stale_body = ("**Stale preview: PR revisions changed during publication.**\n\n"
+                          + body)
+            operation.update(status="stale_reconciliation_pending", comment_id=comment_id)
+            _atomic_private_json(receipt_path, operation)
+            try:
+                writer.write_comment(repo, number, stale_body, comment_id)
+                stale_comments = _comments(api, repo, number, account)
+                stale_matches = [item for item in stale_comments if item["user"] == account
+                                 and item["id"] == comment_id and item["body"] == stale_body]
+            except (PublicationError, _CommentInventoryError):
+                stale_matches = []
+            status = "stale_after_write" if len(stale_matches) == 1 else "stale_reconciliation_pending"
+            operation.update(status=status)
+            _atomic_private_json(receipt_path, operation)
+            return {"status": status, "comment_id": comment_id}
+        operation.update(status="completed", comment_id=comment_id)
+        _atomic_private_json(receipt_path, operation)
+        return {"status": "published", "comment_id": comment_id}
+    finally:
+        os.close(descriptor)

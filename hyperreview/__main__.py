@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import sys
 from pathlib import Path
 
@@ -74,6 +75,14 @@ def main():
     publication.add_argument("--expected-preview-sha256", required=True)
     publication.add_argument("--output-root", type=Path,
                              default=Path.home() / ".local/share/hyperreview/publication-plans")
+    publish = commands.add_parser("publish", help="Publish one explicitly authorized reviewed comment")
+    publish.add_argument("--plan-dir", required=True, type=Path)
+    publish.add_argument("--expected-plan-sha256", required=True)
+    publish.add_argument("--expected-comment-sha256", required=True)
+    publish.add_argument("--authorize-repository", required=True)
+    publish.add_argument("--authorize-mode", required=True, choices=("comment",))
+    publish.add_argument("--state-root", type=Path,
+                         default=Path.home() / ".local/share/hyperreview/publication-state")
     pilot = commands.add_parser("pilot", help="Run controlled boundaries and prepare an unfilled human worksheet")
     pilot.add_argument("--compiler", required=True, type=Path)
     pilot.add_argument("--compiler-sha256", required=True)
@@ -93,10 +102,26 @@ def main():
                 return 1
             print(f"Publication dry-run: {destination / 'plan.json'}")
             print(f"Comment draft: {destination / 'comment.md'}")
+            print("Plan SHA256: " + hashlib.sha256((destination / "plan.json").read_bytes()).hexdigest())
+            print("Comment SHA256: " + hashlib.sha256((destination / "comment.md").read_bytes()).hexdigest())
             print(f"Status: {plan['status']}; GitHub writes: 0")
             if plan["blockers"]:
                 print("Blocked: " + ", ".join(plan["blockers"]))
             return 0 if plan["status"] == "ready" else 2
+        if args.command == "publish":
+            from .publication import PublicationError, publish_comment
+            try:
+                receipt = publish_comment(
+                    args.plan_dir, expected_plan_sha256=args.expected_plan_sha256,
+                    expected_comment_sha256=args.expected_comment_sha256,
+                    authorized_repository=args.authorize_repository,
+                    authorized_mode=args.authorize_mode, state_root=args.state_root)
+            except (PublicationError, IntakeError, StorageError, OSError,
+                    ValueError, KeyError, TypeError) as error:
+                print(f"HyperReview: {type(error).__name__}; publication did not complete", file=sys.stderr)
+                return 1
+            print(f"Publication: {receipt['status']}; comment ID: {receipt['comment_id']}")
+            return 0 if receipt["status"] in ("published", "already_published") else 2
         if args.command == "feedback":
             from .feedback import FeedbackError, save_feedback
             try:

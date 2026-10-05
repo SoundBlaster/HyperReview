@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import os
+from collections import Counter, defaultdict
 from pathlib import Path
 import re
 import signal
@@ -317,6 +318,7 @@ def _ir_ids(document, side):
              f"{side} IR document hash is invalid")
     _require(type(document.get("nodes")) is list, f"{side} IR nodes must be a list")
 
+    nodes = []
     identifiers = set()
     stack = list(reversed(document["nodes"]))
     visited = 0
@@ -324,8 +326,9 @@ def _ir_ids(document, side):
         node = stack.pop()
         visited += 1
         _require(visited <= 10000, f"{side} IR exceeds the node limit")
-        required = {"type", "id", "hash", "properties", "children"}
+        required = {"type", "hash", "properties", "children"}
         allowed = required | {"class"}
+        allowed.add("id")
         _require(type(node) is dict and required <= set(node) <= allowed,
                  f"{side} IR node has missing or unknown fields")
         _require(type(node["type"]) is str and bool(node["type"]),
@@ -337,31 +340,48 @@ def _ir_ids(document, side):
         if "class" in node:
             _require(type(node["class"]) is str and bool(node["class"]),
                      f"{side} IR node class is invalid")
-        identifier = node["id"]
-        _require(type(identifier) is str and _IR_ID.fullmatch(identifier) is not None,
-                 f"{side} IR contains a missing or invalid explicit ID")
-        _require(identifier not in identifiers, f"{side} IR contains duplicate IDs")
-        identifiers.add(identifier)
+        identifier = node.get("id")
+        _require(identifier is None or (type(identifier) is str and _IR_ID.fullmatch(identifier) is not None),
+                 f"{side} IR contains an invalid optional ID")
+        if identifier is not None:
+            _require(identifier not in identifiers, f"{side} IR contains duplicate IDs")
+            identifiers.add(identifier)
         _require(all(type(key) is str for key in node["properties"]),
                  f"{side} IR property names are invalid")
         _require(all(type(child) is dict for child in node["children"]),
                  f"{side} IR children are invalid")
+        nodes.append({"type": node["type"], "id": identifier})
         stack.extend(reversed(node["children"]))
-    return identifiers
+    return nodes
 
 
-def _validate_identity_provenance(result, before_ids, after_ids):
-    mapped_ids = {entry["architecture_id"][1:] for entry in result["identity_map"]}
-    _require(mapped_ids == before_ids | after_ids,
-             "Hypercode IR IDs do not match the model identity map")
-    for entry in result["identity_map"]:
-        identifier = entry["architecture_id"][1:]
-        has_before_refs = bool(entry["before_refs"])
-        has_after_refs = bool(entry["after_refs"])
-        _require(has_before_refs == (identifier in before_ids),
-                 "Before-side identity references do not match emitted IR")
-        _require(has_after_refs == (identifier in after_ids),
-                 "After-side identity references do not match emitted IR")
+def _validate_identity_provenance(result, before_nodes, after_nodes, selector_context):
+    entries = result["identity_map"]
+    for side, nodes in (("before", before_nodes), ("after", after_nodes)):
+        expected = defaultdict(list)
+        for entry in entries:
+            role = entry[f"{side}_role"]
+            refs = entry[f"{side}_refs"]
+            _require((role is not None) == bool(refs),
+                     f"{side.title()} role and source references do not agree")
+            if role is not None:
+                expected[role].append(entry)
+        actual = defaultdict(list)
+        for node in nodes:
+            actual[node["type"]].append(node["id"])
+        _require(Counter({role: len(items) for role, items in expected.items()})
+                 == Counter({role: len(items) for role, items in actual.items()}),
+                 f"{side.title()} IR roles do not match the identity map")
+        for role, identities in expected.items():
+            ids = actual[role]
+            should_have_selectors = selector_context[f"{side}_hcs_present"] and len(ids) > 1
+            if should_have_selectors:
+                expected_ids = {item["architecture_id"][1:] for item in identities}
+                _require(None not in ids and set(ids) == expected_ids,
+                         f"{side.title()} selector IDs do not match repeated role addresses")
+            else:
+                _require(all(identifier is None for identifier in ids),
+                         f"{side.title()} projection contains an unnecessary selector")
 
 
 def _diff_document(raw):
@@ -445,7 +465,7 @@ def compile_preview(request, result, *, compiler: Path, compiler_sha256: str,
             after_document = _strict_json(after_ir, "after IR")
             before_ids = _ir_ids(before_document, "Before")
             after_ids = _ir_ids(after_document, "After")
-            _validate_identity_provenance(result, before_ids, after_ids)
+            _validate_identity_provenance(result, before_ids, after_ids, request["selector_context"])
 
             diff_raw, diff_code = _run_compiler(
                 private_compiler,
@@ -473,8 +493,8 @@ def compile_preview(request, result, *, compiler: Path, compiler_sha256: str,
                 "before_resolver": before_document["resolver"],
                 "after_resolver": after_document["resolver"],
                 "diff_sha256": hashlib.sha256(diff_raw).hexdigest(),
-                "before_ids": sorted(before_ids),
-                "after_ids": sorted(after_ids),
+                "before_ids": sorted(node["id"] for node in before_ids if node["id"] is not None),
+                "after_ids": sorted(node["id"] for node in after_ids if node["id"] is not None),
                 "change_count": len(diff["changes"]),
                 "elapsed_ms": max(0, int((time.monotonic() - started) * 1000)),
                 "evidence_status": "inferred",

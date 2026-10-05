@@ -6,18 +6,20 @@ isolation, or produce a completed review bundle.
 
 ## Request boundary
 
-`prepare_request` consumes a `hyperreview.evidence.v1` pack and verifies its
+`prepare_request` consumes a `hyperreview.evidence.v2` pack and verifies its
 digest, source content digests, pinned revisions, sides, and initial operator
 eligibility policy. A local digest is an integrity check, not a signature or a
 fresh GitHub authorization. Intake metadata must still be rechecked by a future
 publisher.
 
 Only explicitly selected metadata and source fields enter
-`hyperreview.request.v1`. Extra pack properties, CI logs, PR descriptions,
+`hyperreview.request.v2`. Extra pack properties, CI logs, PR descriptions,
 credentials, endpoint settings, and delivery controls do not enter the request.
 Reference IDs identify source records by revision, path, and content digest.
 Requests carry an origin evidence digest, prompt/profile versions, omissions,
 coverage limits, and a request digest binding subsequent output to those inputs.
+They also carry per-revision `.hcs` presence derived from each complete pinned
+tree. The model never supplies or infers this selector-policy input.
 
 Operator-selected paths and a source-byte budget may narrow the input. Records
 are omitted whole and omissions are disclosed; no source text is silently
@@ -39,7 +41,7 @@ resource limits, and output paths.
 
 ## Proposed result boundary
 
-`hyperreview.result.v1` contains the bound request digest, before/after `.hc`,
+`hyperreview.result.v2` contains the bound request digest, before/after `.hc`,
 identity mapping, claim records, summary, and limitations. The validator rejects
 unknown fields, invalid types, over-limit strings/lists, duplicate identities,
 dangling references, references with a mismatched before/after side, and claims

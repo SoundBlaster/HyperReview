@@ -1,8 +1,8 @@
 # Structured composition generation
 
-Prompt `composition-v5` asks a local model for
-`hyperreview.composition-plan.v1`, not raw `.hc` and a separately authored
-identity map. The provider-neutral result remains `hyperreview.result.v1`.
+Prompt `composition-v6` asks a local model for
+`hyperreview.composition-plan.v2`, not raw `.hc` and a separately authored
+identity map. It converts the result to `hyperreview.result.v2`.
 Prepare a new request; earlier prompt versions are rejected rather than silently
 reinterpreted.
 
@@ -21,10 +21,23 @@ profile; Hypercode itself may represent a forest. Duplicate identities, cycles, 
 references, unsupported identifiers, and excess size/depth are rejected.
 
 The adapter derives indentation-based `.hc` and the identity map from these
-declarations. Sibling order follows the plan's node order; it is not execution
-order. No missing identity, relationship, or source reference is repaired or
+declarations. An address pairs the role with its stable internal ID. `.hc`
+selectors are emitted only if that pinned side contains an `.hcs` file and the
+role repeats in that side's projection. Selector presence is derived from the
+complete pinned repository trees, never inferred from the selected model
+sources. Sibling order follows the plan's node order; it is not execution order.
+No missing identity, relationship, or source reference is repaired or
 invented. Empty sides render as a newline. The compiler still parses, validates,
-emits IR, and compares the derived projections through the trusted boundary.
+emits IR, and compares the derived projections through the trusted boundary;
+provenance checks compare role counts when a selector is omitted and exact IDs
+when it is present.
+
+For example, with no `.hcs`, the same role stays selector-free even if the
+identity map keeps `Assessment#assessment` as its internal address. When `.hcs`
+exists and `Assessment` appears twice in one projection, the adapter emits
+`Assessment#assessment` and the other role's corresponding ID so HCS rules and
+the compiler can distinguish those nodes. A unique role stays `Assessment`
+even when `.hcs` exists.
 
 The provider schema uses explicit object fields and nullable scalar types;
 a side without any supplied sources has null-only type/parent fields;
@@ -45,7 +58,7 @@ the claims field, set to `[]` by this adapter, for compatibility with other resu
 ## Diagnostics and practical feedback
 
 Generation bundles retain the original plan as `composition-plan.json`, its
-deterministically converted `hyperreview.result.v1` as `result.json`, and
+deterministically converted `hyperreview.result.v2` as `result.json`, and
 `receipt.json`. The receipt binds the plan digest, provider-schema fingerprint,
 canonical-result-schema fingerprint, prompt fingerprint, request, and result.
 These source-bearing artifacts stay local by default. MLflow exports only the
@@ -84,7 +97,7 @@ the attempt that produced the accepted result.
 
 ## Responsibility explanations
 
-Prompt v5 and provider-schema descriptions ask for domain responsibilities,
+Prompt v6 and provider-schema descriptions ask for domain responsibilities,
 stable IDs and concrete explanations of changed or preserved code. Files,
 functions and version containers are not the intended unit of explanation.
 One supported responsibility may remain a single node; larger trees require

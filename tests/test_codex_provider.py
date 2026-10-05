@@ -9,6 +9,7 @@ import unittest
 
 from hyperreview import intake, model_contract
 from hyperreview.codex_provider import CodexConfig, CodexError, generate, _decode_events
+from hyperreview.composition_plan import PLAN_SCHEMA
 
 
 REPO = "0al-spec/SpecGraph"
@@ -39,6 +40,7 @@ def make_request(*, paired=False):
         "authenticated_account": intake.AUTHOR, "base_repo": REPO, "head_repo": REPO,
         "state": "open", "draft": False, "base_sha": "c" * 40,
         "merge_base_sha": BASE, "head_sha": HEAD, "files": files,
+        "selector_context": {"before_hcs_present": False, "after_hcs_present": False},
     }
     evidence["evidence_digest"] = intake.digest(evidence)
     return model_contract.prepare_request(evidence)
@@ -48,7 +50,7 @@ def make_plan(request, *, valid=True, bound=True):
     before = [source["id"] for source in request["sources"] if source["side"] == "before"]
     after = [source["id"] for source in request["sources"] if source["side"] == "after"]
     return {
-        "schema": "hyperreview.composition-plan.v1",
+        "schema": PLAN_SCHEMA,
         "request_digest": request["request_digest"] if bound else "0" * 64,
         "nodes": [{"id": "assessment", "before_type": "Assessment" if before else None,
                    "after_type": "Assessment", "before_parent": None, "after_parent": None,

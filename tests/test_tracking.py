@@ -192,6 +192,8 @@ import hyperreview.tracking
         result["summary"] = "private_model_summary_sentinel"
         result["before_hc"] = "\n"
         result["after_hc"] = "Application#App\n"
+        result["identity_map"][0]["before_role"] = None
+        result["identity_map"][0]["before_refs"] = []
         bound = {"request_digest": request["request_digest"], "result_digest": intake.digest(result)}
         compiler = {**bound, "stage": "projections_validated", "compiler_sha256": "a" * 64,
                     "before_resolver": {"name": "hypercode-swift", "version": "0.6.0-dev"},
@@ -207,7 +209,15 @@ import hyperreview.tracking
         }
         for name, field in (("before.ir.json", "before_ir_sha256"),
                             ("after.ir.json", "after_ir_sha256"), ("diff.json", "diff_sha256")):
-            raw = intake.encoded({"fixture": name})
+            fixture = {"fixture": name}
+            if name.endswith(".ir.json"):
+                fixture = {"version": "hypercode.ir/v2", "context": {},
+                           "resolver": {"name": "hypercode-swift", "version": "0.6.0-dev"},
+                           "documentHash": "0" * 64, "nodes": []}
+                if name == "after.ir.json":
+                    fixture["nodes"] = [{"type": "Application", "id": "App",
+                                         "hash": "0" * 64, "properties": {}, "children": []}]
+            raw = intake.encoded(fixture)
             (self.root / name).write_bytes(raw)
             compiler[field] = hashlib.sha256(raw).hexdigest()
         values["compiler-receipt.json"] = compiler

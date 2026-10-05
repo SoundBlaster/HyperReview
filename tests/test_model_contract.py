@@ -68,6 +68,7 @@ def pack(sources=None, omissions=None, **extra):
         "merge_base_sha": BASE,
         "head_sha": HEAD,
         "files": files,
+        "selector_context": {"before_hcs_present": False, "after_hcs_present": False},
     }
     value.update(extra)
     value["evidence_digest"] = intake.digest(value)
@@ -83,7 +84,9 @@ def valid_result(request):
         "request_digest": request["request_digest"],
         "before_hc": "# Before\n",
         "after_hc": "# After\n",
-        "identity_map": [{"architecture_id": "#App", "before_refs": before_refs,
+        "identity_map": [{"architecture_id": "#App",
+                          "before_role": "Before" if before_refs else None,
+                          "after_role": "After" if after_refs else None, "before_refs": before_refs,
                           "after_refs": after_refs, "reason": "Same responsibility."}],
         "claims": [{"id": "claim1", "text": "A responsibility appears in the source.",
                     "evidence_status": "inferred", "architecture_ids": ["#App"],
@@ -313,6 +316,8 @@ class ModelContractTests(unittest.TestCase):
         result = valid_result(request)
         result["identity_map"][0]["before_refs"] = []
         result["identity_map"][0]["after_refs"] = []
+        result["identity_map"][0]["before_role"] = None
+        result["identity_map"][0]["after_role"] = None
         with self.assertRaisesRegex(ContractError, "at least one source"):
             validate_result(result, request)
 

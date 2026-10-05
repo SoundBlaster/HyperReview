@@ -8,7 +8,7 @@ from urllib.parse import quote
 from . import intake, model_contract
 
 
-COMPACT_RENDER_VERSION = "compact-v1"
+COMPACT_RENDER_VERSION = "compact-v2"
 
 
 def _text(value):
@@ -20,6 +20,28 @@ def _fence(value, language="hc"):
     longest = max((len(match) for match in re.findall(r"`+", value)), default=0)
     fence = "`" * max(3, longest + 1)
     return f"{fence}{language}\n{value.rstrip()}\n{fence}\n"
+
+
+def _address_labels(result):
+    entries = result["identity_map"]
+    counts = {}
+    for side in ("before", "after"):
+        for entry in entries:
+            role = entry.get(f"{side}_role")
+            if role is not None:
+                counts[(side, role)] = counts.get((side, role), 0) + 1
+    labels = {}
+    for entry in entries:
+        role = entry.get("after_role") or entry.get("before_role")
+        if role is None:
+            labels[entry["architecture_id"]] = entry["architecture_id"]
+            continue
+        repeated = any(counts.get((side, entry.get(f"{side}_role")), 0) > 1
+                       for side in ("before", "after") if entry.get(f"{side}_role") is not None)
+        labels[entry["architecture_id"]] = (
+            f"{role}#{entry['architecture_id'][1:]}" if repeated else role
+        )
+    return labels
 
 
 def render_preview(request, result, receipt, semantic_diff, *, tracking_status="not_started"):
@@ -35,6 +57,7 @@ def render_preview(request, result, receipt, semantic_diff, *, tracking_status="
     tracking_label = {"not_started": "Tracking has not been confirmed.",
                       "tracking_pending": "Tracking delivery is pending.",
                       "confirmed": "Metadata-only tracking delivery is confirmed."}[tracking_status]
+    address_labels = _address_labels(result)
     if (receipt.get("stage") != "projections_validated"
             or receipt.get("request_digest") != request["request_digest"]
             or receipt.get("result_digest") != intake.digest(result)
@@ -66,7 +89,8 @@ def render_preview(request, result, receipt, semantic_diff, *, tracking_status="
     for claim in result["claims"]:
         lines.extend([f"### {_text(claim['id'])}\n", _text(claim["text"]) + "\n",
                       "Status: **inferred**\n", "Scope: " + _text(claim["scope"]) + "\n",
-                      "Architecture IDs: " + ", ".join(_text(value) for value in claim["architecture_ids"]) + "\n",
+                      "Architecture addresses: " + ", ".join(
+                          _text(address_labels[value]) for value in claim["architecture_ids"]) + "\n",
                       "Source references: " + ", ".join(_text(value) for value in claim["source_refs"]) + "\n"])
         for limitation in claim["limitations"]:
             lines.append("- Limitation: " + _text(limitation) + "\n")
@@ -79,7 +103,7 @@ def render_preview(request, result, receipt, semantic_diff, *, tracking_status="
                      f"[{_text(source['path'])}]({url}); SHA256 `{source['content_sha256']}`\n")
     lines.append("\n## Identity decisions (inferred)\n")
     for identity in result["identity_map"]:
-        lines.append(f"- {_text(identity['architecture_id'])}: {_text(identity['reason'])}. "
+        lines.append(f"- {_text(address_labels[identity['architecture_id']])}: {_text(identity['reason'])}. "
                      f"Before refs: {', '.join(_text(ref) for ref in identity['before_refs']) or 'none'}; "
                      f"after refs: {', '.join(_text(ref) for ref in identity['after_refs']) or 'none'}.\n")
     lines.append("\n## Limitations and omissions\n")
@@ -108,6 +132,7 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
               "Структурных изменений в проекции нет. Текущая проекция:\n"
               + _fence(result["after_hc"]))]
     sources = {source["id"]: source for source in request["sources"]}
+    address_labels = _address_labels(result)
     for identity in result["identity_map"]:
         links = []
         refs = list(dict.fromkeys(identity["after_refs"] + identity["before_refs"]))
@@ -116,7 +141,7 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
             url = (f"https://github.com/{request['repository']}/blob/{source['revision']}/"
                    f"{quote(source['path'], safe='/')}#L{source['line_start']}-L{source['line_end']}")
             links.append(f"[{_text(source['path'])}]({url})")
-        lines.append(f"- `{identity['architecture_id']}` — {_text(identity['reason'])} "
+        lines.append(f"- `{address_labels[identity['architecture_id']]}` — {_text(identity['reason'])} "
                      + "; ".join(links) + "\n")
     lines.extend(["\n<details>\n<summary>Границы анализа и основания</summary>\n",
                   f"PR #{request['pr']}: `{request['merge_base_sha']}` → `{request['head_sha']}`.\n",

@@ -41,6 +41,7 @@ def make_request(*, include_before=True):
         "authenticated_account": intake.AUTHOR, "base_repo": REPO, "head_repo": REPO,
         "state": "open", "draft": False, "base_sha": "c" * 40,
         "merge_base_sha": BASE, "head_sha": HEAD,
+        "selector_context": {"before_hcs_present": False, "after_hcs_present": False},
         "files": [{"before_path": "src/application.py" if include_before else None,
                     "after_path": "src/application.py", "sources": sources, "omissions": []}],
     }
@@ -48,7 +49,7 @@ def make_request(*, include_before=True):
     return model_contract.prepare_request(evidence)
 
 
-def make_result(request, *, before_hc="Application#App\n", after_hc="Application#App\n"):
+def make_result(request, *, before_hc="Application\n", after_hc="Application\n"):
     before_refs = [source["id"] for source in request["sources"] if source["side"] == "before"]
     after_refs = [source["id"] for source in request["sources"] if source["side"] == "after"]
     refs = before_refs + after_refs
@@ -57,7 +58,10 @@ def make_result(request, *, before_hc="Application#App\n", after_hc="Application
         "request_digest": request["request_digest"],
         "before_hc": before_hc,
         "after_hc": after_hc,
-        "identity_map": [{"architecture_id": "#App", "before_refs": before_refs,
+        "identity_map": [{"architecture_id": "#App",
+                          "before_role": "Application" if before_refs else None,
+                          "after_role": "Application" if after_refs else None,
+                          "before_refs": before_refs,
                           "after_refs": after_refs, "reason": "The same responsibility remains."}],
         "claims": [{"id": "claim-app", "text": "The application responsibility remains.",
                     "evidence_status": "inferred", "architecture_ids": ["#App"],
@@ -68,9 +72,11 @@ def make_result(request, *, before_hc="Application#App\n", after_hc="Application
     }
 
 
-def ir_node(identifier="App", node_hash="a" * 64):
-    return {"type": "Application", "id": identifier, "hash": node_hash,
-            "properties": {}, "children": []}
+def ir_node(identifier=None, node_hash="a" * 64, role="Application"):
+    node = {"type": role, "hash": node_hash, "properties": {}, "children": []}
+    if identifier is not None:
+        node["id"] = identifier
+    return node
 
 
 def ir_document(nodes=None):
@@ -180,8 +186,8 @@ class CompiledPreviewTests(unittest.TestCase):
         self.assertEqual(receipt["stage"], "projections_validated")
         self.assertEqual(receipt["request_digest"], self.request["request_digest"])
         self.assertEqual(receipt["result_digest"], intake.digest(self.result))
-        self.assertEqual(receipt["before_ids"], ["App"])
-        self.assertEqual(receipt["after_ids"], ["App"])
+        self.assertEqual(receipt["before_ids"], [])
+        self.assertEqual(receipt["after_ids"], [])
         self.assertEqual(receipt["change_count"], 1)
         self.assertEqual(receipt["evidence_status"], "inferred")
         self.assertEqual(receipt["tracking_status"], "not_started")
@@ -206,40 +212,42 @@ class CompiledPreviewTests(unittest.TestCase):
 
     def test_rejects_actual_id_map_mismatch(self):
         wrong = make_result(self.request)
-        wrong["identity_map"][0]["architecture_id"] = "#Specification"
-        wrong["claims"][0]["architecture_ids"] = ["#Specification"]
+        wrong["identity_map"][0]["after_role"] = "Specification"
         compiler, digest = self.compiler()
-        with self.assertRaisesRegex(PreviewError, "IR IDs do not match"):
+        with self.assertRaisesRegex(PreviewError, "roles do not match"):
             compile_preview(self.request, wrong, compiler=compiler, compiler_sha256=digest)
 
     def test_rejects_missing_side_reference_and_fabricated_before_baseline(self):
         missing_before = make_result(self.request)
         missing_before["identity_map"][0]["before_refs"] = []
+        missing_before["identity_map"][0]["before_role"] = None
         compiler, digest = self.compiler()
-        with self.assertRaisesRegex(PreviewError, "Before-side identity references"):
+        with self.assertRaisesRegex(PreviewError, "Before IR roles"):
             compile_preview(self.request, missing_before, compiler=compiler, compiler_sha256=digest)
 
         added_request = make_request(include_before=False)
         added_result = make_result(added_request, before_hc="\n")
         compiler, digest = self.compiler()
-        with self.assertRaisesRegex(PreviewError, "Before-side identity references"):
+        with self.assertRaisesRegex(PreviewError, "Before IR roles do not match the identity map"):
             compile_preview(added_request, added_result, compiler=compiler, compiler_sha256=digest)
 
     def test_added_node_can_use_empty_before_ir_and_newline_source(self):
         request = make_request(include_before=False)
         result = make_result(request, before_hc="\n")
         result["identity_map"][0]["architecture_id"] = "#Assessment"
+        result["identity_map"][0]["after_role"] = "Assessment"
         result["identity_map"][0]["before_refs"] = []
+        result["identity_map"][0]["before_role"] = None
         result["identity_map"][0]["after_refs"] = [
             source["id"] for source in request["sources"] if source["side"] == "after"
         ]
         result["claims"][0]["architecture_ids"] = ["#Assessment"]
         compiler, digest = self.compiler(
-            before=ir_document([]), after=ir_document([ir_node("Assessment")]),
+            before=ir_document([]), after=ir_document([ir_node(role="Assessment")]),
         )
         preview = compile_preview(request, result, compiler=compiler, compiler_sha256=digest)
         self.assertEqual(preview["receipt"]["before_ids"], [])
-        self.assertEqual(preview["receipt"]["after_ids"], ["Assessment"])
+        self.assertEqual(preview["receipt"]["after_ids"], [])
         self.assertEqual(preview["artifacts"]["before.hc"], b"\n")
 
     def test_rejects_unmapped_or_duplicate_ir_ids_and_invalid_shapes(self):
@@ -394,12 +402,14 @@ class RealCompilerIntegrationTests(unittest.TestCase):
         before_refs = [source["id"] for source in self.request["sources"] if source["side"] == "before"]
         after_refs = [source["id"] for source in self.request["sources"] if source["side"] == "after"]
         self.result = make_result(self.request)
-        self.result["before_hc"] = "Application#App\n"
-        self.result["after_hc"] = "Application#App\n  Assessment#Assessment\n"
+        self.result["before_hc"] = "Application\n"
+        self.result["after_hc"] = "Application\n  Assessment\n"
         self.result["identity_map"] = [
-            {"architecture_id": "#App", "before_refs": before_refs,
+            {"architecture_id": "#App", "before_role": "Application", "after_role": "Application",
+             "before_refs": before_refs,
              "after_refs": after_refs, "reason": "The application remains."},
-            {"architecture_id": "#Assessment", "before_refs": [],
+            {"architecture_id": "#Assessment", "before_role": None, "after_role": "Assessment",
+             "before_refs": [],
              "after_refs": after_refs, "reason": "The assessment is added."},
         ]
         self.result["claims"][0]["architecture_ids"] = ["#App", "#Assessment"]
@@ -407,20 +417,19 @@ class RealCompilerIntegrationTests(unittest.TestCase):
     def test_real_compiler_accepts_controlled_added_node(self):
         preview = compile_preview(self.request, self.result, compiler=self.compiler,
                                   compiler_sha256=self.compiler_sha256)
-        self.assertEqual(preview["receipt"]["before_ids"], ["App"])
-        self.assertEqual(preview["receipt"]["after_ids"], ["App", "Assessment"])
+        self.assertEqual(preview["receipt"]["before_ids"], [])
+        self.assertEqual(preview["receipt"]["after_ids"], [])
 
     def test_real_compiler_ids_must_match_model_identity_map(self):
         wrong = json.loads(intake.encoded(self.result))
-        wrong["identity_map"][1]["architecture_id"] = "#Invented"
-        wrong["claims"][0]["architecture_ids"] = ["#App", "#Invented"]
-        with self.assertRaisesRegex(PreviewError, "IR IDs do not match"):
+        wrong["identity_map"][1]["after_role"] = "Invented"
+        with self.assertRaisesRegex(PreviewError, "roles do not match"):
             compile_preview(self.request, wrong, compiler=self.compiler,
                             compiler_sha256=self.compiler_sha256)
 
     def test_real_compiler_arrow_syntax_has_expected_sanitized_parse_identity(self):
         result = json.loads(intake.encoded(self.result))
-        result["after_hc"] = "Application#App -> Assessment#Assessment\n"
+        result["after_hc"] = "Application -> Assessment\n"
         with self.assertRaises(CompilerCommandError) as caught:
             compile_preview(self.request, result, compiler=self.compiler,
                             compiler_sha256=self.compiler_sha256)

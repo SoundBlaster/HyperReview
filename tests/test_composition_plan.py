@@ -58,10 +58,10 @@ class CompositionPlanTests(unittest.TestCase):
         result = to_result(plan, self.request)
         self.assertEqual(result["before_hc"], "\n")
         self.assertEqual(result["after_hc"],
-                         "Application#Application\n"
-                         "  Assessment#Assessment\n"
-                         "  Evidence#Evidence\n"
-                         "  Review#Review\n")
+                         "Application\n"
+                         "  Assessment\n"
+                         "  Evidence\n"
+                         "  Review\n")
         self.assertEqual([entry["architecture_id"] for entry in result["identity_map"]],
                          ["#Application", "#Assessment", "#Evidence", "#Review"])
         self.assertEqual(result["request_digest"], self.request["request_digest"])
@@ -77,8 +77,8 @@ class CompositionPlanTests(unittest.TestCase):
             node("Removed", "Legacy", None, "Root", None, [self.before_ref], []),
         ])
         result = to_result(plan, self.request)
-        self.assertEqual(result["before_hc"], "Root#Root\n  OldSecond#Second\n  OldFirst#First\n  Legacy#Removed\n")
-        self.assertEqual(result["after_hc"], "Root#Root\n  NewSecond#Second\n  NewFirst#First\n")
+        self.assertEqual(result["before_hc"], "Root\n  OldSecond\n  OldFirst\n  Legacy\n")
+        self.assertEqual(result["after_hc"], "Root\n  NewSecond\n  NewFirst\n")
 
     def test_compact_profile_rejects_disconnected_roots(self):
         plan = base_plan(self.request, [
@@ -196,7 +196,7 @@ class CompositionPlanTests(unittest.TestCase):
             with self.subTest(label=label):
                 candidate = node("Task", after_type=label, after_refs=[self.after_ref])
                 result = to_result(base_plan(self.request, [candidate]), self.request)
-                self.assertEqual(result["after_hc"], f"{label}#Task\n")
+                self.assertEqual(result["after_hc"], f"{label}\n")
 
     def test_rejects_malformed_extra_fields_wrong_digest_and_unknown_refs(self):
         valid = node("App", after_type="Application", after_refs=[self.after_ref])

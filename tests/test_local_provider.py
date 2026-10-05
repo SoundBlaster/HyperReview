@@ -8,6 +8,7 @@ import unittest
 
 from hyperreview import intake, model_contract
 from hyperreview.local_provider import ProviderConfig, ProviderError, generate
+from hyperreview.composition_plan import PLAN_SCHEMA
 
 
 REPO = "0al-spec/SpecGraph"
@@ -36,6 +37,7 @@ def make_request(content="def assess():\n    return True\n"):
         "authenticated_account": intake.AUTHOR, "base_repo": REPO, "head_repo": REPO,
         "state": "open", "draft": False, "base_sha": "c" * 40,
         "merge_base_sha": BASE, "head_sha": HEAD,
+        "selector_context": {"before_hcs_present": False, "after_hcs_present": False},
         "files": [{"before_path": None, "after_path": "src/assessment.py",
                     "sources": [record], "omissions": []}],
     }
@@ -71,6 +73,7 @@ def make_paired_request(before_contents=("def assess():\n    return True\n",),
         "authenticated_account": intake.AUTHOR, "base_repo": REPO, "head_repo": REPO,
         "state": "open", "draft": False, "base_sha": "c" * 40,
         "merge_base_sha": BASE, "head_sha": HEAD, "files": files,
+        "selector_context": {"before_hcs_present": False, "after_hcs_present": False},
     }
     evidence["evidence_digest"] = intake.digest(evidence)
     return model_contract.prepare_request(evidence)
@@ -99,7 +102,7 @@ def with_distinct_source_paths(request):
 def make_plan(request):
     source_id = request["sources"][0]["id"]
     return {
-        "schema": "hyperreview.composition-plan.v1",
+        "schema": PLAN_SCHEMA,
         "request_digest": request["request_digest"],
         "nodes": [{"id": "assessment", "before_type": None, "after_type": "Assessment",
                    "before_parent": None, "after_parent": None, "before_refs": [],
@@ -113,7 +116,7 @@ def make_paired_plan(request):
     refs = {side: [source["id"] for source in request["sources"] if source["side"] == side]
             for side in ("before", "after")}
     return {
-        "schema": "hyperreview.composition-plan.v1",
+        "schema": PLAN_SCHEMA,
         "request_digest": request["request_digest"],
         "nodes": [{"id": "assessment", "before_type": "Assessment", "after_type": "Assessment",
                    "before_parent": None, "after_parent": None,

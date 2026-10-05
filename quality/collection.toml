@@ -1,0 +1,9 @@
+schema_version = 1
+project = "SoundBlaster/HyperReview"
+root = ".."
+scope_manifest = "source-roles.toml"
+
+[supplementary]
+python_complexity = true
+duplication = false
+python = "python3"

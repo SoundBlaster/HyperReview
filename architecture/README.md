@@ -22,7 +22,9 @@ hypercode explain architecture/reviewer.hc --hcs architecture/reviewer.hcs --ctx
 
 `backend=codex|lmstudio|ollama` selects the proposed provider settings. With no
 backend context, provider configuration remains unavailable. A configured design
-profile still requires operator model selection and runtime capability checks.
+profile still requires runtime capability checks. The selected Codex pilot
+context declares `gpt-6-luna` with reasoning `low`; the manual CLI defaults match
+that operator choice. The design context itself does not launch a process.
 `mode=publish` requests delivery only; the trusted broker must separately verify
 authorization, eligibility, valid artifacts, and fresh revisions. Local preview
 remains available when publication is requested.

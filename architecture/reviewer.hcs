@@ -18,10 +18,21 @@ HyperReview:
   enabled: true
 
 '#eligibility':
+  policy_library: "specification-core"
   author_login: "SoundBlaster"
   same_repository_required: true
   include_drafts: false
   include_closed: false
+
+# Developer/CI measurement of this repository, not analyzed PR execution.
+'#project-quality':
+  source_scope: "hyperreview"
+  execution: "developer-and-ci"
+  combined_score: false
+
+'#specificationmetrics':
+  transport: "local-cli"
+  hosted_classification_enabled: false
 
 '#evidence':
   max_files: 30
@@ -34,6 +45,8 @@ HyperReview:
   endpoint: ""
   configured: false
   model_selection: "operator-required"
+  model: ""
+  reasoning_effort: ""
 
 '#projection':
   interpretation_status: "illustrative"
@@ -108,6 +121,9 @@ HyperReview:
     provider: "codex"
     transport: "codex-exec"
     configured: true
+    model_selection: "pilot-default"
+    model: "gpt-6-luna"
+    reasoning_effort: "low"
 
 @backend[lmstudio]:
   '#backend':
@@ -154,6 +170,8 @@ HyperReview:
     endpoint: string
     configured: bool
     model_selection: string
+    model: string
+    reasoning_effort: string
   '#hypercode-validator':
     ir_version: int >= 2 <= 2
   '#publication-gate':

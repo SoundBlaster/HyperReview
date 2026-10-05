@@ -62,7 +62,17 @@ installed executable alone does not establish a safe unattended setup.
 ## Manual evidence preview
 
 Requirements: Python 3.10+ and an authenticated `gh` CLI for `github.com`.
-Run from this repository; there are no Python package dependencies to install.
+Install into a Python 3.10+ environment before running from this repository:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+The runtime uses the commit-pinned `specification-core` package from
+[SpycificationCore](https://github.com/SoundBlaster/SpycificationCore) for named
+eligibility policy. Optional tracking and measurement dependencies stay separate.
 
 ```sh
 python3 -m hyperreview review --repo 0al-spec/SpecGraph --pr 761 --preview
@@ -116,7 +126,26 @@ to the request digest, checks identities/references, and keeps model claims
 `inferred`. Result-shape validation is separate from Hypercode parsing and
 source interpretation quality.
 
-## Explicit local inference
+## Generate with Codex
+
+The pilot defaults to the installed Codex CLI, `gpt-6-luna`, reasoning `low`,
+using the operator's existing Codex authentication. Each invocation requires
+`--allow-cloud-source` to acknowledge sending filtered source to the cloud:
+
+```sh
+python3 -m hyperreview generate --request /absolute/path/request.json --allow-cloud-source
+```
+
+Use `--model`, `--reasoning-effort`, `--codex-executable` and
+`--timeout-seconds` for explicit operator settings. Codex inference sends the
+filtered source to the configured Codex service; it is not an on-device model.
+The runner uses a private temporary directory, ignores user/project instruction
+configuration, disables tools/integrations, and audits JSONL events. Process
+output, input bytes and total time are bounded. Local HTTP context/output-token
+flags are rejected for Codex; those limits are managed by Codex rather than
+claimed as locally enforced. See [the Codex invocation contract](SPECS/18-codex-generation.md).
+
+## Explicit local HTTP inference
 
 Load a local model with an appropriate context using the provider's own tools,
 then select that exact API model ID:
@@ -133,10 +162,13 @@ tools, remote fallback, or automatic model downloads. The invocation has bounded
 context, response bytes, and time; `--max-tokens` and `--timeout-seconds` are
 trusted operator limits. The configured context must not exceed the loaded one.
 
-Prompt `composition-v4` asks the provider for structured
+Prompt `composition-v5` asks the provider for structured
 `hyperreview.composition-plan.v1` nodes. HyperReview validates the plan and
 deterministically converts it to the provider-neutral `hyperreview.result.v1`;
-the provider does not author `.hc` or identity-map strings directly. Private
+the provider does not author `.hc` or identity-map strings directly.
+The prompt and schema guide domain responsibility names and explain what changed
+or remained in the selected code. Comment descriptions are kept separate from
+behavior evidence; these instructions are not a semantic correctness check. Private
 bundles under `~/.local/share/hyperreview/generated/` retain the original plan
 as `composition-plan.json`, the canonical result as `result.json`, the request,
 and a sanitized `receipt.json`. The stage is `model_generated`, not a completed
@@ -181,7 +213,7 @@ unavailable. See [the compiled-preview contract](SPECS/11-compiled-preview.md).
 
 ## Deliver local tracking metadata
 
-The core CLI still uses the standard library; tracking runs in a separate
+The core CLI uses the standard library and SpecificationCore; tracking runs in a separate
 optional environment. Install and run the UI outside analyzed checkouts:
 
 ```sh
@@ -341,3 +373,14 @@ runner image, not a fully reproducible operating-system/toolchain pin.
 [MIT](LICENSE). The license covers these specifications and examples as well as
 future project code. Hypercode remains an external dependency with its own
 [licenses](https://github.com/0al-spec/Hypercode#license).
+
+## Project code quality
+
+[SpecificationMetrics](https://github.com/SoundBlaster/SpecificationMetrics)
+collects S/U adoption, Python LOC, cyclomatic complexity and cognitive complexity
+for `hyperreview/`. Tests and development tools have separate roles. CI uploads
+revision-bound JSON/SQLite observations; it does not enforce a ratio threshold.
+These code observations do not measure the accuracy of generated explanations.
+
+See [setup, local history and comparison](quality/README.md) and the
+[quality integration contract](SPECS/19-specification-quality.md).

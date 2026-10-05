@@ -51,6 +51,9 @@ available, prompt version, and isolation capabilities MUST be recorded. HTTP
 adapters MUST use structured inference without executing model-requested tools.
 Codex requires a separately verified restricted invocation profile before it
 may run unattended. Unsupported isolation MUST disable that backend.
+The manual pilot now selects Codex Luna 6 with reasoning `low` by default;
+its direct restricted invocation is described in
+[Codex generation](18-codex-generation.md). A generic adapter framework is deferred.
 
 **HR-ARCH-003 — Local worker.** A future `launchd` service MUST invoke the same
 bounded one-shot worker available manually. Polling defaults to 300 seconds;
@@ -64,3 +67,12 @@ Contracts remain applicable by selector matching across contexts; context may
 change whether resolved values satisfy those same contracts. Any boolean
 policy invariant or enum semantics not expressible by current property
 contracts MUST be enforced by HyperReview's trusted policy validator.
+
+## Implemented policy and developer measurements
+
+`#eligibility` uses the commit-pinned Python SpecificationCore package for the
+pure PR metadata rule. Allowlist/account authority, revision parsing and effects
+remain in intake. `#development-tools` describes measurements of HyperReview
+itself: `#project-quality`, `#specificationmetrics` and `#quality-history` run in
+developer/CI tooling, outside the model review worker. See
+[the integration contract](19-specification-quality.md).

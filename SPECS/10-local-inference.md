@@ -21,7 +21,20 @@ data. The result schema binds the request digest and constrains source-reference
 choices. Local result validation remains authoritative for semantic constraints
 that a provider's JSON Schema implementation cannot establish.
 
-The current `composition-v4` prompt requests
+An optional navigation message contains bounded same-path unified diffs derived
+from the validated selected sources. It is also untrusted user-role data and
+keeps the complete request unchanged. Individual diffs are capped at 1024 UTF-8
+bytes with a truncation flag; the serialized comparison message is at most 2048
+bytes and may omit later pairs. Source IDs identify both sides, and final-newline
+flags preserve that distinction in normalized displayed lines. Rename/different
+path records are not paired. The supplement is omitted if it cannot fit together
+with the largest fixed repair instruction; every actual call still runs preflight.
+Ambiguous same-side paths are skipped. Diff computation only accepts pairs up to
+8192 combined UTF-8 bytes and at most 256 lines per side; larger sources remain
+in the complete request. The shared inference deadline starts before comparison
+preparation, and the next transport checks its remaining budget.
+
+The current `composition-v5` prompt requests
 `hyperreview.composition-plan.v1` structured nodes. HyperReview validates this
 plan and deterministically converts it to canonical `hyperreview.result.v1`
 with paired `.hc` projections and an identity map. The generated bundle keeps

@@ -111,9 +111,22 @@ def eligible(repo, number, pr, account):
         raise IntakeError("Repository or PR is outside the initial operator policy")
     if account != AUTHOR:
         raise IntakeError("Authenticated GitHub account differs from the configured author")
-    if (pr.get("number") != number or pr.get("author") != AUTHOR
-            or pr.get("state") != "open" or pr.get("draft") is not False
-            or pr.get("base_repo") != repo or pr.get("head_repo") != repo):
+    # Keep metadata-only tracking usable in its isolated MLflow runtime, which
+    # does not install the core CLI's SpecificationCore policy dependency.
+    from .pr_eligibility import PullRequestEligibilityContext, PullRequestMetadataEligibility
+
+    context = PullRequestEligibilityContext(
+        requested_number=number,
+        requested_repository=repo,
+        configured_author=AUTHOR,
+        number=pr.get("number"),
+        author=pr.get("author"),
+        state=pr.get("state"),
+        draft=pr.get("draft"),
+        base_repository=pr.get("base_repo"),
+        head_repository=pr.get("head_repo"),
+    )
+    if not PullRequestMetadataEligibility().is_satisfied_by(context):
         raise IntakeError("PR is ineligible: require configured author, same repository, open and non-draft")
     for name in ("base_sha", "head_sha"):
         if not re.fullmatch(r"[0-9a-f]{40}", pr.get(name, "")):

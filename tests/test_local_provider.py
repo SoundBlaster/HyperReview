@@ -36,6 +36,7 @@ def make_request(content="def assess():\n    return True\n"):
         "authenticated_account": intake.AUTHOR, "base_repo": REPO, "head_repo": REPO,
         "state": "open", "draft": False, "base_sha": "c" * 40,
         "merge_base_sha": BASE, "head_sha": HEAD,
+        "selector_context": {"before_hcs_present": False, "after_hcs_present": False},
         "files": [{"before_path": None, "after_path": "src/assessment.py",
                     "sources": [record], "omissions": []}],
     }
@@ -71,6 +72,7 @@ def make_paired_request(before_contents=("def assess():\n    return True\n",),
         "authenticated_account": intake.AUTHOR, "base_repo": REPO, "head_repo": REPO,
         "state": "open", "draft": False, "base_sha": "c" * 40,
         "merge_base_sha": BASE, "head_sha": HEAD, "files": files,
+        "selector_context": {"before_hcs_present": False, "after_hcs_present": False},
     }
     evidence["evidence_digest"] = intake.digest(evidence)
     return model_contract.prepare_request(evidence)

@@ -68,6 +68,7 @@ def pack(sources=None, omissions=None, **extra):
         "merge_base_sha": BASE,
         "head_sha": HEAD,
         "files": files,
+        "selector_context": {"before_hcs_present": False, "after_hcs_present": False},
     }
     value.update(extra)
     value["evidence_digest"] = intake.digest(value)
@@ -83,7 +84,8 @@ def valid_result(request):
         "request_digest": request["request_digest"],
         "before_hc": "# Before\n",
         "after_hc": "# After\n",
-        "identity_map": [{"architecture_id": "#App", "before_refs": before_refs,
+        "identity_map": [{"architecture_id": "#App", "before_role": "Before",
+                          "after_role": "After", "before_refs": before_refs,
                           "after_refs": after_refs, "reason": "Same responsibility."}],
         "claims": [{"id": "claim1", "text": "A responsibility appears in the source.",
                     "evidence_status": "inferred", "architecture_ids": ["#App"],

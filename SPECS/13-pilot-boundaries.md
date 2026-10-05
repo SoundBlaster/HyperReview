@@ -6,9 +6,10 @@ scientific reviewer experiment.
 
 ## Dataset and execution
 
-`controlled-boundaries-v1` contains a responsibility addition, unsupported core
-syntax, an identity mismatch, an unsupported before baseline, a type rename with
-stable architectural identity, and an approval bypass with unchanged composition.
+`controlled-boundaries-v2` contains a responsibility addition, unsupported core
+syntax, a unique role without a rendered selector, an unsupported before
+baseline, a type rename with stable architectural identity, and an approval
+bypass with unchanged composition.
 The dataset digest binds sources, hand-authored projections, questions, expected
 outcomes, and answer keys. Synthetic revision IDs are fixture inputs, not GitHub
 evidence. No source is executed, and no model is called.
@@ -39,7 +40,7 @@ Grammar and reference validity may be missing when the corresponding check did
 not run; a successful compile records both as valid even if the observed
 structural change count differs from the fixture expectation. Missing metric
 values remain missing, and the summary reports measured-record coverage for
-each metric. The metric definition is `boundary-v2`; these values describe
+each metric. The metric definition is `boundary-v3`; these values describe
 controlled validator outcomes, not general model quality.
 
 Evidently `0.7.23` computes fixed technical metric means and exports JSON/HTML

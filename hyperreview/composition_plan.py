@@ -9,7 +9,7 @@ import re
 from . import intake, model_contract
 
 
-PLAN_SCHEMA = "hyperreview.composition-plan.v1"
+PLAN_SCHEMA = "hyperreview.composition-plan.v2"
 _BARE_ID = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,79}\Z")
 _GENERIC_TYPES = frozenset({"file", "pythonfile", "function", "module", "documentation", "comment"})
 _MAX_WIRE_BYTES = 1024 * 1024
@@ -121,6 +121,13 @@ def _validate_plan(plan, request):
                 _require(parent != node_id, "A node cannot parent itself")
                 children[side][parent].append(node_id)
 
+    selector_context = request["selector_context"]
+    role_counts = {
+        side: {role: sum(1 for node_id in order if by_id[node_id][f"{side}_type"] == role)
+               for role in {by_id[node_id][f"{side}_type"] for node_id in order
+                            if by_id[node_id][f"{side}_type"] is not None}}
+        for side in ("before", "after")
+    }
     rendered = {}
     for side in ("before", "after"):
         lines = []
@@ -133,7 +140,11 @@ def _validate_plan(plan, request):
             _require(node_id not in visited, f"{side} tree contains a repeated node")
             visiting.add(node_id)
             node = by_id[node_id]
-            lines.append("  " * (depth - 1) + f"{node[side + '_type']}#{node_id}")
+            role = node[f"{side}_type"]
+            needs_selector = (selector_context[f"{side}_hcs_present"]
+                              and role_counts[side][role] > 1)
+            suffix = f"#{node_id}" if needs_selector else ""
+            lines.append("  " * (depth - 1) + f"{role}{suffix}")
             for child in children[side][node_id]:
                 visit(child, depth + 1)
             visiting.remove(node_id)
@@ -167,7 +178,7 @@ def plan_schema(request):
     node_properties = {
         "reason": {"type": "string", "minLength": 1, "maxLength": 2000,
                    "description": "Write in Russian: the concrete task and what changed/remained. Explain comment changes separately from code behavior. Never merely unchanged or file changed."},
-        "id": {**identifier, "description": "Stable responsibility ID in lower_snake_case; not a file path or version name."},
+        "id": {**identifier, "description": "Stable internal identity for this responsibility role; a #selector is rendered only when this side has .hcs and the role repeats."},
         "before_type": {"anyOf": [identifier, {"type": "null"}],
                         "description": "Domain responsibility in English CamelCase, not PythonFile, Function or Module. If its code exists before, set its type even when unchanged. Null means absent, not unchanged."},
         "after_type": {"anyOf": [identifier, {"type": "null"}],
@@ -214,6 +225,8 @@ def to_result(plan, request):
             node = by_id[node_id]
             identity_map.append({
                 "architecture_id": "#" + node_id,
+                "before_role": node["before_type"],
+                "after_role": node["after_type"],
                 "before_refs": list(node["before_refs"]),
                 "after_refs": list(node["after_refs"]),
                 "reason": node["reason"],

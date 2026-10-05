@@ -30,7 +30,7 @@ Reason: concrete task plus changed/preserved condition, in Russian; never just u
 
 Summary MUST describe the actual difference first: what code condition or comment wording changed, then what stayed and what cannot be established. Do not just summarize a functions purpose. Limitations: specific missing evidence, without repeating request boilerplate. Interpretations are inferred; execution is unverified.
 
-Before/after describe ONE responsibility. UNCHANGED code needs BOTH types and nonempty refs. Null means absent, never unchanged. Comment edits preserve type/ID; condition edits may too. Absent: type=null, parent=null, refs=[]. Use unique correct-side refs. Parent is a node ID; root parent=null. Each nonempty side is a single-root tree. The adapter emits .hc, identity_map and claims."""
+Before/after describe ONE responsibility. UNCHANGED code needs BOTH types and nonempty refs. Null means absent, never unchanged. Comment edits preserve type/ID; condition edits may too. Absent: type=null, parent=null, refs=[]. Use unique correct-side refs. Parent is a node ID; root parent=null. Each nonempty side is a single-root tree. IDs are stable internal node addresses paired with the role; the adapter decides whether to render #id in .hc. It renders selectors only when that side has an .hcs file AND that role repeats in the same projection. The adapter emits .hc, identity_map and claims."""
 
 _ISSUE_CODES = frozenset({
     "duplicate_refs", "absent_side", "unknown_wrongside_ref", "missing_refs",

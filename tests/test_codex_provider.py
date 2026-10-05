@@ -39,6 +39,7 @@ def make_request(*, paired=False):
         "authenticated_account": intake.AUTHOR, "base_repo": REPO, "head_repo": REPO,
         "state": "open", "draft": False, "base_sha": "c" * 40,
         "merge_base_sha": BASE, "head_sha": HEAD, "files": files,
+        "selector_context": {"before_hcs_present": False, "after_hcs_present": False},
     }
     evidence["evidence_digest"] = intake.digest(evidence)
     return model_contract.prepare_request(evidence)

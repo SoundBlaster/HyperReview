@@ -164,10 +164,13 @@ tools, remote fallback, or automatic model downloads. The invocation has bounded
 context, response bytes, and time; `--max-tokens` and `--timeout-seconds` are
 trusted operator limits. The configured context must not exceed the loaded one.
 
-Prompt `composition-v5` asks the provider for structured
-`hyperreview.composition-plan.v1` nodes. HyperReview validates the plan and
-deterministically converts it to the provider-neutral `hyperreview.result.v1`;
+Prompt `composition-v6` asks the provider for structured
+`hyperreview.composition-plan.v2` nodes. HyperReview validates the plan and
+deterministically converts it to the provider-neutral `hyperreview.result.v2`;
 the provider does not author `.hc` or identity-map strings directly.
+Node addresses pair a responsibility role with an internal ID; the adapter
+renders `.hc` selectors only when the pinned revision has `.hcs` and that role
+repeats in the projection.
 The prompt and schema guide domain responsibility names and explain what changed
 or remained in the selected code. Comment descriptions are kept separate from
 behavior evidence; these instructions are not a semantic correctness check. Private

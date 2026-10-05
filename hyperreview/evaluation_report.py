@@ -15,7 +15,7 @@ from .storage import StorageError, read_json, write_bundle
 
 INPUT_SCHEMA = "hyperreview.evaluation.v1"
 SUMMARY_SCHEMA = "hyperreview.evaluation-report.v1"
-METRIC_DEFINITION_VERSION = "boundary-v2"
+METRIC_DEFINITION_VERSION = "boundary-v3"
 ASSESSOR_TYPE = "deterministic"
 EVIDENTLY_VERSION = "0.7.23"
 MAX_INPUT_BYTES = 64 * 1024

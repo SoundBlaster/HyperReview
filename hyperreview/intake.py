@@ -23,8 +23,8 @@ MAX_FILES = 30
 MAX_BYTES = 262144
 DEADLINE_SECONDS = 300
 API_BYTES = 4 * 1024 * 1024
-SCHEMA = "hyperreview.evidence.v1"
-POLICY = "own-pr-intake.v1"
+SCHEMA = "hyperreview.evidence.v2"
+POLICY = "own-pr-intake.v2"
 EXTENSIONS = frozenset((".py", ".swift", ".rs", ".ts", ".tsx", ".js", ".jsx",
                         ".c", ".h", ".cpp", ".hpp", ".m", ".mm", ".md", ".hc"))
 OPERATOR_FILES = frozenset(("agents.md", "claude.md", "skill.md", "mcp.json"))
@@ -211,6 +211,10 @@ def collect(repo, number, api=None):
     files = compare["files"]
     before_tree = tree(api, repo, merge_base)
     after_tree = tree(api, repo, pr["head_sha"])
+    selector_context = {
+        "before_hcs_present": any(path.endswith(".hcs") for path in before_tree),
+        "after_hcs_present": any(path.endswith(".hcs") for path in after_tree),
+    }
     # Derive complete changed-path inventory from pinned trees, avoiding the
     # compare API's 300-file cap. Rename hints may be incomplete at that cap.
     hints = {f["filename"]: f for f in files}
@@ -243,6 +247,7 @@ def collect(repo, number, api=None):
         # Fixed-width placeholders are replaced without growing the JSON pack.
         "rechecked_at": utc_now(), "evidence_digest": "0" * 64,
         "tracking_status": "not_started", "files": inventory,
+        "selector_context": selector_context,
         "scope": {"inventory": "complete_pinned_tree_comparison",
                   "source": "whole_selected_changed_files_only",
                   "rename_hints": "possibly_incomplete" if len(files) >= 300 else "compare_api",
@@ -318,6 +323,9 @@ def preview(pack):
             f"PR: https://github.com/{pack['repository']}/pull/{pack['pr']}", "",
             f"Base: `{pack['base_sha']}`", f"Merge base: `{pack['merge_base_sha']}`",
             f"Head: `{pack['head_sha']}`", f"Evidence digest: `{pack['evidence_digest']}`", "",
+            "Selector context from complete pinned trees: "
+            f"before .hcs={pack['selector_context']['before_hcs_present']}, "
+            f"after .hcs={pack['selector_context']['after_hcs_present']}.", "",
             "Source scope: selected changed files only. No program was executed.",
             "Path filtering does not guarantee that source content contains no secrets.", "",
             "## Changed-file inventory", "", "```text"]

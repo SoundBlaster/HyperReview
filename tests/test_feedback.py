@@ -21,14 +21,15 @@ def make_bundle(path):
     ])
     request = prepare_request(evidence)
     result = valid_result(request)
-    result["before_hc"] = "Application#App\n"
-    result["after_hc"] = "Application#App\n  Assessment#Assessment\n"
+    result["before_hc"] = "Application\n"
+    result["after_hc"] = "Application\n  Assessment\n"
     result["identity_map"] = [
-        {"architecture_id": "#App",
+        {"architecture_id": "#App", "before_role": "Application", "after_role": "Application",
          "before_refs": [item["id"] for item in request["sources"] if item["side"] == "before"],
          "after_refs": [item["id"] for item in request["sources"] if item["side"] == "after"],
          "reason": "The application remains the root."},
-        {"architecture_id": "#Assessment", "before_refs": [],
+        {"architecture_id": "#Assessment", "before_role": None, "after_role": "Assessment",
+         "before_refs": [],
          "after_refs": [item["id"] for item in request["sources"] if item["side"] == "after"],
          "reason": "Assessment responsibility is added."},
     ]
@@ -43,7 +44,7 @@ def make_bundle(path):
         **bound, "stage": "projections_validated", "compiler_sha256": "a" * 64,
         "before_resolver": {"name": "hypercode-swift", "version": "0.6.0-dev"},
         "after_resolver": {"name": "hypercode-swift", "version": "0.6.0-dev"},
-        "before_ids": ["App"], "after_ids": ["App", "Assessment"],
+        "before_ids": [], "after_ids": [],
         "change_count": 0, "elapsed_ms": 2,
     }
     for filename, document in [*ir.items(), ("diff.json", diff)]:

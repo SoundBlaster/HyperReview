@@ -13,8 +13,7 @@ from hyperreview.storage import read_json
 
 
 EXPECTED_FAILURES = {
-    "case-003": "Hypercode IR IDs do not match the model identity map",
-    "case-004": "Before-side identity references do not match emitted IR",
+    "case-004": "Before IR roles do not match the identity map",
 }
 
 
@@ -52,10 +51,10 @@ class PilotTests(unittest.TestCase):
         self.assertEqual([row["projection_grammar_valid"] for row in records],
                          [case["grammar_valid"] for case in CASES])
         self.assertEqual([row["projection_reference_valid"] for row in records],
-                         [1, None, 0, 0, 1, 1])
+                         [1, None, 1, 0, 1, 1])
         self.assertEqual([row["structural_change_count"] for row in records],
-                         [1, None, None, None, 0, 0])
-        self.assertEqual(result["assessment"]["metric_definition_version"], "boundary-v2")
+                         [1, None, 0, None, 0, 0])
+        self.assertEqual(result["assessment"]["metric_definition_version"], "boundary-v3")
 
     def test_unrelated_compiler_failure_does_not_pass_rejection_case(self):
         def unrelated_failure(case_request, case_result, **kwargs):
@@ -163,7 +162,7 @@ class PilotTests(unittest.TestCase):
         second_digest = second["assessment"]["dataset_digest"]
         self.assertEqual(first_digest, second_digest)
         self.assertEqual(first_digest, intake.digest({
-            "version": "controlled-boundaries-v1", "cases": CASES,
+            "version": "controlled-boundaries-v2", "cases": CASES,
         }))
         first_dataset = read_json(first["destination"] / "dataset.json")
         second_dataset = read_json(second["destination"] / "dataset.json")

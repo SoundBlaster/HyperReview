@@ -24,12 +24,18 @@ composition text only. No model-provided `.hcs`, imports, command arguments,
 contexts, source checkouts, or executable code enter this invocation. Time and
 output bytes are bounded; diagnostics do not replay source or compiler output.
 
-Every node needs an explicit globally unique ID within each projection. The
-union of compiled IDs must match the identity map exactly. A node present on
-either side needs source references on that side; a reference cannot attach to
-a node absent on that side. For a genuinely added or removed responsibility,
-the opposite projection can be empty, expressed as a newline-only `.hc` file.
-This checks the existence and revision of provenance, not semantic entailment.
+Node addresses pair a role with a stable internal identity. The `.hc` selector
+is optional: it is rendered for a role only when that revision contains an
+`.hcs` file and that role occurs more than once in the same projection. Intake
+records `.hcs` presence from each complete pinned tree; the model cannot set it.
+The compiler boundary checks role multiplicities and, where selectors are
+required, checks their IDs against the identity map. Without a selector, the
+identity map still retains the role/ID address and source provenance. A node
+present on either side needs source references on that side; a reference cannot
+attach to a node absent on that side. For a genuinely added or removed
+responsibility, the opposite projection can be empty, expressed as a
+newline-only `.hc` file. This checks structural correspondence and provenance,
+not semantic entailment.
 
 ## Local artifacts and rendering
 

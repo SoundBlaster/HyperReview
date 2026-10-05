@@ -12,9 +12,9 @@ from . import intake
 
 
 MAX_BYTES = 262144
-REQUEST_SCHEMA = "hyperreview.request.v1"
-RESULT_SCHEMA = "hyperreview.result.v1"
-PROMPT_VERSION = "composition-v5"
+REQUEST_SCHEMA = "hyperreview.request.v2"
+RESULT_SCHEMA = "hyperreview.result.v2"
+PROMPT_VERSION = "composition-v6"
 ABSTRACTION_PROFILE = "composition-v1"
 REQUEST_SCOPE = (
     "Analyze only the supplied changed-file source records.",
@@ -31,6 +31,7 @@ REQUEST_LIMITATIONS = (
 _HEX_40 = re.compile(r"[0-9a-f]{40}\Z")
 _HEX_64 = re.compile(r"[0-9a-f]{64}\Z")
 _ARCHITECTURE_ID = re.compile(r"#[A-Za-z][A-Za-z0-9_.-]*\Z")
+_NODE_ROLE = re.compile(r"[A-Za-z][A-Za-z0-9_-]*\Z")
 _SOURCE_ID = re.compile(r"src_[0-9a-f]{64}\Z")
 _OMISSION_REASONS = frozenset({
     "invalid_path", "operator_file", "sensitive_path", "unsupported_format",
@@ -157,6 +158,10 @@ def _validate_pack(pack):
         _require(type(pack.get(field)) is str and _HEX_40.fullmatch(pack[field]) is not None,
                  f"{field} is not a valid pinned revision")
     _require(type(pack.get("files")) is list, "Evidence files must be a list")
+    _exact_dict(pack.get("selector_context"), ("before_hcs_present", "after_hcs_present"),
+                "Evidence selector context is invalid")
+    _require(all(type(value) is bool for value in pack["selector_context"].values()),
+             "Evidence selector context values must be booleans")
     return repository, pr
 
 
@@ -305,6 +310,7 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
         "merge_base_sha": merge_base,
         "head_sha": head,
         "evidence_digest": pack["evidence_digest"],
+        "selector_context": dict(pack["selector_context"]),
         "source_selection": {
             "mode": "operator_selected_paths" if selected_paths is not None else "all_eligible_sources",
             "include_paths": selected_paths,
@@ -346,6 +352,8 @@ def result_schema():
     limited_text = {"type": "string", "minLength": 1, "maxLength": 2000}
     source_ref = {"type": "string", "pattern": r"^src_[0-9a-f]{64}$", "maxLength": 68}
     architecture_id = {"type": "string", "pattern": r"^#[A-Za-z][A-Za-z0-9_.-]*$", "maxLength": 128}
+    node_role = {"anyOf": [{"type": "string", "pattern": r"^[A-Za-z][A-Za-z0-9_-]*$",
+                             "maxLength": 80}, {"type": "null"}]}
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": RESULT_SCHEMA,
@@ -362,9 +370,12 @@ def result_schema():
                 "type": "array", "maxItems": 100,
                 "items": {
                     "type": "object", "additionalProperties": False,
-                    "required": ["architecture_id", "before_refs", "after_refs", "reason"],
+                    "required": ["architecture_id", "before_role", "after_role",
+                                 "before_refs", "after_refs", "reason"],
                     "properties": {
                         "architecture_id": architecture_id,
+                        "before_role": node_role,
+                        "after_role": node_role,
                         "before_refs": {"type": "array", "maxItems": 100, "items": source_ref},
                         "after_refs": {"type": "array", "maxItems": 100, "items": source_ref},
                         "reason": limited_text,
@@ -420,7 +431,7 @@ def _request_sources(request):
         raise ContractError("Request is not canonical JSON data") from error
     _require(claimed == actual_digest, "Request digest mismatch")
     _exact_dict(request, ("schema", "prompt_version", "abstraction_profile", "repository", "pr",
-                         "merge_base_sha", "head_sha", "evidence_digest", "source_selection",
+                         "merge_base_sha", "head_sha", "evidence_digest", "selector_context", "source_selection",
                          "sources", "omissions", "scope", "limitations", "request_digest"),
                 "Request has missing or unknown fields")
     _require(type(request["repository"]) is str and request["repository"] in intake.ALLOWLIST,
@@ -435,6 +446,10 @@ def _request_sources(request):
     _require(type(request["evidence_digest"]) is str
              and _HEX_64.fullmatch(request["evidence_digest"]) is not None,
              "Request evidence_digest is invalid")
+    _exact_dict(request["selector_context"], ("before_hcs_present", "after_hcs_present"),
+                "Request selector context is invalid")
+    _require(all(type(value) is bool for value in request["selector_context"].values()),
+             "Request selector context values must be booleans")
     _exact_dict(request["source_selection"], ("mode", "include_paths", "max_source_bytes", "included_source_bytes"),
                 "Request source selection is invalid")
     _require(type(request["source_selection"]["max_source_bytes"]) is int
@@ -511,13 +526,19 @@ def _validate_result(result, request):
              "identity_map must be a list of at most 100 entries")
     architecture_ids = set()
     for index, entry in enumerate(identity_map):
-        _exact_dict(entry, ("architecture_id", "before_refs", "after_refs", "reason"),
-                    f"identity_map[{index}] has missing or unknown fields")
+        address_fields = {"architecture_id", "before_role", "after_role",
+                          "before_refs", "after_refs", "reason"}
+        _require(type(entry) is dict and set(entry) == address_fields,
+                 f"identity_map[{index}] has missing or unknown fields")
         architecture_id = entry["architecture_id"]
         _check_string(architecture_id, name=f"identity_map[{index}].architecture_id",
                       maximum=128, pattern=_ARCHITECTURE_ID)
         _require(architecture_id not in architecture_ids, "Duplicate architecture identity")
         architecture_ids.add(architecture_id)
+        for side in ("before", "after"):
+            role = entry[f"{side}_role"]
+            _require(role is None or (type(role) is str and _NODE_ROLE.fullmatch(role) is not None),
+                     f"identity_map[{index}].{side}_role is invalid")
         _check_string(entry["reason"], name=f"identity_map[{index}].reason", maximum=2000)
         _require(bool(entry["before_refs"] or entry["after_refs"]),
                  f"identity_map[{index}] must reference at least one source")
@@ -525,6 +546,9 @@ def _validate_result(result, request):
             refs = entry[field]
             _require(type(refs) is list and len(refs) <= 100,
                      f"identity_map[{index}].{field} must be a bounded list")
+            role = entry[f"{expected_side}_role"]
+            _require((role is not None) == bool(refs),
+                     f"identity_map[{index}].{expected_side}_role must match its source references")
             for ref in refs:
                 _check_string(ref, name=f"identity_map[{index}].{field} reference",
                               maximum=68, pattern=_SOURCE_ID)

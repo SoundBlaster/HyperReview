@@ -102,6 +102,24 @@ def _read_artifact(bundle, name, limit=MAX_EVENT_BYTES):
         raise TrackingError("Preview artifact cannot be read") from error
 
 
+def _ir_node_count(raw):
+    try:
+        document = json.loads(raw)
+    except (ValueError, UnicodeError) as error:
+        raise TrackingError("Compiled IR cannot be read") from error
+    _require(type(document) is dict and type(document.get("nodes")) is list,
+             "Compiled IR nodes are invalid")
+    stack = list(document["nodes"])
+    count = 0
+    while stack:
+        node = stack.pop()
+        count += 1
+        _require(count <= 10000 and type(node) is dict and type(node.get("children")) is list,
+                 "Compiled IR node count is invalid")
+        stack.extend(node["children"])
+    return count
+
+
 def _safe_directory(path, *, create=False):
     path = Path(path)
     _require(path.is_absolute(), "Tracking directory must be absolute")
@@ -149,6 +167,7 @@ def build_event(bundle):
              and generation.get("stage") == "model_generated"
              and metadata.get("delivery_mode") == "preview" and metadata.get("attempt") == 1,
              "Tracking requires a compiled preview bundle")
+    ir_node_counts = {}
     for artifact, field in (("before.ir.json", "before_ir_sha256"),
                             ("after.ir.json", "after_ir_sha256"), ("diff.json", "diff_sha256")):
         path = bundle / artifact
@@ -158,6 +177,8 @@ def build_event(bundle):
         _require(len(raw) <= 1024 * 1024
                  and hashlib.sha256(raw).hexdigest() == compiler.get(field),
                  "Compiled artifact fingerprint mismatch")
+        if artifact.endswith(".ir.json"):
+            ir_node_counts[artifact.split(".", 1)[0]] = _ir_node_count(raw)
     resolver = compiler["after_resolver"]
     _require(compiler["before_resolver"] == resolver, "Compiler resolver identity changed between sides")
     model_identity = generation["model"].encode("utf-8")
@@ -181,8 +202,8 @@ def build_event(bundle):
         "included_source_records": len(request["sources"]), "omissions": len(request["omissions"]),
         "source_bytes": request["source_selection"]["included_source_bytes"],
         "request_bytes": len(intake.encoded(request)), "result_bytes": len(intake.encoded(result)),
-        "change_count": compiler["change_count"], "before_nodes": len(compiler["before_ids"]),
-        "after_nodes": len(compiler["after_ids"]),
+        "change_count": compiler["change_count"], "before_nodes": ir_node_counts["before"],
+        "after_nodes": ir_node_counts["after"],
     }
     for source, field, target in ((generation, "elapsed_ms", "inference_elapsed_ms"),
                                 (compiler, "elapsed_ms", "validation_elapsed_ms"),

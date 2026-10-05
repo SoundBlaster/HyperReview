@@ -211,9 +211,14 @@ def collect(repo, number, api=None):
     files = compare["files"]
     before_tree = tree(api, repo, merge_base)
     after_tree = tree(api, repo, pr["head_sha"])
+    def has_hcs_file(entries):
+        return any(path.endswith(".hcs") and entry.get("type") == "blob"
+                   and entry.get("mode") in ("100644", "100755")
+                   for path, entry in entries.items())
+
     selector_context = {
-        "before_hcs_present": any(path.endswith(".hcs") for path in before_tree),
-        "after_hcs_present": any(path.endswith(".hcs") for path in after_tree),
+        "before_hcs_present": has_hcs_file(before_tree),
+        "after_hcs_present": has_hcs_file(after_tree),
     }
     # Derive complete changed-path inventory from pinned trees, avoiding the
     # compare API's 300-file cap. Rename hints may be incomplete at that cap.

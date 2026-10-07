@@ -6,7 +6,9 @@ and compiled paired projections with local Markdown output and metadata-only
 MLflow delivery. Six controlled pilot cases and local Evidently reports are
 implemented, with explicit sanitized report export to local MLflow. Local feedback,
 read-only publication planning, and a one-shot publisher implementation are
-present; local verification, review and the explicitly authorized live pilot remain.
+present. The controlled one-shot publisher and recovery path are merged in PR
+#20; conditional Hypercode selectors are merged in PR #21. The explicitly
+authorized live publication pilot remains the P3 exit gate.
 
 | Phase | Work | Exit evidence |
 |---|---|---|
@@ -79,10 +81,13 @@ Executable presence alone does not choose a backend.
    after the write. If revisions moved, mark that same comment stale and record
    a refresh-needed receipt; never claim it is current. Confirm exact body/ID
    for create and update paths.
-4. **P3.4 — Authorized pilot.** Only after P3.1–P3.3 and CI pass, the operator
-   reviews the exact compact preview and authorizes one designated SpecGraph
-   test PR. Verify one comment, safe update/retry, stale revision, tracking
-   gate, and zero unintended GitHub writes.
+4. **P3.4 — Authorized pilot.** After P3.1–P3.3 and CI pass, select an open,
+   non-draft, allowlisted SpecGraph PR by the configured author. Review its
+   exact compact preview and saved publication plan, then obtain explicit
+   authorization bound to that plan's digests before the one-shot write. Verify
+   one comment, safe update/retry, stale revision, tracking gate, and zero
+   unintended GitHub writes. A historical or closed PR is suitable for preview
+   exploration but cannot satisfy the live-publication exit evidence.
 
 ## P4 — Local worker stages
 
@@ -95,10 +100,15 @@ Executable presence alone does not choose a backend.
    configuration and the P3 pilot evidence. Scheduler execution cannot grant
    publication authorization by itself.
 
-**Current step:** P3.1–P3.3 are implemented on the current feature branch; the
-full local suite passes. CI and review are next. P3.4 must wait for a separate
-explicit approval of one concrete SpecGraph plan; no live GitHub write was used
-for development verification.
+**Current step:** P3.1–P3.3 are complete and merged in PR #20; its CI passed.
+PR #21 subsequently added conditional selectors and passed its Hypercode and
+intake checks. P3.4 is the next milestone. As of 2026-10-07 there is no open
+SpecGraph PR that meets the intake allowlist, author, and open/non-draft rules,
+so there is no eligible target for the live pilot. Do not create a dummy PR or
+publish to a closed historical PR to bypass this gate. When an eligible PR is
+available, collect a fresh preview, compile and track it, prepare the read-only
+publication plan, and show its exact comment and digests for a separate
+per-plan authorization. P4 remains gated on successful P3.4 evidence.
 
 A later optional phase may compare explicit SpecGraph architectural intent
 against source-derived evidence. It must preserve accepted intent and inferred
@@ -124,7 +134,9 @@ the same PR #769 source pair, correctly distinguishing a comment change from
 unchanged comparison code and marking external catalog behavior unavailable.
 The paired Hypercode projections passed the real compiler and metadata-only
 MLflow delivery was confirmed. This is one observed slice, not a general model
-quality claim. Next: exercise the publication dry-run using this compiled bundle.
+quality claim. PR #769 is now closed, so its historical bundle cannot be used
+for live publication. Reuse it only for offline review or diagnostics; the P3.4
+pilot requires fresh evidence from an eligible open PR.
 
 Project quality integration: one behavior-preserving PR metadata eligibility
 Specification backed by SpycificationCore; pinned SpecificationMetrics collection

@@ -102,7 +102,8 @@ def metadata(api, repo, number):
     return api.get(
         f"repos/{repo}/pulls/{number}",
         "{number,state,draft,author:.user.login,base_repo:.base.repo.full_name,"
-        "head_repo:.head.repo.full_name,base_sha:.base.sha,head_sha:.head.sha}",
+        "head_repo:.head.repo.full_name,base_sha:.base.sha,head_sha:.head.sha,"
+        "merged_at,merge_commit_sha}",
     )
 
 
@@ -129,6 +130,34 @@ def eligible(repo, number, pr, account):
     if not PullRequestMetadataEligibility().is_satisfied_by(context):
         raise IntakeError("PR is ineligible: require configured author, same repository, open and non-draft")
     for name in ("base_sha", "head_sha"):
+        if not re.fullmatch(r"[0-9a-f]{40}", pr.get(name, "")):
+            raise IntakeError("PR has an invalid revision identity")
+
+
+def historical_eligible(repo, number, pr, account):
+    if repo not in ALLOWLIST or number <= 0:
+        raise IntakeError("Repository or PR is outside the initial operator policy")
+    if account != AUTHOR:
+        raise IntakeError("Authenticated GitHub account differs from the configured author")
+    from .pr_eligibility import (HistoricalPullRequestEligibility,
+                                 HistoricalPullRequestEligibilityContext)
+
+    context = HistoricalPullRequestEligibilityContext(
+        requested_number=number,
+        requested_repository=repo,
+        configured_author=AUTHOR,
+        number=pr.get("number"),
+        author=pr.get("author"),
+        state=pr.get("state"),
+        draft=pr.get("draft"),
+        base_repository=pr.get("base_repo"),
+        head_repository=pr.get("head_repo"),
+        merged_at=pr.get("merged_at"),
+        merge_commit_sha=pr.get("merge_commit_sha"),
+    )
+    if not HistoricalPullRequestEligibility().is_satisfied_by(context):
+        raise IntakeError("Historical PR is ineligible: require a merged, non-draft same-repository PR")
+    for name in ("base_sha", "head_sha", "merge_commit_sha"):
         if not re.fullmatch(r"[0-9a-f]{40}", pr.get(name, "")):
             raise IntakeError("PR has an invalid revision identity")
 
@@ -194,13 +223,14 @@ def source(api, repo, revision, path, entries, budget):
     }, None
 
 
-def collect(repo, number, api=None):
+def _collect(repo, number, api=None, *, historical=False):
     if repo not in ALLOWLIST or number <= 0:
         raise IntakeError("Repository or PR is outside the initial operator policy")
     api = api or GitHub()
     account = api.get("user", "{login}")["login"]
     pr = metadata(api, repo, number)
-    eligible(repo, number, pr, account)
+    check_eligibility = historical_eligible if historical else eligible
+    check_eligibility(repo, number, pr, account)
     compare = api.get(
         f"repos/{repo}/compare/{pr['base_sha']}...{pr['head_sha']}",
         "{merge_base_sha:.merge_base_commit.sha,files:[.files[]|{filename,previous_filename,status}]}",
@@ -245,6 +275,8 @@ def collect(repo, number, api=None):
     pack = {
         "schema": SCHEMA, "policy": POLICY, "collector_version": __version__,
         "stage": "evidence_collected",
+        "intake_mode": "historical_read_only" if historical else "live",
+        "publication_allowed": not historical,
         "delivery_mode": "preview", "repository": repo, "pr": number,
         "authenticated_account": account, **pr, "merge_base_sha": merge_base,
         "collected_at": utc_now(), "correlation_id": str(uuid4()),
@@ -311,8 +343,10 @@ def collect(repo, number, api=None):
     except IntakeError:
         pack["check_omissions"].append("check_read_failure")
     current = metadata(api, repo, number)
-    eligible(repo, number, current, account)
-    if any(current[field] != pr[field] for field in ("base_sha", "head_sha")):
+    check_eligibility(repo, number, current, account)
+    stable_fields = ("base_sha", "head_sha", "merged_at", "merge_commit_sha") if historical else (
+        "base_sha", "head_sha", "state", "draft")
+    if any(current.get(field) != pr.get(field) for field in stable_fields):
         raise IntakeError("PR revisions changed during collection; rerun intake")
     pack["rechecked_at"] = utc_now()
     pack["evidence_digest"] = digest({key: value for key, value in pack.items()
@@ -322,8 +356,22 @@ def collect(repo, number, api=None):
     return pack
 
 
+def collect(repo, number, api=None):
+    """Collect a preview for a currently open eligible PR."""
+    return _collect(repo, number, api, historical=False)
+
+
+def collect_historical(repo, number, api=None):
+    """Collect a merged PR as a historical read-only sample."""
+    return _collect(repo, number, api, historical=True)
+
+
 def preview(pack):
+    mode = pack.get("intake_mode", "live")
+    historical = mode == "historical_read_only"
     rows = ["# HyperReview evidence preview", "", "Stage: **evidence_collected**.", "",
+            *( ["Mode: **historical read-only**. Publication is disabled for this evidence.", ""]
+               if historical else [] ),
             "Architecture inference, Hypercode projections, and MLflow tracking have not started.", "",
             f"PR: https://github.com/{pack['repository']}/pull/{pack['pr']}", "",
             f"Base: `{pack['base_sha']}`", f"Merge base: `{pack['merge_base_sha']}`",

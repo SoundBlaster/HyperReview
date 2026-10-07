@@ -12,9 +12,9 @@ from . import intake
 
 
 MAX_BYTES = 262144
-REQUEST_SCHEMA = "hyperreview.request.v2"
+REQUEST_SCHEMA = "hyperreview.request.v3"
 RESULT_SCHEMA = "hyperreview.result.v2"
-PROMPT_VERSION = "composition-v6"
+PROMPT_VERSION = "composition-v7"
 ABSTRACTION_PROFILE = "composition-v1"
 REQUEST_SCOPE = (
     "Analyze only the supplied changed-file source records.",
@@ -152,8 +152,19 @@ def _validate_pack(pack):
              "PR author or authenticated account differs from the configured author")
     _require(pack.get("base_repo") == repository and pack.get("head_repo") == repository,
              "PR base and head must belong to the same allowlisted repository")
-    _require(pack.get("state") == "open" and pack.get("draft") is False,
-             "PR must be open and non-draft")
+    intake_mode = pack.get("intake_mode", "live")
+    if intake_mode == "historical_read_only":
+        _require(pack.get("state") == "closed" and pack.get("draft") is False
+                 and pack.get("publication_allowed") is False
+                 and type(pack.get("merged_at")) is str and bool(pack["merged_at"])
+                 and type(pack.get("merge_commit_sha")) is str
+                 and _HEX_40.fullmatch(pack["merge_commit_sha"]) is not None,
+                 "Historical evidence must be merged, pinned, and publication-disabled")
+    else:
+        _require(intake_mode == "live" and pack.get("state") == "open"
+                 and pack.get("draft") is False
+                 and pack.get("publication_allowed", True) is True,
+                 "PR must be open and non-draft")
     for field in ("base_sha", "merge_base_sha", "head_sha"):
         _require(type(pack.get(field)) is str and _HEX_40.fullmatch(pack[field]) is not None,
                  f"{field} is not a valid pinned revision")
@@ -305,6 +316,8 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
         "schema": REQUEST_SCHEMA,
         "prompt_version": PROMPT_VERSION,
         "abstraction_profile": ABSTRACTION_PROFILE,
+        "intake_mode": pack.get("intake_mode", "live"),
+        "publication_allowed": pack.get("publication_allowed", True),
         "repository": repository,
         "pr": pr,
         "merge_base_sha": merge_base,
@@ -430,12 +443,17 @@ def _request_sources(request):
     except (TypeError, ValueError, OverflowError, RecursionError) as error:
         raise ContractError("Request is not canonical JSON data") from error
     _require(claimed == actual_digest, "Request digest mismatch")
-    _exact_dict(request, ("schema", "prompt_version", "abstraction_profile", "repository", "pr",
+    _exact_dict(request, ("schema", "prompt_version", "abstraction_profile", "intake_mode",
+                         "publication_allowed", "repository", "pr",
                          "merge_base_sha", "head_sha", "evidence_digest", "selector_context", "source_selection",
                          "sources", "omissions", "scope", "limitations", "request_digest"),
                 "Request has missing or unknown fields")
     _require(type(request["repository"]) is str and request["repository"] in intake.ALLOWLIST,
              "Request repository is invalid")
+    _require((request["intake_mode"] == "historical_read_only"
+              and request["publication_allowed"] is False)
+             or (request["intake_mode"] == "live" and request["publication_allowed"] is True),
+             "Request intake mode or publication boundary is invalid")
     _require(request["prompt_version"] == PROMPT_VERSION
              and request["abstraction_profile"] == ABSTRACTION_PROFILE,
              "Request prompt or abstraction profile is unsupported")

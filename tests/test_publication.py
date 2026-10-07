@@ -111,6 +111,24 @@ class PublicationTests(unittest.TestCase):
             self.bundle, expected_preview_sha256=self.expected_hash,
             output_root=self.output_root, api=api or FakeGitHub(), **kwargs)
 
+    def test_historical_evidence_is_rejected_before_github_reads(self):
+        from test_model_contract import pack, source
+
+        historical_evidence = pack([
+            source("before", "old source\n", "src/before.py"),
+            source("after", "new source\n", "src/after.py"),
+        ], state="closed", intake_mode="historical_read_only", publication_allowed=False,
+            merged_at="2026-10-01T12:00:00Z", merge_commit_sha="d" * 40)
+        bundle = self.root / "historical-preview"
+        _request, _result, _compiler, _diff, preview = make_bundle(bundle, historical_evidence)
+        (bundle / "tracking-receipt.json").write_bytes(
+            intake.encoded(confirmed_receipt(bundle)))
+        api = FakeGitHub()
+        with self.assertRaisesRegex(PublicationError, "Historical read-only"):
+            plan_publication(bundle, expected_preview_sha256=hashlib.sha256(preview).hexdigest(),
+                             output_root=self.output_root, api=api)
+        self.assertEqual(api.calls, [])
+
     def publish(self, directory, api, writer, **kwargs):
         raw_plan = (directory / "plan.json").read_bytes()
         body = (directory / "comment.md").read_bytes()

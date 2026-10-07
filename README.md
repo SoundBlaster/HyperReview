@@ -93,6 +93,19 @@ Source is read as blobs without checkout or executing repository code. Revisions
 are rechecked before saving; a change aborts intake. The preview is pinned to
 the collected revisions and can become stale after the final check.
 
+For an already merged PR, use the separate historical-only intake:
+
+```sh
+python3 -m hyperreview review-historical --repo 0al-spec/SpecGraph --pr 764 --preview
+```
+
+This accepts only merged, non-draft, same-repository PRs by the configured
+author. It records the merge identity and marks the evidence and every prepared
+request `historical_read_only`; publication is disabled and `publish-plan`
+rejects the evidence before making GitHub API calls. The command performs GitHub
+reads and private local writes only. It is for exploratory analysis, not the
+P3.4 live publication pilot.
+
 The pack is bounded to 262144 encoded JSON bytes and 30 logical changed files
 (up to two revisions per file). It records exclusions, read failures, and check
 coverage. Source-path filtering is a conservative heuristic, not a guarantee
@@ -164,7 +177,7 @@ tools, remote fallback, or automatic model downloads. The invocation has bounded
 context, response bytes, and time; `--max-tokens` and `--timeout-seconds` are
 trusted operator limits. The configured context must not exceed the loaded one.
 
-Prompt `composition-v6` asks the provider for structured
+Prompt `composition-v7` asks the provider for structured
 `hyperreview.composition-plan.v2` nodes. HyperReview validates the plan and
 deterministically converts it to the provider-neutral `hyperreview.result.v2`;
 the provider does not author `.hc` or identity-map strings directly.

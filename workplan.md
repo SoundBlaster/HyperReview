@@ -82,7 +82,8 @@ Executable presence alone does not choose a backend.
 4. **P3.4 — Authorized pilot.** Only after P3.1–P3.3 and CI pass, the operator
    reviews the exact compact preview and authorizes one designated SpecGraph
    test PR. Verify one comment, safe update/retry, stale revision, tracking
-   gate, and zero unintended GitHub writes.
+   gate, and zero unintended GitHub writes. A merged historical PR may be used
+   for a local-only exploratory preview, but it is ineligible for P3.4.
 
 ## P4 — Local worker stages
 

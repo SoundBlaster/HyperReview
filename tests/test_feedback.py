@@ -13,9 +13,9 @@ from hyperreview.storage import read_json
 from test_model_contract import pack, source, valid_result
 
 
-def make_bundle(path):
+def make_bundle(path, evidence=None):
     path.mkdir(parents=True)
-    evidence = pack([
+    evidence = evidence or pack([
         source("before", "old source\n", "src/before.py"),
         source("after", "new source\n", "src/after.py"),
     ])

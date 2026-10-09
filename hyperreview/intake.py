@@ -231,8 +231,18 @@ def _collect(repo, number, api=None, *, historical=False):
     pr = metadata(api, repo, number)
     check_eligibility = historical_eligible if historical else eligible
     check_eligibility(repo, number, pr, account)
+    compare_base = pr["base_sha"]
+    if historical:
+        merged_commit = api.get(
+            f"repos/{repo}/commits/{pr['merge_commit_sha']}",
+            "{parents:[.parents[].sha]}",
+        )
+        parents = merged_commit.get("parents") if type(merged_commit) is dict else None
+        compare_base = parents[0] if type(parents) is list and parents else None
+        if type(compare_base) is not str or not re.fullmatch(r"[0-9a-f]{40}", compare_base):
+            raise IntakeError("Merged PR has no valid first-parent baseline")
     compare = api.get(
-        f"repos/{repo}/compare/{pr['base_sha']}...{pr['head_sha']}",
+        f"repos/{repo}/compare/{compare_base}...{pr['head_sha']}",
         "{merge_base_sha:.merge_base_commit.sha,files:[.files[]|{filename,previous_filename,status}]}",
     )
     merge_base = compare["merge_base_sha"]

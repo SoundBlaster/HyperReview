@@ -27,6 +27,7 @@ METADATA = {"repository", "pr", "merge_base_sha", "head_sha", "evidence_digest",
             "request_digest", "result_digest", "abstraction_profile", "prompt_version",
             "provider", "model_identity_sha256", "compiler_sha256", "compiler_resolver_name",
             "compiler_resolver_version", "delivery_mode"}
+_LEGACY_PROMPT_VERSIONS = frozenset(("composition-v7",))
 _UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\Z")
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _HEX40 = re.compile(r"[0-9a-f]{40}\Z")
@@ -66,7 +67,7 @@ def validate_event(event):
              and re.fullmatch(r"[1-9][0-9]{0,9}", metadata["pr"]) is not None,
              "Tracking repository or PR is invalid")
     _require(metadata["abstraction_profile"] == model_contract.ABSTRACTION_PROFILE
-             and metadata["prompt_version"] == model_contract.PROMPT_VERSION
+             and metadata["prompt_version"] in (_LEGACY_PROMPT_VERSIONS | {model_contract.PROMPT_VERSION})
              and metadata["provider"] in ("codex", "lmstudio", "ollama")
              and metadata["delivery_mode"] == "preview"
              and metadata["compiler_resolver_name"] == "hypercode-swift"
@@ -161,6 +162,9 @@ def build_event(bundle):
         _require(receipt.get("request_digest") == request["request_digest"]
                  and receipt.get("result_digest") == result_digest,
                  "Tracking bundle receipts do not bind the analysis")
+    _require(generation.get("reviewer_profile_version") == request["reviewer_profile"]["version"]
+             and generation.get("reviewer_profile_sha256") == request["reviewer_profile"]["sha256"],
+             "Generation receipt reviewer profile does not match the request")
     _require(metadata.get("schema") == "hyperreview.preview.v1"
              and metadata.get("stage") in ("projections_validated", "ready")
              and compiler.get("stage") == "projections_validated"
@@ -192,7 +196,8 @@ def build_event(bundle):
         "merge_base_sha": request["merge_base_sha"], "head_sha": request["head_sha"],
         "evidence_digest": request["evidence_digest"], "request_digest": request["request_digest"],
         "result_digest": result_digest, "abstraction_profile": request["abstraction_profile"],
-        "prompt_version": request["prompt_version"], "provider": generation["provider"],
+        "prompt_version": request["prompt_version"],
+        "provider": generation["provider"],
         "model_identity_sha256": hashlib.sha256(model_identity).hexdigest(),
         "compiler_sha256": compiler["compiler_sha256"],
         "compiler_resolver_name": resolver["name"], "compiler_resolver_version": resolver["version"],

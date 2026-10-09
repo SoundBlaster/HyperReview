@@ -10,6 +10,7 @@ import unittest
 from hyperreview import intake, model_contract
 from hyperreview.codex_provider import CodexConfig, CodexError, generate, _decode_events
 from hyperreview.composition_plan import PLAN_SCHEMA
+from hyperreview.reviewer_profile import content as reviewer_profile_content
 
 
 REPO = "0al-spec/SpecGraph"
@@ -235,6 +236,10 @@ class CodexProviderTests(unittest.TestCase):
         self.assertEqual(generated["receipt"]["input_tokens"], 23)
         self.assertEqual(generated["receipt"]["output_tokens"], 11)
         self.assertEqual(generated["receipt"]["attempt_count"], 1)
+        self.assertEqual(generated["receipt"]["reviewer_profile_version"],
+                         self.request["reviewer_profile"]["version"])
+        self.assertEqual(generated["receipt"]["reviewer_profile_sha256"],
+                         self.request["reviewer_profile"]["sha256"])
         args = json.loads((self.root / "capture" / "args-1.json").read_text())
         for expected in ("--ignore-user-config", "--ephemeral", "--skip-git-repo-check",
                          "--sandbox", "read-only", "--model", "gpt-6-luna", "--json"):
@@ -248,6 +253,7 @@ class CodexProviderTests(unittest.TestCase):
         self.assertTrue({"code_mode", "code_mode_only", "code_mode_host"}.issubset(disabled))
         self.assertIn("--output-schema", args)
         prompt = (self.root / "capture" / "prompt-1.txt").read_text()
+        self.assertIn(reviewer_profile_content(), prompt)
         self.assertIn(intake.encoded(self.request).decode(), prompt)
         cwd = (self.root / "capture" / "cwd-1.txt").read_text()
         self.assertNotEqual(cwd, str(self.root))

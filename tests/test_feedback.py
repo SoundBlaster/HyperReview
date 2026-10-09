@@ -60,6 +60,8 @@ def make_bundle(path, evidence=None):
         "compiler-receipt.json": compiler,
         "generation-receipt.json": {**bound, "stage": "model_generated", "provider": "lmstudio",
                                     "model": "fixture-model", "elapsed_ms": 1,
+                                    "reviewer_profile_version": request["reviewer_profile"]["version"],
+                                    "reviewer_profile_sha256": request["reviewer_profile"]["sha256"],
                                     "input_tokens": None, "output_tokens": None},
         "metadata.json": {**bound, "schema": "hyperreview.preview.v1",
                           "stage": "projections_validated", "tracking_correlation_id": str(uuid4()),

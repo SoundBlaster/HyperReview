@@ -13,7 +13,6 @@ from hyperreview import intake
 from hyperreview.model_contract import ABSTRACTION_PROFILE, PROMPT_VERSION
 from hyperreview.tracking import (TrackingError, _run_delivery, build_event, pending_events, reconcile, validate_event)
 from hyperreview.model_contract import prepare_request
-from hyperreview.reviewer_profile import identity as reviewer_profile_identity
 from test_model_contract import pack, source, valid_result
 
 
@@ -25,9 +24,7 @@ def event():
             "repository": "0al-spec/SpecGraph", "pr": "761", "merge_base_sha": "a" * 40,
             "head_sha": "b" * 40, "evidence_digest": "c" * 64, "request_digest": "d" * 64,
             "result_digest": "e" * 64, "abstraction_profile": ABSTRACTION_PROFILE,
-            "prompt_version": PROMPT_VERSION, "reviewer_profile_version": "hyperreview-review-profile.v1",
-            "reviewer_profile_sha256": reviewer_profile_identity()["sha256"],
-            "provider": "lmstudio",
+            "prompt_version": PROMPT_VERSION, "provider": "lmstudio",
             "model_identity_sha256": "f" * 64, "compiler_sha256": "a" * 64,
             "compiler_resolver_name": "hypercode-swift", "compiler_resolver_version": "0.6.0-dev",
             "delivery_mode": "preview",
@@ -62,6 +59,15 @@ class TrackingTests(unittest.TestCase):
             candidate[area][name] = value
             with self.subTest(area=area, name=name), self.assertRaises(TrackingError):
                 validate_event(candidate)
+
+    def test_pending_legacy_prompt_event_remains_replayable(self):
+        legacy = event()
+        legacy["metadata"]["prompt_version"] = "composition-v7"
+        self.assertEqual(validate_event(legacy), legacy)
+        spool = self.arguments["spool_root"]
+        spool.mkdir()
+        (spool / (legacy["correlation_id"] + ".json")).write_bytes(intake.encoded(legacy))
+        self.assertEqual(list(pending_events(spool)), [legacy])
 
     def test_tracking_import_does_not_require_specification_core(self):
         script = """
@@ -208,6 +214,8 @@ import hyperreview.tracking
                               "tracking_correlation_id": str(uuid4()), "delivery_mode": "preview", "attempt": 1},
             "generation-receipt.json": {**bound, "stage": "model_generated", "provider": "lmstudio",
                                         "model": "private_model_name_sentinel", "elapsed_ms": 1,
+                                        "reviewer_profile_version": request["reviewer_profile"]["version"],
+                                        "reviewer_profile_sha256": request["reviewer_profile"]["sha256"],
                                         "input_tokens": None, "output_tokens": None},
         }
         for name, field in (("before.ir.json", "before_ir_sha256"),
@@ -229,6 +237,12 @@ import hyperreview.tracking
         (self.root / "before.hc").write_text(result["before_hc"])
         (self.root / "after.hc").write_text(result["after_hc"])
         (self.root / "preview.md").write_text("private_preview_sentinel")
+        generation_path = self.root / "generation-receipt.json"
+        generation_path.write_bytes(intake.encoded(dict(
+            values["generation-receipt.json"], reviewer_profile_sha256="0" * 64)))
+        with self.assertRaisesRegex(TrackingError, "reviewer profile"):
+            build_event(self.root)
+        generation_path.write_bytes(intake.encoded(values["generation-receipt.json"]))
         exported = build_event(self.root)
         serialized = intake.encoded(exported).decode()
         for sentinel in ("private_source_sentinel", "private_model_summary_sentinel",

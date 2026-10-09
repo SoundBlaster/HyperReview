@@ -32,8 +32,6 @@ _METADATA_FIELDS = frozenset(
         "result_digest",
         "abstraction_profile",
         "prompt_version",
-        "reviewer_profile_version",
-        "reviewer_profile_sha256",
         "provider",
         "model_identity_sha256",
         "compiler_sha256",

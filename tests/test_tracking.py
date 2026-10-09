@@ -13,6 +13,7 @@ from hyperreview import intake
 from hyperreview.model_contract import ABSTRACTION_PROFILE, PROMPT_VERSION
 from hyperreview.tracking import (TrackingError, _run_delivery, build_event, pending_events, reconcile, validate_event)
 from hyperreview.model_contract import prepare_request
+from hyperreview.reviewer_profile import identity as reviewer_profile_identity
 from test_model_contract import pack, source, valid_result
 
 
@@ -24,7 +25,9 @@ def event():
             "repository": "0al-spec/SpecGraph", "pr": "761", "merge_base_sha": "a" * 40,
             "head_sha": "b" * 40, "evidence_digest": "c" * 64, "request_digest": "d" * 64,
             "result_digest": "e" * 64, "abstraction_profile": ABSTRACTION_PROFILE,
-            "prompt_version": PROMPT_VERSION, "provider": "lmstudio",
+            "prompt_version": PROMPT_VERSION, "reviewer_profile_version": "hyperreview-review-profile.v1",
+            "reviewer_profile_sha256": reviewer_profile_identity()["sha256"],
+            "provider": "lmstudio",
             "model_identity_sha256": "f" * 64, "compiler_sha256": "a" * 64,
             "compiler_resolver_name": "hypercode-swift", "compiler_resolver_version": "0.6.0-dev",
             "delivery_mode": "preview",

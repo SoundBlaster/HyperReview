@@ -13,11 +13,13 @@ fresh GitHub authorization. Intake metadata must still be rechecked by a future
 publisher.
 
 Only explicitly selected metadata and source fields enter
-`hyperreview.request.v2`. Extra pack properties, CI logs, PR descriptions,
+`hyperreview.request.v4`. Extra pack properties, CI logs, PR descriptions,
 credentials, endpoint settings, and delivery controls do not enter the request.
 Reference IDs identify source records by revision, path, and content digest.
 Requests carry an origin evidence digest, prompt/profile versions, omissions,
 coverage limits, and a request digest binding subsequent output to those inputs.
+The reviewer profile version and SHA-256 are checked against the installed
+trusted profile and included in generation and tracking receipts.
 They also carry per-revision `.hcs` presence derived from each complete pinned
 tree. The model never supplies or infers this selector-policy input.
 

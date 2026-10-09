@@ -177,7 +177,7 @@ tools, remote fallback, or automatic model downloads. The invocation has bounded
 context, response bytes, and time; `--max-tokens` and `--timeout-seconds` are
 trusted operator limits. The configured context must not exceed the loaded one.
 
-Prompt `composition-v7` asks the provider for structured
+Prompt `composition-v8` combines the shared trusted reviewer profile with provider instructions and asks the provider for structured
 `hyperreview.composition-plan.v2` nodes. HyperReview validates the plan and
 deterministically converts it to the provider-neutral `hyperreview.result.v2`;
 the provider does not author `.hc` or identity-map strings directly.
@@ -192,6 +192,9 @@ as `composition-plan.json`, the canonical result as `result.json`, the request,
 and a sanitized `receipt.json`. The stage is `model_generated`, not a completed
 review: the derived `.hc` still requires compiler validation and the
 interpretation still requires review. No MLflow or GitHub publication occurs.
+The packaged `hyperreview/reviewer_profile.md` is shared by Codex, LM Studio,
+and Ollama. Its version and SHA-256 are pinned in each prepared request and
+generation receipt so previews can be traced to the exact guidance used.
 For gpt-oss on LM Studio, use `--instruction-role developer` explicitly; the
 role is retained in the receipt. A locally invalid composition plan gets one
 bounded regeneration with a fixed error code; transport and envelope failures

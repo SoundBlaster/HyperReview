@@ -8,13 +8,13 @@ import hashlib
 import math
 import re
 
-from . import intake
+from . import intake, reviewer_profile
 
 
 MAX_BYTES = 262144
-REQUEST_SCHEMA = "hyperreview.request.v3"
+REQUEST_SCHEMA = "hyperreview.request.v4"
 RESULT_SCHEMA = "hyperreview.result.v2"
-PROMPT_VERSION = "composition-v7"
+PROMPT_VERSION = "composition-v8"
 ABSTRACTION_PROFILE = "composition-v1"
 REQUEST_SCOPE = (
     "Analyze only the supplied changed-file source records.",
@@ -316,6 +316,7 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
         "schema": REQUEST_SCHEMA,
         "prompt_version": PROMPT_VERSION,
         "abstraction_profile": ABSTRACTION_PROFILE,
+        "reviewer_profile": reviewer_profile.identity(),
         "intake_mode": pack.get("intake_mode", "live"),
         "publication_allowed": pack.get("publication_allowed", True),
         "repository": repository,
@@ -443,7 +444,7 @@ def _request_sources(request):
     except (TypeError, ValueError, OverflowError, RecursionError) as error:
         raise ContractError("Request is not canonical JSON data") from error
     _require(claimed == actual_digest, "Request digest mismatch")
-    _exact_dict(request, ("schema", "prompt_version", "abstraction_profile", "intake_mode",
+    _exact_dict(request, ("schema", "prompt_version", "abstraction_profile", "reviewer_profile", "intake_mode",
                          "publication_allowed", "repository", "pr",
                          "merge_base_sha", "head_sha", "evidence_digest", "selector_context", "source_selection",
                          "sources", "omissions", "scope", "limitations", "request_digest"),
@@ -457,6 +458,10 @@ def _request_sources(request):
     _require(request["prompt_version"] == PROMPT_VERSION
              and request["abstraction_profile"] == ABSTRACTION_PROFILE,
              "Request prompt or abstraction profile is unsupported")
+    _exact_dict(request["reviewer_profile"], ("version", "sha256"),
+                "Request reviewer profile identity is invalid")
+    _require(request["reviewer_profile"] == reviewer_profile.identity(),
+             "Request reviewer profile version or digest is unsupported")
     _require(type(request["pr"]) is int and request["pr"] > 0, "Request PR is invalid")
     for field in ("merge_base_sha", "head_sha"):
         _require(type(request[field]) is str and _HEX_40.fullmatch(request[field]) is not None,

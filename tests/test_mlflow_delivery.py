@@ -23,6 +23,8 @@ def fixture_event():
         "result_digest": "e" * 64,
         "abstraction_profile": "hyperreview.safe-diff.v1",
         "prompt_version": "hyperreview.prompt.v1",
+        "reviewer_profile_version": "hyperreview-review-profile.v1",
+        "reviewer_profile_sha256": "a" * 64,
         "provider": "ollama",
         "model_identity_sha256": "f" * 64,
         "compiler_sha256": "1" * 64,

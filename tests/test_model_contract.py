@@ -112,6 +112,17 @@ class ModelContractTests(unittest.TestCase):
         self.assertEqual(request["sources"][0]["trust"], "untrusted_source_data")
         self.assertEqual(validate_result(valid_result(request), request)["schema"], RESULT_SCHEMA)
 
+    def test_request_pins_versioned_review_profile(self):
+        request = prepare_request(pack())
+        self.assertEqual(request["reviewer_profile"]["version"],
+                         "hyperreview-review-profile.v1")
+        self.assertRegex(request["reviewer_profile"]["sha256"], r"^[0-9a-f]{64}$")
+        changed = dict(request)
+        changed["reviewer_profile"] = dict(request["reviewer_profile"], sha256="0" * 64)
+        redigest_request(changed)
+        with self.assertRaisesRegex(ContractError, "reviewer profile"):
+            validate_result(valid_result(changed), changed)
+
     def test_historical_request_preserves_read_only_publication_boundary(self):
         evidence = pack(
             state="closed", intake_mode="historical_read_only", publication_allowed=False,

@@ -1,10 +1,18 @@
 # Structured composition generation
 
-Prompt `composition-v7` asks a local model for
+Prompt `composition-v8` combines the shared trusted reviewer profile with
+provider instructions and asks a model for
 `hyperreview.composition-plan.v2`, not raw `.hc` and a separately authored
 identity map. It converts the result to `hyperreview.result.v2`.
 Prepare a new request; earlier prompt versions are rejected rather than silently
 reinterpreted.
+
+The packaged `hyperreview/reviewer_profile.md` defines the model's bounded
+review method: responsibility-level projection, source-only evidence limits,
+the structural-only meaning of nesting, and the selector policy. Both local
+providers and Codex consume this same file. Requests pin its version and SHA-256;
+generation and tracking receipts preserve that identity. The profile is trusted
+guidance, not proof that a model followed it or that an interpretation is correct.
 
 ## One declaration per identity
 

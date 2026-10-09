@@ -1,6 +1,6 @@
 # Structured composition generation
 
-Prompt `composition-v6` asks a local model for
+Prompt `composition-v7` asks a local model for
 `hyperreview.composition-plan.v2`, not raw `.hc` and a separately authored
 identity map. It converts the result to `hyperreview.result.v2`.
 Prepare a new request; earlier prompt versions are rejected rather than silently

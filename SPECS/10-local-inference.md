@@ -34,7 +34,7 @@ Ambiguous same-side paths are skipped. Diff computation only accepts pairs up to
 in the complete request. The shared inference deadline starts before comparison
 preparation, and the next transport checks its remaining budget.
 
-The current `composition-v6` prompt requests
+The current `composition-v7` prompt requests
 `hyperreview.composition-plan.v2` structured nodes. HyperReview validates this
 plan and deterministically converts it to canonical `hyperreview.result.v2`
 with paired `.hc` projections and an identity map. The generated bundle keeps

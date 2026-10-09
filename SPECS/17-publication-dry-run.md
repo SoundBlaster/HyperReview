@@ -50,5 +50,8 @@ HR-SEC-005. None of those write behaviors are claimed by this milestone.
 Offline fixtures cover create/update/unchanged, eligibility, stale base/head and
 merge-base, a change during planning, tracking and compact-preview binding,
 foreign/duplicate markers, bounded pagination, private output and nonmutation.
-A real dry-run against a historical closed PR should save a blocked plan and
-perform no GitHub writes; it is not evidence of successful live publication.
+A historical-only evidence pack is rejected before publication planning makes
+any GitHub API calls. The historical intake path is a separate exploratory
+workflow: it records the merged revision, carries `historical_read_only` through
+the evidence digest and prepared request, and sets `publication_allowed` to
+false. It cannot satisfy P3.4 live publication evidence.

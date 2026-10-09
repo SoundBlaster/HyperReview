@@ -112,6 +112,23 @@ class ModelContractTests(unittest.TestCase):
         self.assertEqual(request["sources"][0]["trust"], "untrusted_source_data")
         self.assertEqual(validate_result(valid_result(request), request)["schema"], RESULT_SCHEMA)
 
+    def test_historical_request_preserves_read_only_publication_boundary(self):
+        evidence = pack(
+            state="closed", intake_mode="historical_read_only", publication_allowed=False,
+            merged_at="2026-10-01T12:00:00Z", merge_commit_sha="d" * 40,
+        )
+        request = prepare_request(evidence)
+        self.assertEqual(request["intake_mode"], "historical_read_only")
+        self.assertIs(request["publication_allowed"], False)
+        self.assertEqual(request["evidence_digest"], evidence["evidence_digest"])
+
+        invalid = dict(evidence, publication_allowed=True)
+        invalid["evidence_digest"] = intake.digest(
+            {key: value for key, value in invalid.items() if key != "evidence_digest"}
+        )
+        with self.assertRaisesRegex(ContractError, "Historical evidence"):
+            prepare_request(invalid)
+
     def test_rejects_wrong_pack_digest_and_source_digest(self):
         evidence = pack()
         evidence["files"][0]["sources"][0]["content"] = "tampered"

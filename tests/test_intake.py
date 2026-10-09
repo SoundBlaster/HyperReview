@@ -6,7 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from hyperreview.intake import (AUTHOR, MAX_BYTES, IntakeError, collect, digest,
-                               eligible, encoded, exclusion, save, source)
+                               collect_historical, eligible, encoded, exclusion,
+                               historical_eligible, preview, save, source)
 
 
 REPO = "0al-spec/SpecGraph"
@@ -22,12 +23,15 @@ def blob(raw):
 
 
 class FakeGitHub:
-    def __init__(self, stale=False, raw=b"print('hello')\n", mode="100644"):
+    def __init__(self, stale=False, raw=b"print('hello')\n", mode="100644", historical=False,
+                 historical_base_contains_head=False):
         self.calls = []
         self.reads = 0
         self.stale = stale
         self.raw = raw
         self.mode = mode
+        self.historical = historical
+        self.historical_base_contains_head = historical_base_contains_head
         self.sha, self.blob = blob(raw)
 
     def get(self, endpoint, query="."):
@@ -36,9 +40,16 @@ class FakeGitHub:
             return {"login": AUTHOR}
         if endpoint.endswith("/pulls/761"):
             self.reads += 1
-            return {**PR, "head_sha": "c" * 40 if self.stale and self.reads > 1 else HEAD}
+            return {**PR, "state": "closed" if self.historical else "open",
+                    "merged_at": "2026-01-02T03:04:05Z" if self.historical else None,
+                    "merge_commit_sha": "d" * 40 if self.historical else None,
+                    "base_sha": HEAD if self.historical_base_contains_head else BASE,
+                    "head_sha": "c" * 40 if self.stale and self.reads > 1 else HEAD}
+        if endpoint.endswith("/commits/" + "d" * 40):
+            return {"parents": ["e" * 40]}
         if "/compare/" in endpoint:
-            return {"merge_base_sha": BASE, "files": [{"filename": "app.py", "status": "added"}]}
+            merge_base = HEAD if self.historical_base_contains_head and "e" * 40 not in endpoint else BASE
+            return {"merge_base_sha": merge_base, "files": [{"filename": "app.py", "status": "added"}]}
         if "/git/trees/" in endpoint:
             return {"truncated": False, "tree": [] if BASE in endpoint else [
                 {"path": "app.py", "mode": self.mode, "type": "blob",
@@ -86,6 +97,31 @@ class IntakeTests(unittest.TestCase):
         self.assertIn("revision_mismatch", pack["check_omissions"])
         claimed = pack.pop("evidence_digest")
         self.assertEqual(claimed, digest(pack))
+
+    def test_historical_pack_is_pinned_and_publication_disabled(self):
+        pack = collect_historical(REPO, 761, FakeGitHub(historical=True))
+        self.assertEqual(pack["intake_mode"], "historical_read_only")
+        self.assertIs(pack["publication_allowed"], False)
+        self.assertEqual(pack["merge_commit_sha"], "d" * 40)
+        self.assertIn("historical read-only", preview(pack))
+
+    def test_historical_intake_uses_merge_time_parent_when_current_base_contains_head(self):
+        api = FakeGitHub(historical=True, historical_base_contains_head=True)
+        pack = collect_historical(REPO, 761, api)
+        self.assertEqual(pack["merge_base_sha"], BASE)
+        self.assertEqual(pack["files"][0]["sources"][0]["side"], "after")
+        self.assertIn("/commits/" + "d" * 40, api.calls[2])
+        self.assertIn("/compare/" + "e" * 40 + "..." + HEAD, api.calls[3])
+
+    def test_historical_intake_rejects_unmerged_or_forked_pr(self):
+        with self.assertRaises(IntakeError):
+            historical_eligible(REPO, 761, {**PR, "state": "closed",
+                              "merged_at": None, "merge_commit_sha": "d" * 40}, AUTHOR)
+        with self.assertRaises(IntakeError):
+            historical_eligible(REPO, 761, {**PR, "state": "closed",
+                              "head_repo": "contributor/fork",
+                              "merged_at": "2026-01-02T03:04:05Z",
+                              "merge_commit_sha": "d" * 40}, AUTHOR)
 
     def test_symlink_and_oversized_file_never_fetched(self):
         for api, reason in ((FakeGitHub(mode="120000"), "symlink_or_nonregular"),

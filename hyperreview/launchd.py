@@ -82,7 +82,7 @@ def write_launchd_plan(*, config_path: Path, python: Path, output_root: Path) ->
 
     # Keep this import lazy: worker intake remains independently usable without
     # loading a configuration until the operator asks for a launchd plan.
-    from .worker import WorkerError, load_config
+    from .worker import WorkerError, _prepare_logs, load_config
 
     try:
         loaded = load_config(config)
@@ -95,6 +95,10 @@ def write_launchd_plan(*, config_path: Path, python: Path, output_root: Path) ->
     if type(interval) is not int or interval < 300:
         raise LaunchdError("Worker interval must be an integer of at least 300 seconds")
     _private_directory(state_root, "State root")
+    try:
+        _prepare_logs(state_root)
+    except (WorkerError, OSError, ValueError) as error:
+        raise LaunchdError("Worker log targets must be owner-private") from error
     log_root = state_root / "logs"
     _private_directory(log_root, "State logs")
 

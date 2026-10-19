@@ -23,6 +23,7 @@ MAX_PENDING = 32
 MAX_RECEIPTS = 2048
 RETENTION_SECONDS = 7 * 86400
 _ARTIFACT_FILES = frozenset(("evidence.json", "request.json", "metadata.json"))
+_LOG_FILES = ("worker.stdout.log", "worker.stderr.log")
 _STATES = frozenset(("queued", "collecting", "request_prepared", "failed", "stale"))
 
 
@@ -63,6 +64,22 @@ def _private_file(path):
     return path
 
 
+def _prepare_logs(root):
+    """Create private files before launchd opens its stdout/stderr targets."""
+    log_root = _private_directory(Path(root) / "logs", create=True)
+    for name in _LOG_FILES:
+        path = _path(log_root / name)
+        if not path.exists():
+            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                                 | getattr(os, "O_NOFOLLOW", 0), 0o600)
+            os.close(descriptor)
+        _private_file(path)
+        # Owner-private can still be 0400/000; creation is also affected by the
+        # caller's umask. launchd needs writable targets, not just private ones.
+        os.chmod(path, 0o600, follow_symlinks=False)
+    return log_root
+
+
 def load_config(path):
     path = _private_file(path)
     _private_directory(path.parent)
@@ -90,7 +107,7 @@ def create_config(*, repositories, state_root, output_root, interval_seconds=300
     _require(len(config["repositories"]) == len(set(config["repositories"])))
     _require(type(interval_seconds) is int and 300 <= interval_seconds <= 86400)
     _private_directory(state_root, create=True)
-    _private_directory(Path(state_root) / "logs", create=True)
+    _prepare_logs(state_root)
     _private_directory(output_root, create=True)
     destination = write_bundle({"config.json": intake.encoded(config)}, output_root)
     load_config(destination / "config.json")
@@ -296,8 +313,8 @@ def _expire_artifacts(db, root, now):
 
 
 def _rotate_logs(root):
-    log_root = _private_directory(root / "logs", create=True)
-    for name in ("worker.stdout.log", "worker.stderr.log"):
+    log_root = _prepare_logs(root)
+    for name in _LOG_FILES:
         path = _path(log_root / name)
         if not path.exists():
             continue
@@ -309,6 +326,9 @@ def _rotate_logs(root):
             _private_file(previous)
             previous.unlink()
         os.replace(path, previous)
+        # launchd opens log targets before applying the child's Umask. Leave a
+        # private current target for the next launch instead of a missing path.
+        _prepare_logs(root)
 
 
 def tick(config_path, *, api=None):

@@ -56,6 +56,62 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(self.tick(10300)["status"], "idle")
         self.assertEqual(len(worker.status(self.config)["handoffs"]), 1)
 
+    def repositories(self, values):
+        config = json.loads(self.config.read_text())
+        self.config.write_text(json.dumps({**config, "repositories": values}))
+
+    def test_reenabled_repository_restores_retained_handoff_without_collection(self):
+        first = self.tick()
+        self.repositories(["SoundBlaster/SessionMonitor"])
+        self.tick(10300)
+        self.assertEqual(worker.status(self.config)["handoffs"], [])
+        self.repositories([REPO])
+        with patch("hyperreview.worker.intake.collect") as collect:
+            self.tick(10600)
+            collect.assert_not_called()
+        restored = worker.status(self.config)["handoffs"]
+        self.assertEqual(restored[0]["bundle"], first["bundle"])
+        with worker._state(self.state) as db:
+            self.assertEqual(db.execute("SELECT attempts FROM tasks").fetchone()[0], 1)
+
+    def test_pipeline_rollback_restores_original_candidate(self):
+        with patch("hyperreview.worker._pipeline", return_value="a" * 64):
+            first = self.tick()
+        with patch("hyperreview.worker._pipeline", return_value="b" * 64):
+            self.tick(10300)
+        with patch("hyperreview.worker._pipeline", return_value="a" * 64), \
+                patch("hyperreview.worker.intake.collect") as collect:
+            self.tick(10600)
+            collect.assert_not_called()
+        self.assertEqual(worker.status(self.config)["handoffs"][0]["bundle"], first["bundle"])
+
+    def test_reenabled_candidate_without_artifacts_retries_with_remaining_budget(self):
+        self.tick()
+        self.repositories(["SoundBlaster/SessionMonitor"])
+        self.tick(10300)
+        with worker._state(self.state) as db:
+            db.execute("UPDATE tasks SET artifact=NULL")
+            db.commit()
+        self.repositories([REPO])
+        self.assertEqual(self.tick(10600)["status"], "request_prepared")
+        with worker._state(self.state) as db:
+            self.assertEqual(db.execute("SELECT attempts FROM tasks").fetchone()[0], 2)
+
+    def test_reenabling_does_not_reset_exhausted_attempt_budget(self):
+        self.tick()
+        self.repositories(["SoundBlaster/SessionMonitor"])
+        self.tick(10300)
+        with worker._state(self.state) as db:
+            db.execute("UPDATE tasks SET artifact=NULL,attempts=2")
+            db.commit()
+        self.repositories([REPO])
+        with patch("hyperreview.worker.intake.collect") as collect:
+            self.assertEqual(self.tick(10600)["status"], "idle")
+            collect.assert_not_called()
+        with worker._state(self.state) as db:
+            self.assertEqual(tuple(db.execute("SELECT state,attempts,failure_code FROM tasks").fetchone()),
+                             ("failed", 2, "attempts_exhausted"))
+
     def test_interval_and_live_process_lock_prevent_duplicate_work(self):
         self.tick()
         api = WorkerGitHub()

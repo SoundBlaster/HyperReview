@@ -175,6 +175,35 @@ def _set_meta(db, key, value):
         db.execute("INSERT OR REPLACE INTO metadata VALUES (?,?)", (key, value))
 
 
+def _retained_handoff(root, task):
+    artifact = task["artifact"]
+    if artifact is None:
+        return False
+    _require(str(UUID(artifact)) == artifact)
+    directory = _path(root / "artifacts" / artifact)
+    if not directory.exists():
+        return False
+    _private_directory(directory)
+    for name in _ARTIFACT_FILES:
+        _private_file(directory / name)
+    evidence = read_json(directory / "evidence.json")
+    request = read_json(directory / "request.json")
+    handoff = read_json(directory / "metadata.json", max_bytes=16384)
+    _require(model_contract.prepare_request(evidence) == request
+             and intake.digest(handoff) == task["handoff_digest"]
+             and request["request_digest"] == task["request_digest"]
+             and evidence["evidence_digest"] == task["evidence_digest"]
+             and handoff["candidate"] == task["candidate"])
+    return True
+
+
+def _supersede(db, repo, number, candidate, now):
+    for previous in db.execute("SELECT candidate FROM tasks WHERE repository=? AND pr=?"
+                               " AND candidate!=? AND state!='stale'",
+                               (repo, number, candidate)).fetchall():
+        _transition(db, previous[0], "stale", now, "superseded")
+
+
 def _discover(db, config, api, pipeline, now):
     account = api.get("user", "{login}")["login"]
     _require(account == intake.AUTHOR, "Worker GitHub account differs from configured author")
@@ -198,23 +227,33 @@ def _discover(db, config, api, pipeline, now):
             except intake.IntakeError:
                 continue
             candidate = intake.digest([repo, number, pr["base_sha"], pr["head_sha"], pipeline])
-            if db.execute("SELECT 1 FROM tasks WHERE candidate=?", (candidate,)).fetchone():
+            existing = db.execute("SELECT * FROM tasks WHERE candidate=?", (candidate,)).fetchone()
+            if existing is not None and existing["state"] != "stale":
+                continue
+            if existing is not None and _retained_handoff(Path(config["state_root"]), existing):
+                _supersede(db, repo, number, candidate, now)
+                _transition(db, candidate, "request_prepared", now)
+                discovered += 1
+                continue
+            if existing is not None and existing["attempts"] >= 2:
+                _transition(db, candidate, "failed", now, "attempts_exhausted")
                 continue
             pending = db.execute("SELECT count(*) FROM tasks WHERE state IN ('queued','collecting')"
                                  " OR (state='failed' AND attempts<2)").fetchone()[0]
             total = db.execute("SELECT count(*) FROM tasks").fetchone()[0]
-            if pending >= MAX_PENDING or total >= MAX_RECEIPTS:
+            if pending >= MAX_PENDING or (existing is None and total >= MAX_RECEIPTS):
                 queue_full = True
                 break
-            # New revisions make unfinished or prepared older tasks stale.
-            for previous in db.execute("SELECT candidate FROM tasks WHERE repository=? AND pr=?"
-                                       " AND state!='stale'", (repo, number)).fetchall():
-                _transition(db, previous[0], "stale", now, "superseded")
+            _supersede(db, repo, number, candidate, now)
             with db:
-                db.execute("INSERT INTO tasks (candidate,repository,pr,base_sha,head_sha,pipeline,"
-                           "state,updated_at) VALUES (?,?,?,?,?,?,?,?)",
-                           (candidate, repo, number, pr["base_sha"], pr["head_sha"],
-                            pipeline, "queued", now))
+                if existing is None:
+                    db.execute("INSERT INTO tasks (candidate,repository,pr,base_sha,head_sha,pipeline,"
+                               "state,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                               (candidate, repo, number, pr["base_sha"], pr["head_sha"],
+                                pipeline, "queued", now))
+                else:
+                    db.execute("UPDATE tasks SET retry_after=0,artifact=NULL WHERE candidate=?",
+                               (candidate,))
                 _transition(db, candidate, "queued", now)
             discovered += 1
         if queue_full:

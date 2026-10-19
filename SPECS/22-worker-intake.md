@@ -48,7 +48,11 @@ it. It is not an atomic inventory or immediate notification mechanism.
 A provisional candidate key includes repository/PR/base/head and the intake
 pipeline fingerprint. That fingerprint binds intake/worker/policy code, request
 schema, prompt, reviewer profile and abstraction profile. Completed intake for
-the same candidate is not repeated. A newly observed revision or changed pipeline
+the same active candidate is not repeated. If an exact stale candidate becomes
+eligible again after re-enabling a repository, reverting revisions or rolling
+back a pipeline, its retained handoff is revalidated and restored. If the bundle
+has expired, collection is queued only within the original two-attempt budget;
+re-enabling never resets that budget. A newly observed revision or changed pipeline
 makes older tasks stale. Before collection the ordinary collector freshly checks
 eligibility and pins merge base; base/head must still match the candidate.
 The final handoff also binds merge base, evidence digest and request digest.

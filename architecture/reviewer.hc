@@ -27,6 +27,7 @@ HyperReview#hyperreview
     LocalPreview#preview
   Delivery#delivery
     PublicationGate#publication-gate
+    ReviewThreadGate#review-gate
     GitHubPublisher#publisher
   Observability#observability
     ExperimentTracking#tracking

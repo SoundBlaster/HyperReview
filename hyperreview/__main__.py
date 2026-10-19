@@ -83,8 +83,28 @@ def main():
     publication = commands.add_parser("publish-plan", help="Check live PR state and prepare a local comment dry-run")
     publication.add_argument("--bundle", required=True, type=Path)
     publication.add_argument("--expected-preview-sha256", required=True)
+    publication.add_argument("--review-gate-url",
+                             help="Link to an already-created HyperReview review-gate thread")
     publication.add_argument("--output-root", type=Path,
                              default=Path.home() / ".local/share/hyperreview/publication-plans")
+    gate_plan = commands.add_parser("review-gate-plan",
+                                    help="Prepare a local plan for a changed-line review gate")
+    gate_plan.add_argument("--repo", required=True)
+    gate_plan.add_argument("--pr", required=True, type=int)
+    gate_plan.add_argument("--path", required=True)
+    gate_plan.add_argument("--line", required=True, type=int)
+    gate_plan.add_argument("--expected-completion", required=True,
+                           help="ISO 8601 UTC timestamp, for example 2026-10-19T12:00Z")
+    gate_plan.add_argument("--output-root", type=Path,
+                           default=Path.home() / ".local/share/hyperreview/review-gate-plans")
+    gate = commands.add_parser("review-gate",
+                               help="Create one explicitly authorized inline review-gate thread")
+    gate.add_argument("--plan-dir", required=True, type=Path)
+    gate.add_argument("--expected-plan-sha256", required=True)
+    gate.add_argument("--expected-comment-sha256", required=True)
+    gate.add_argument("--authorize-repository", required=True)
+    gate.add_argument("--state-root", type=Path,
+                      default=Path.home() / ".local/share/hyperreview/publication-state")
     publish = commands.add_parser("publish", help="Publish one explicitly authorized reviewed comment")
     publish.add_argument("--plan-dir", required=True, type=Path)
     publish.add_argument("--expected-plan-sha256", required=True)
@@ -105,7 +125,7 @@ def main():
             try:
                 destination, plan = plan_publication(
                     args.bundle, expected_preview_sha256=args.expected_preview_sha256,
-                    output_root=args.output_root)
+                    output_root=args.output_root, review_gate_url=args.review_gate_url)
             except (PublicationError, IntakeError, StorageError, ContractError,
                     OSError, ValueError, KeyError, TypeError) as error:
                 print(f"HyperReview: {type(error).__name__}; publication plan was not saved", file=sys.stderr)
@@ -118,6 +138,39 @@ def main():
             if plan["blockers"]:
                 print("Blocked: " + ", ".join(plan["blockers"]))
             return 0 if plan["status"] == "ready" else 2
+        if args.command == "review-gate-plan":
+            from .review_gate import plan_review_gate
+            from .publication import PublicationError
+            try:
+                destination, plan = plan_review_gate(
+                    repository=args.repo, pr_number=args.pr, path=args.path, line=args.line,
+                    expected_completion=args.expected_completion, output_root=args.output_root)
+            except (PublicationError, IntakeError, StorageError, OSError,
+                    ValueError, KeyError, TypeError) as error:
+                print(f"HyperReview: {type(error).__name__}; review-gate plan was not saved",
+                      file=sys.stderr)
+                return 1
+            print(f"Review-gate plan: {destination / 'plan.json'}")
+            print(f"Comment draft: {destination / 'comment.md'}")
+            print("Plan SHA256: " + hashlib.sha256((destination / "plan.json").read_bytes()).hexdigest())
+            print("Comment SHA256: " + hashlib.sha256((destination / "comment.md").read_bytes()).hexdigest())
+            print("Status: ready; GitHub writes: 0")
+            return 0
+        if args.command == "review-gate":
+            from .review_gate import publish_review_gate
+            from .publication import PublicationError
+            try:
+                receipt = publish_review_gate(
+                    args.plan_dir, expected_plan_sha256=args.expected_plan_sha256,
+                    expected_comment_sha256=args.expected_comment_sha256,
+                    authorized_repository=args.authorize_repository, state_root=args.state_root)
+            except (PublicationError, IntakeError, StorageError, OSError,
+                    ValueError, KeyError, TypeError) as error:
+                print(f"HyperReview: {type(error).__name__}; review gate was not confirmed",
+                      file=sys.stderr)
+                return 1
+            print(f"Review gate: {receipt['status']}; {receipt['html_url']}")
+            return 0
         if args.command == "publish":
             from .publication import PublicationError, publish_comment
             try:

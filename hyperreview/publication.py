@@ -263,7 +263,31 @@ def _api_get(api, endpoint, query):
         raise intake.IntakeError("GitHub read failed") from None
 
 
-def plan_publication(bundle, *, expected_preview_sha256, output_root, api=None):
+def _review_gate_reference(api, repo, number, account, url):
+    from urllib.parse import urlparse
+    parsed = urlparse(url if type(url) is str else "")
+    match = re.fullmatch(rf"/{re.escape(repo)}/pull/{number}", parsed.path)
+    fragment = re.fullmatch(r"discussion_r(\d+)", parsed.fragment)
+    _require(parsed.scheme == "https" and parsed.netloc == "github.com" and match is not None
+             and fragment is not None and not parsed.query)
+    comment_id = int(fragment.group(1))
+    comment = _api_get(api, f"repos/{repo}/pulls/comments/{comment_id}",
+                       "{id,html_url,pull_request_url,user:.user.login,body,path,line,commit_id}")
+    _require(type(comment) is dict and comment.get("id") == comment_id
+             and comment.get("html_url") == url
+             and comment.get("pull_request_url")
+                 == f"https://api.github.com/repos/{repo}/pulls/{number}"
+             and comment.get("user") == account
+             and type(comment.get("body")) is str
+             and "<!-- hyperreview:review-gate:v1:" in comment["body"]
+             and type(comment.get("path")) is str and type(comment.get("line")) is int
+             and _revision(comment.get("commit_id")))
+    return {"id": comment_id, "url": url, "path": comment["path"],
+            "line": comment["line"], "commit_id": comment["commit_id"]}
+
+
+def plan_publication(bundle, *, expected_preview_sha256, output_root,
+                     review_gate_url=None, api=None):
     """Persist a private dry-run plan; this function never writes to GitHub."""
     try:
         bundle = _safe_bundle(bundle)
@@ -302,6 +326,7 @@ def plan_publication(bundle, *, expected_preview_sha256, output_root, api=None):
     initial = None
     current = {"base_sha": None, "head_sha": None, "merge_base_sha": None}
     comments = []
+    review_gate = None
     try:
         account = _api_get(api, "user", "{login}")["login"]
         initial = intake.metadata(api, repo, number)
@@ -320,6 +345,14 @@ def plan_publication(bundle, *, expected_preview_sha256, output_root, api=None):
             comments = _comments(api, repo, number, account)
         except _CommentInventoryError:
             blockers.append("comment_inventory_incomplete")
+        if review_gate_url is not None:
+            try:
+                review_gate = _review_gate_reference(api, repo, number, account,
+                                                     review_gate_url)
+                if review_gate["commit_id"] != current["head_sha"]:
+                    blockers.append("review_gate_revision_changed")
+            except (PublicationError, intake.IntakeError, KeyError, TypeError, AttributeError):
+                blockers.append("review_gate_invalid")
     except (intake.IntakeError, KeyError, TypeError, AttributeError):
         blockers.append("github_read_failed")
 
@@ -332,7 +365,9 @@ def plan_publication(bundle, *, expected_preview_sha256, output_root, api=None):
     if tracking_status != "confirmed":
         blockers.append("tracking_unconfirmed")
 
-    body = (COMMENT_MARKER + "\n\n" + preview.decode("utf-8", errors="strict"))
+    gate_link = (f"\n\nReview gate: [review thread]({review_gate['url']})."
+                 if review_gate else "")
+    body = (COMMENT_MARKER + "\n\n" + preview.decode("utf-8", errors="strict") + gate_link)
     if len(body.encode("utf-8")) > MAX_COMMENT_BYTES:
         raise PublicationError("Publication comment exceeds the GitHub body limit")
     action, comment_id, comment_blocker = _comment_action(comments, account, body)
@@ -392,6 +427,7 @@ def plan_publication(bundle, *, expected_preview_sha256, output_root, api=None):
         "tracking_experiment_id": tracking_receipt["experiment_id"] if tracking_receipt else None,
         "tracking_run_id": tracking_receipt["run_id"] if tracking_receipt else None,
         "tracking_trace_id": tracking_receipt["trace_id"] if tracking_receipt else None,
+        "review_gate": review_gate,
         "checked_at": checked_at,
         "authorization_required": True,
         "writes_performed": False,
@@ -492,8 +528,15 @@ def publish_comment(plan_dir, *, expected_plan_sha256, expected_comment_sha256,
              and authorized_repository in intake.ALLOWLIST
              and type(plan.get("pr")) is int and plan["pr"] > 0
              and body.startswith(COMMENT_MARKER + "\n\n")
-             and hashlib.sha256(body.split("\n\n", 1)[1].encode()).hexdigest()
-                 == plan.get("preview_sha256"))
+             and (plan.get("review_gate") is None
+                  or (type(plan.get("review_gate")) is dict
+                      and type(plan["review_gate"].get("url")) is str)))
+    preview_body = body.split("\n\n", 1)[1]
+    if plan.get("review_gate") is not None:
+        gate_suffix = f"\n\nReview gate: [review thread]({plan['review_gate']['url']})."
+        _require(preview_body.endswith(gate_suffix))
+        preview_body = preview_body[:-len(gate_suffix)]
+    _require(hashlib.sha256(preview_body.encode()).hexdigest() == plan.get("preview_sha256"))
     action, planned_id = plan.get("action"), plan.get("comment_id")
     _require(action in ("create", "update", "unchanged")
              and ((action == "create" and planned_id is None)
@@ -558,6 +601,11 @@ def publish_comment(plan_dir, *, expected_plan_sha256, expected_comment_sha256,
         try:
             account, revisions = _live_publication_state(api, repo, number, plan)
             comments = _comments(api, repo, number, account)
+            if plan.get("review_gate") is not None:
+                gate = _review_gate_reference(api, repo, number, account,
+                                              plan["review_gate"]["url"])
+                _require(gate == plan["review_gate"]
+                         and gate["commit_id"] == revisions["head_sha"])
         except (_CommentInventoryError, intake.IntakeError, KeyError, TypeError, AttributeError):
             raise PublicationError("Fresh publication checks failed") from None
         fresh_action, fresh_id, comment_blocker = _comment_action(comments, account, body)

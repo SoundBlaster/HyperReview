@@ -289,10 +289,43 @@ MLflow/Evidently. See [local feedback](SPECS/16-preview-feedback.md).
 
 ## Plan publication without GitHub writes
 
+To make an in-progress HyperReview review visible to branch protection that
+requires resolved conversations, first prepare and explicitly create a
+diff-anchored review-gate comment. Choose an added line in a supported changed
+file and provide an expected UTC completion time:
+
+```sh
+python3 -m hyperreview review-gate-plan \
+  --repo 0al-spec/SpecGraph --pr PR_NUMBER \
+  --path path/to/changed-file.py --line 42 \
+  --expected-completion 2026-10-19T12:00Z
+```
+
+The command only reads GitHub and saves a private plan. Review its exact body
+and printed SHA256 values, then explicitly authorize creation of the inline
+review thread:
+
+```sh
+python3 -m hyperreview review-gate \
+  --plan-dir /absolute/path/to/review-gate-plan \
+  --expected-plan-sha256 REVIEWED_PLAN_SHA256 \
+  --expected-comment-sha256 REVIEWED_COMMENT_SHA256 \
+  --authorize-repository 0al-spec/SpecGraph
+```
+
+This creates one review comment anchored to the selected changed line. GitHub
+returns its permalink. When preparing the completed review preview, pass that
+URL to `publish-plan` with `--review-gate-url`; the resulting ordinary summary
+comment links back to the review thread. HyperReview never resolves the thread.
+The repository's “require conversation resolution” rule supplies the merge
+gate; a timeline comment alone does not block merging. The expected completion
+time is an operator estimate, not an enforced deadline.
+
 ```sh
 python3 -m hyperreview publish-plan \
   --bundle /absolute/path/compiled-preview-bundle \
-  --expected-preview-sha256 SHA256_OF_SHOWN_COMPACT_PREVIEW
+  --expected-preview-sha256 SHA256_OF_SHOWN_COMPACT_PREVIEW \
+  --review-gate-url https://github.com/0al-spec/SpecGraph/pull/PR_NUMBER#discussion_rCOMMENT_ID
 ```
 
 The command validates the exact compact preview and confirmed MLflow receipt,
@@ -302,7 +335,9 @@ A private `plan.json` records `ready` or `blocked`; `comment.md` contains the
 marked comment draft. The command prints SHA256 digests for both files so they
 can be reviewed and bound into the later authorization invocation. Exit codes
 are 0 for ready, 2 for a blocked plan, and 1 for an invalid input or failed
-operation. It makes no GitHub writes.
+operation. It makes no GitHub writes. When supplied, `--review-gate-url` must
+identify the authenticated operator's HyperReview review comment on the same
+PR and pinned head; its permalink is included in the ordinary comment draft.
 
 Only the authenticated operator's comment bearing the fixed HyperReview marker
 is an update candidate. Duplicate owned markers or an incomplete comment

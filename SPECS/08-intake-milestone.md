@@ -8,8 +8,9 @@ The local correlation ID is available for future tracking reconciliation;
 
 ## Implemented scope
 
-- Trusted constants select `0al-spec/SpecGraph` and `0al-spec/Hypercode`, author
-  and authenticated account `SoundBlaster`, open/non-draft/same-repository PRs.
+- Trusted constants select `0al-spec/SpecGraph`, `0al-spec/Hypercode`, and
+  `SoundBlaster/SessionMonitor`, author and authenticated account `SoundBlaster`,
+  open/non-draft/same-repository PRs.
   Account mismatch fails visibly before source collection (HR-SEC-001).
 - Read pinned base/head metadata and compute merge base via GitHub's comparison
   API. Complete non-truncated git trees determine changed paths, avoiding the

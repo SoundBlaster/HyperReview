@@ -1,6 +1,7 @@
 """Bounded Codex CLI generation for HyperReview composition plans."""
 
 from copy import deepcopy
+from contextlib import nullcontext
 from dataclasses import dataclass
 import hashlib
 import json
@@ -16,6 +17,7 @@ import time
 from typing import Optional
 
 from . import intake, model_contract
+from .codex_isolation import IsolationError
 from .composition_plan import CompositionPlanError, plan_schema, to_result
 from .local_provider import (
     MAX_REQUEST_BYTES,
@@ -62,6 +64,8 @@ class CodexConfig:
     executable: Optional[str] = None
     timeout_seconds: int = 120
     allow_cloud_source: bool = False
+    isolate_process: bool = False
+    expected_executable_sha256: Optional[str] = None
 
 
 def _require(condition, message):
@@ -71,6 +75,11 @@ def _require(condition, message):
 
 def _validate_config(config):
     _require(type(config) is CodexConfig, "Codex config has an invalid type")
+    _require(type(config.isolate_process) is bool, "Codex isolation option must be boolean")
+    _require(config.expected_executable_sha256 is None or
+             (type(config.expected_executable_sha256) is str and
+              re.fullmatch(r"[0-9a-f]{64}", config.expected_executable_sha256) is not None),
+             "Codex executable fingerprint is invalid")
     _require(config.allow_cloud_source is True,
              "Codex requires explicit acknowledgement that filtered source is sent to its cloud service")
     _require(type(config.model) is str and 1 <= len(config.model) <= 128
@@ -87,39 +96,44 @@ def _validate_config(config):
              "Codex executable path is invalid")
 
 
-def _resolve_executable(configured, deadline):
+def _resolve_executable(configured, deadline, isolate_process=False):
     candidate = shutil.which(configured or "codex")
     _require(candidate is not None, "Codex CLI executable cannot be resolved")
     try:
         resolved = Path(candidate).resolve(strict=True)
+        if isolate_process:
+            from .codex_isolation import native_executable
+            resolved = native_executable(resolved)
         metadata = resolved.lstat()
         _require(stat.S_ISREG(metadata.st_mode) and bool(metadata.st_mode & 0o111),
                  "Codex CLI must resolve to an executable regular file")
-        return resolved, _sha256_file(resolved, deadline)
+        return resolved, _sha256_file(resolved, deadline, isolate_process)
     except CodexError:
         raise
     except OSError as error:
         raise CodexError("Codex CLI executable cannot be inspected") from error
 
 
-def _sha256_file(path, deadline):
+def _sha256_file(path, deadline, isolate_process=False):
+    from .codex_isolation import MAX_NATIVE_BYTES
+    maximum = MAX_NATIVE_BYTES if isolate_process else MAX_EXECUTABLE_BYTES
     digest = hashlib.sha256()
     with path.open("rb") as source:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             _require(time.monotonic() < deadline, "Codex CLI preparation timed out")
-            _require(source.tell() <= MAX_EXECUTABLE_BYTES,
-                     "Codex CLI executable exceeds the 128 MiB limit")
+            _require(source.tell() <= maximum,
+                     "Codex CLI executable exceeds its size limit")
             digest.update(chunk)
     return digest.hexdigest()
 
 
-def _verify_executable(path, expected_sha256, deadline):
+def _verify_executable(path, expected_sha256, deadline, isolate_process=False):
     try:
         metadata = path.lstat()
         _require(stat.S_ISREG(metadata.st_mode) and not stat.S_ISLNK(metadata.st_mode)
                  and bool(metadata.st_mode & 0o111),
                  "Codex CLI executable changed after it was inspected")
-        _require(_sha256_file(path, deadline) == expected_sha256,
+        _require(_sha256_file(path, deadline, isolate_process) == expected_sha256,
                  "Codex CLI executable changed after it was inspected")
     except CodexError:
         raise
@@ -190,10 +204,10 @@ def _cli_environment(workdir, executable):
     return env
 
 
-def _image_feature(executable, workdir, deadline):
+def _image_feature(executable, workdir, deadline, isolation=None):
     """Select only an image-tool feature actually registered by this installed CLI."""
     raw = _run_cli([str(executable), "features", "list"], "",
-                   executable=executable, workdir=workdir, deadline=deadline)
+                   executable=executable, workdir=workdir, deadline=deadline, isolation=isolation)
     try:
         names = {line.split()[0] for line in raw.decode("utf-8").splitlines() if line.split()}
     except UnicodeError as error:
@@ -211,6 +225,8 @@ def _command(executable, schema_path, output_path, config, image_feature):
                "-c", "project_doc_max_bytes=0", "-c", 'web_search="disabled"',
                "--json", "--output-schema", str(schema_path), "--output-last-message",
                str(output_path)]
+    if config.isolate_process:
+        command.append("--ignore-rules")
     for feature in (*_DISABLED_FEATURES, image_feature):
         command.extend(("--disable", feature))
     command.append("-")
@@ -232,11 +248,14 @@ def _terminate_group(proc, force=True):
             pass
 
 
-def _run_cli(command, prompt, *, executable, workdir, deadline):
+def _run_cli(command, prompt, *, executable, workdir, deadline, isolation=None):
     remaining = deadline - time.monotonic()
     _require(remaining > 0, "Codex CLI timed out")
+    if isolation is not None:
+        command = isolation.wrap(command)
+    environment = isolation.environment if isolation is not None else _cli_environment(workdir, executable)
     try:
-        proc = subprocess.Popen(command, cwd=workdir, env=_cli_environment(workdir, executable),
+        proc = subprocess.Popen(command, cwd=workdir, env=environment,
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, close_fds=True,
                                 start_new_session=(os.name == "posix"))
@@ -411,8 +430,8 @@ def _decode_events(raw):
     return messages[0], usage, disabled_code_mode_reported
 
 
-def _one_attempt(executable, expected_sha256, config, schema, prompt, workdir, deadline, image_feature):
-    _verify_executable(executable, expected_sha256, deadline)
+def _one_attempt(executable, expected_sha256, config, schema, prompt, workdir, deadline, image_feature, isolation=None):
+    _verify_executable(executable, expected_sha256, deadline, config.isolate_process)
     schema_path = workdir / "plan.schema.json"
     output_path = workdir / "final-message.json"
     for path in (schema_path, output_path):
@@ -428,7 +447,7 @@ def _one_attempt(executable, expected_sha256, config, schema, prompt, workdir, d
              "Codex prompt exceeds 1 MiB")
     events = _run_cli(_command(executable, schema_path, output_path, config, image_feature), prompt,
                       executable=executable,
-                      workdir=workdir, deadline=deadline)
+                      workdir=workdir, deadline=deadline, isolation=isolation)
     event_message, counts, disabled_code_mode_reported = _decode_events(events)
     raw = _read_private_output(output_path)
     try:
@@ -455,7 +474,13 @@ def generate(request, config):
     _require(type(request) is dict, "Evidence request must be an object")
     started = time.monotonic()
     deadline = started + config.timeout_seconds
-    executable, executable_sha256 = _resolve_executable(config.executable, deadline)
+    try:
+        executable, executable_sha256 = _resolve_executable(config.executable, deadline, config.isolate_process)
+    except (IsolationError, OSError) as error:
+        raise CodexError("Codex process isolation could not be prepared") from error
+    _require(config.expected_executable_sha256 is None or
+             executable_sha256 == config.expected_executable_sha256,
+             "Codex executable SHA256 does not match the operator pin")
     schema = _codex_schema(request)
     schema_bytes = _wire_bytes(schema)
     _require(len(schema_bytes) <= MAX_SCHEMA_BYTES, "Codex output schema exceeds 1 MiB")
@@ -469,28 +494,48 @@ def generate(request, config):
     token_counts = None
     result = None
     plan = None
+    isolation_receipt = {"mode": "none", "unattended_eligible": False}
     try:
+        from .codex_isolation import isolated
         with tempfile.TemporaryDirectory(prefix="hyperreview-codex-") as temporary:
             workdir = Path(temporary)
             os.chmod(workdir, 0o700)
-            _verify_executable(executable, executable_sha256, deadline)
-            image_feature = _image_feature(executable, workdir, deadline)
-            for attempt in range(2):
-                attempt_started = time.monotonic()
-                candidate, attempt_tokens, disabled_code_mode_reported = _one_attempt(
-                    executable, executable_sha256, config, schema, prompt, workdir, deadline, image_feature)
-                candidate_digest = intake.digest(candidate)
-                try:
-                    result = to_result(candidate, request)
-                except (CompositionPlanError, model_contract.ContractError) as error:
+            boundary = isolated(executable, workdir, deadline) if config.isolate_process else nullcontext(None)
+            with boundary as isolation:
+                if isolation is not None:
+                    isolation_receipt = isolation.receipt
+                _verify_executable(executable, executable_sha256, deadline, config.isolate_process)
+                image_feature = _image_feature(executable, workdir, deadline, isolation)
+                for attempt in range(2):
+                    attempt_started = time.monotonic()
+                    candidate, attempt_tokens, disabled_code_mode_reported = _one_attempt(
+                        executable, executable_sha256, config, schema, prompt, workdir, deadline, image_feature, isolation)
+                    candidate_digest = intake.digest(candidate)
+                    try:
+                        result = to_result(candidate, request)
+                    except (CompositionPlanError, model_contract.ContractError) as error:
+                        _require(time.monotonic() < deadline, "Codex CLI timed out")
+                        if attempt == 1:
+                            repair_errors.append(_issue_for_error(error)[0])
+                            codes = ", ".join(repair_errors)
+                            raise CodexError(
+                                f"Codex result failed local validation (issue codes: {codes})") from None
+                        code, location = _issue_for_error(error)
+                        repair_errors.append(code)
+                        audit_attempts.append({
+                            "plan_digest": candidate_digest,
+                            "disabled_code_mode_reported": disabled_code_mode_reported,
+                            "input_tokens": attempt_tokens[0] if attempt_tokens else None,
+                            "output_tokens": attempt_tokens[1] if attempt_tokens else None,
+                            "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
+                        })
+                        prompt = _prompt(request, comparison_content, (code, location, schema))
+                        _require(len(prompt.encode("utf-8")) <= MAX_REQUEST_BYTES,
+                                 "Codex repair prompt exceeds 1 MiB")
+                        continue
                     _require(time.monotonic() < deadline, "Codex CLI timed out")
-                    if attempt == 1:
-                        repair_errors.append(_issue_for_error(error)[0])
-                        codes = ", ".join(repair_errors)
-                        raise CodexError(
-                            f"Codex result failed local validation (issue codes: {codes})") from None
-                    code, location = _issue_for_error(error)
-                    repair_errors.append(code)
+                    plan = candidate
+                    token_counts = attempt_tokens
                     audit_attempts.append({
                         "plan_digest": candidate_digest,
                         "disabled_code_mode_reported": disabled_code_mode_reported,
@@ -498,23 +543,11 @@ def generate(request, config):
                         "output_tokens": attempt_tokens[1] if attempt_tokens else None,
                         "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
                     })
-                    prompt = _prompt(request, comparison_content, (code, location, schema))
-                    _require(len(prompt.encode("utf-8")) <= MAX_REQUEST_BYTES,
-                             "Codex repair prompt exceeds 1 MiB")
-                    continue
-                _require(time.monotonic() < deadline, "Codex CLI timed out")
-                plan = candidate
-                token_counts = attempt_tokens
-                audit_attempts.append({
-                    "plan_digest": candidate_digest,
-                    "disabled_code_mode_reported": disabled_code_mode_reported,
-                    "input_tokens": attempt_tokens[0] if attempt_tokens else None,
-                    "output_tokens": attempt_tokens[1] if attempt_tokens else None,
-                    "elapsed_ms": max(0, int((time.monotonic() - attempt_started) * 1000)),
-                })
-                break
+                    break
     except CodexError:
         raise
+    except IsolationError as error:
+        raise CodexError("Codex process isolation failed") from error
     except (OSError, ValueError, TypeError, OverflowError, RecursionError) as error:
         raise CodexError("Codex generation failed") from error
 
@@ -525,6 +558,7 @@ def generate(request, config):
             for key in ("input_tokens", "output_tokens"))
     receipt = {
         "provider": "codex",
+        "process_isolation": isolation_receipt,
         "instruction_role": "cli_prompt",
         "model": config.model,
         "endpoint": None,

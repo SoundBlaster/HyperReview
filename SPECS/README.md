@@ -65,3 +65,6 @@ nodes. Future tooling integration must preserve their IDs and status.
 - [Local worker intake](22-worker-intake.md): serialized discovery, pinned request
   handoff, bounded retries/retention and a reviewable launchd plan; no inference
   or publication authority.
+
+- [Private worker previews](23-worker-private-preview.md): explicit pinned Codex
+  isolation, one bounded job, terminal replay protection and private compiled output.

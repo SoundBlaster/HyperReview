@@ -150,6 +150,19 @@ source interpretation quality.
 
 ## Generate with Codex
 
+For an outer macOS filesystem/process/egress boundary, add `--isolate-process`:
+
+```sh
+python3 -m hyperreview generate --request /absolute/path/request.json \
+  --allow-cloud-source --isolate-process
+```
+
+This requires a native installed Codex CLI and owner-private file-based login;
+unsupported environments stop without falling back. The login is read-only,
+so refresh it outside the boundary when needed. The launchd intake job does not
+start inference automatically. See [isolation details](SPECS/18-codex-generation.md#outer-process-isolation-on-macos).
+
+
 The pilot defaults to the installed Codex CLI, `gpt-6-luna`, reasoning `low`,
 using the operator's existing Codex authentication. Each invocation requires
 `--allow-cloud-source` to acknowledge sending filtered source to the cloud:
@@ -469,3 +482,16 @@ These code observations do not measure the accuracy of generated explanations.
 
 See [setup, local history and comparison](quality/README.md) and the
 [quality integration contract](SPECS/19-specification-quality.md).
+
+
+## Optional private-preview worker
+
+Use `worker-config --private-preview --allow-cloud-source` with explicit native
+Codex/compiler paths and SHA256 pins to prepare a v2 config. One due tick collects
+a request; a later tick runs isolated generation and compilation into a private
+preview. Status exposes the result path without publishing it. Failed or
+interrupted jobs do not automatically resend source to the model.
+
+The generated `com.hyperreview.preview` LaunchAgent is separate from the default
+intake-only service and requires reviewing its config before installation.
+See [configuration, limits and recovery](SPECS/23-worker-private-preview.md).

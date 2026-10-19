@@ -37,8 +37,8 @@ there is no silent switch to another backend on failure.
 Read-only alone is insufficient. The runner also rejects tool/action events,
 failed turns, malformed event streams, missing completion, nonzero process exit
 and absent/mismatched final output. The restricted profile is intended for this
-manual pilot; an unattended worker still needs an operational isolation check
-for its installed CLI and configuration. Event auditing is an additional check,
+manual pilot; an unattended worker must select the outer process isolation below and
+verify its installed CLI and configuration. Event auditing is an additional check,
 not a rollback mechanism for already performed actions.
 
 The installed CLI reports its disabled Code Mode host as an error-shaped startup
@@ -82,3 +82,84 @@ separate stages.
 
 The flags were checked against the installed CLI and the
 [official configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference).
+
+## Outer process isolation on macOS
+
+`generate --isolate-process --allow-cloud-source` opts into a fail-closed outer
+Seatbelt boundary around **both** the feature inventory and `codex exec`. It
+requires `/usr/bin/sandbox-exec` and a native Mach-O CLI. The known npm launcher
+is resolved to its packaged native binary without running Node. The actual
+binary is fingerprinted before execution, with a separate 512 MiB bound (the
+manual launcher path retains its 128 MiB bound). Unsupported platforms,
+wrappers, missing private file-based login or policy startup failure are terminal;
+there is no unrestricted retry.
+
+The deny-default policy permits system runtime subtrees, the exact native
+binary, an owner-private job directory, and the operator's read-only `auth.json`.
+It does not grant the whole `/System` tree, which includes a data-volume alias.
+The root-owned system public CA bundle is readable and supplied explicitly for
+TLS verification; no user Keychain service is permitted. Global file metadata
+inspection is permitted; unrelated file contents and writes
+are not. The child gets a fresh HOME/CODEX_HOME, no inherited API keys, GitHub
+credentials, session state, proxy exceptions or user configuration. A symlink
+exposes only the existing login file; HyperReview does not read or copy its
+contents. The login and policy paths are protected against child writes. Login
+refresh must happen outside this boundary; an expired login may fail and does
+not authorize widening access or writing credentials back.
+
+Only the native executable may be executed again; fork and other executables
+are denied. Sysctl reads are limited to hardware and named runtime parameters;
+inspection of other processes' arguments/environment is explicitly denied;
+self inspection remains available to the native runtime. Executable mappings
+are limited to the native binary and system runtime. Dynamic code generation,
+IOKit property reads and NVRAM access are explicitly denied as well. The existing tool disable flags, ignored rules/configuration,
+JSONL event audit, output validation and shared deadline remain mandatory.
+This boundary is not a VM or protection against a compromised same-user broker,
+OS/kernel defects, or an operator replacing trusted binaries/policy files.
+
+The only outbound socket destination is the loopback proxy's selected port.
+The credential-free proxy runs in a supervised subprocess and accepts only
+CONNECT to `chatgpt.com:443`, `api.openai.com:443` or `auth.openai.com:443`.
+It validates all DNS answers as global addresses, connects to those IPs without
+another lookup, and rejects IP literals, local/private destinations, credentials
+in CONNECT headers and other HTTP methods. TLS remains end-to-end; source and
+headers are not logged. The proxy has bounded headers, concurrent connections,
+per-direction buffering, total tunnel bytes and lifetime. Teardown stops and
+reaps it, including blocked DNS work. This constrains destinations, not which
+operations an authenticated client can perform at the permitted provider.
+
+Generation receipts record the isolation mode and policy fingerprint, native
+binary fingerprint, OS release, system CA fingerprint and egress policy identity. Manual non-isolated invocations
+remain available for compatibility and explicitly record `mode: none` and
+`unattended_eligible: false`; their command sandbox must not be presented as an
+outer process boundary. The installed intake timer remains intake-only.
+
+The macOS CI job compiles a native canary and exercises syscalls directly. A
+live canary process carries only a synthetic environment marker; the same
+process-inspection syscall must successfully find that marker outside Seatbelt
+and be denied inside. Liveness is checked before and after the probe, with
+teardown in `finally`, so a dead PID cannot make this check pass.
+
+Other controls:
+workspace read/write and proxy-port access are positive controls; unrelated
+reads/writes, symlink traversal, policy/login writes, other TCP destinations,
+Unix sockets, another process's arguments/environment, fork and shell execution
+must fail with permission errors. These
+synthetic checks need no real credentials or inference. Linux CI runs deterministic
+policy, proxy and compatibility fixtures; it does not claim Seatbelt evidence.
+
+### Observed installed-CLI check (2026-10-19)
+
+On macOS 27.0, installed native Codex CLI 0.156.1 completed the synthetic paired
+`Assessment` request with `gpt-6-luna`, reasoning `low`, in one attempt (9,155 ms)
+with the final explicit process-inspection restrictions. The returned plan
+passed ordinary local request/result checks. Both feature inventory and
+generation used the outer boundary. This is an observed compatibility slice,
+not a claim about semantic accuracy, future CLI versions or a live PR review.
+
+Earlier probes without the explicit system CA bundle failed to complete. Review
+also found that an early canary terminated its target before the syscall check,
+which hid an insufficient process-inspection restriction. The corrected live
+positive/negative controls exposed it; explicit `process-info*` restrictions now
+permit only self inspection. The earlier successful model calls alone did not
+establish this boundary. No user Keychain IPC permission is granted.

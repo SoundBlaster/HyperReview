@@ -167,6 +167,17 @@ class CodexProviderTests(unittest.TestCase):
             executable = fake_cli(self.root / ("capture-" + mode), self.request, mode)
         return CodexConfig(executable=str(executable), timeout_seconds=timeout, allow_cloud_source=True)
 
+    def test_operator_executable_pin_is_checked_before_any_cli_execution(self):
+        from unittest.mock import patch
+        wrong = CodexConfig(executable=str(self.executable), allow_cloud_source=True,
+                            expected_executable_sha256="0" * 64)
+        with patch("hyperreview.codex_provider._run_cli") as run, self.assertRaises(CodexError):
+            generate(self.request, wrong)
+        run.assert_not_called()
+        matched = CodexConfig(executable=str(self.executable), allow_cloud_source=True,
+                              expected_executable_sha256=hashlib.sha256(self.executable.read_bytes()).hexdigest())
+        self.assertEqual(generate(self.request, matched)["receipt"]["attempt_count"], 1)
+
     def test_exact_disabled_host_startup_notice_is_bounded(self):
         notice = {"type": "item.completed", "item": {
             "id": "item_0", "type": "error",

@@ -75,3 +75,12 @@ For analyzed PRs, HyperReview will emit separate `before.hc`/`after.hc` files,
 identity/evidence records, and IR snapshots. `hypercode diff` compares resolved
 content of those snapshots. Its success establishes a well-formed comparison,
 not the correctness or completeness of inferred architecture.
+
+
+The `PrivatePreviewJobs` subtree describes the optional v2 worker path:
+`worker_preview.py` owns job identity, revision guards, the preview journal and
+private bundle handoff; `worker_generation.py` composes isolated generation,
+compiler validation and rendering. The `worker_stage=private_preview` context
+enables this declared stage; it is not an installed scheduler setting. These
+unique roles need no extra synonymous selectors. Behavioral obligations and
+limits are in [the private-preview contract](../SPECS/23-worker-private-preview.md).

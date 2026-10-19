@@ -134,3 +134,9 @@ pure retry rule and launchd plan arguments. The first manual operational run and
 the generated plist establish only this intake path. Sleep/wake recovery,
 concurrent-process stress, unattended inference, and full automatic review/
 publishing remain separate acceptance work.
+
+
+The optional [v2 private-preview stage](23-worker-private-preview.md) extends
+`worker-tick` only when explicitly configured. This document's intake-only
+statements describe the v1 schema and installed intake plan; v1 does not inherit
+cloud/source authority from a manual invocation or a v2 config elsewhere.

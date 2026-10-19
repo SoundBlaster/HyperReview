@@ -1,4 +1,4 @@
-"""Serialized, read-only intake scheduling; no model or publisher authority."""
+"""Serialized intake and explicitly configured private preview scheduling."""
 
 from contextlib import contextmanager
 import fcntl
@@ -17,6 +17,7 @@ from .worker_task_eligibility import WorkerTaskContext, WorkerTaskEligibility
 
 
 CONFIG_SCHEMA = "hyperreview.worker-config.v1"
+PREVIEW_CONFIG_SCHEMA = "hyperreview.worker-config.v2"
 TASK_SCHEMA = "hyperreview.intake-task.v1"
 PAGE_SIZE = 30
 MAX_PENDING = 32
@@ -84,9 +85,19 @@ def load_config(path):
     path = _private_file(path)
     _private_directory(path.parent)
     config = read_json(path, max_bytes=16384)
-    _require(type(config) is dict and set(config) == {
-        "schema", "repositories", "interval_seconds", "state_root"})
-    _require(config["schema"] == CONFIG_SCHEMA)
+    _require(type(config) is dict)
+    base_keys = {"schema", "repositories", "interval_seconds", "state_root"}
+    if config.get("schema") == CONFIG_SCHEMA:
+        _require(set(config) == base_keys)
+    elif config.get("schema") == PREVIEW_CONFIG_SCHEMA:
+        _require(set(config) == base_keys | {"preview"})
+        from .worker_generation import PreviewJobError, validate_options
+        try:
+            validate_options(config["preview"])
+        except PreviewJobError as error:
+            raise WorkerError("Private preview configuration is invalid") from error
+    else:
+        raise WorkerError("Worker configuration schema is invalid")
     repositories = config["repositories"]
     _require(type(repositories) is list and 1 <= len(repositories) <= len(intake.ALLOWLIST))
     _require(all(type(repo) is str and repo in intake.ALLOWLIST for repo in repositories))
@@ -98,9 +109,16 @@ def load_config(path):
     return config
 
 
-def create_config(*, repositories, state_root, output_root, interval_seconds=300):
+def create_config(*, repositories, state_root, output_root, interval_seconds=300, preview=None):
     config = {"schema": CONFIG_SCHEMA, "repositories": list(repositories),
               "interval_seconds": interval_seconds, "state_root": str(state_root)}
+    if preview is not None:
+        from .worker_generation import PreviewJobError, validate_options
+        try:
+            validate_options(preview)
+        except PreviewJobError as error:
+            raise WorkerError("Private preview configuration is invalid") from error
+        config.update(schema=PREVIEW_CONFIG_SCHEMA, preview=preview)
     # Validate before creating any state directory; reuse the file boundary below.
     _require(1 <= len(config["repositories"]) <= len(intake.ALLOWLIST))
     _require(all(type(repo) is str and repo in intake.ALLOWLIST for repo in repositories))
@@ -331,8 +349,15 @@ def _rotate_logs(root):
         _prepare_logs(root)
 
 
+def _observation_api():
+    """Give each revision observation its own short shared read deadline."""
+    client = intake.GitHub()
+    client.deadline = min(client.deadline, time.monotonic() + 30)
+    return client
+
+
 def tick(config_path, *, api=None):
-    """Discover eligible PRs and prepare at most one pinned request, never infer/publish."""
+    """Perform at most one intake or explicitly configured private-preview job."""
     config = load_config(config_path)
     root = _private_directory(config["state_root"], create=True)
     now = int(time.time())
@@ -351,8 +376,16 @@ def tick(config_path, *, api=None):
                               " WHERE state!='stale'").fetchall():
             if row["repository"] not in config["repositories"] or row["pipeline"] != pipeline:
                 _transition(db, row["candidate"], "stale", now, "policy_changed")
+        injected_api = api is not None
         api = api or intake.GitHub()
         discovered, full = _discover(db, config, api, pipeline, now)
+        if "preview" in config:
+            from .worker_preview import process_one
+            completed_preview = process_one(
+                db, config, root, api, now,
+                observation_factory=(lambda: api) if injected_api else _observation_api)
+            if completed_preview is not None:
+                return {"discovered": discovered, "queue_full": full, **completed_preview}
         policy = WorkerTaskEligibility()
         selected = next((row for row in db.execute("SELECT * FROM tasks ORDER BY updated_at,candidate")
                          if policy.is_satisfied_by(WorkerTaskContext(
@@ -416,7 +449,12 @@ def status(config_path):
             handoffs.append({"repository": row["repository"], "pr": row["pr"],
                              "candidate": row["candidate"], "request_digest": row["request_digest"],
                              "bundle": str(directory)})
-        return {"status": "ok", "delivery_mode": "request_only", "model_calls": 0,
+        preview_status = {}
+        if "preview" in config:
+            from .worker_preview import status as preview_status_for
+            preview_status = preview_status_for(db, Path(config["state_root"]), config["preview"])
+        return {"status": "ok", "delivery_mode": "private_preview" if "preview" in config else "request_only",
+                "model_calls": None if "preview" in config else 0, **preview_status,
                 "github_writes": 0, "next_poll": _meta(db, "next_poll"),
                 "handoffs": handoffs,
                 "counts": {row["state"]: row["n"] for row in

@@ -39,11 +39,12 @@ class GenerationCLITests(unittest.TestCase):
 
     def test_explicit_codex_operator_settings_are_forwarded(self):
         _, generate, _ = self.invoke(["--allow-cloud-source", "--model", "gpt-6-luna", "--reasoning-effort", "high",
-                                     "--codex-executable", "/trusted/codex", "--timeout-seconds", "90"])
+                                     "--codex-executable", "/trusted/codex", "--isolate-process", "--timeout-seconds", "90"])
         config = generate.call_args.args[1]
         self.assertEqual(config.reasoning_effort, "high")
         self.assertEqual(config.executable, "/trusted/codex")
         self.assertEqual(config.timeout_seconds, 90)
+        self.assertTrue(config.isolate_process)
 
     def test_http_requires_explicit_model_and_preserves_its_defaults(self):
         _, generate, _ = self.invoke(["--provider", "lmstudio", "--model", "local-model"], "lmstudio")
@@ -63,6 +64,7 @@ class GenerationCLITests(unittest.TestCase):
                                     (["--endpoint", "http://127.0.0.1:1234/v1"], "codex"),
                                     (["--instruction-role", "developer"], "codex"),
                                     (["--provider", "ollama", "--model", "m", "--reasoning-effort", "low"], "ollama"),
+                                    (["--provider", "ollama", "--model", "m", "--isolate-process"], "ollama"),
                                     (["--provider", "lmstudio", "--model", "m", "--codex-executable", "/x"], "lmstudio")):
             with self.subTest(arguments=arguments), self.assertRaises(SystemExit):
                 self.invoke((["--allow-cloud-source"] if provider == "codex" else []) + arguments, provider)

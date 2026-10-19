@@ -21,6 +21,16 @@ static int tcp(int port) {
  int r=connect(fd,(void*)&addr,sizeof(addr));int e=errno;close(fd);errno=e;return r;
 }
 int main(int argc,char **argv) {
+ if(argc==2 && !strcmp(argv[1],"--sleep-canary")) {sleep(60);return 0;}
+ if(argc==3 && !strcmp(argv[1],"--read-canary")) {
+  int mib[]={CTL_KERN,KERN_PROCARGS2,atoi(argv[2])};
+  char bytes[65536];size_t size=sizeof(bytes);
+  CHECK(sysctl(mib,3,bytes,&size,NULL,0)==0);
+  const char marker[]="GH_TOKEN=synthetic-only";
+  for(size_t i=0;i+sizeof(marker)<=size;i++)
+   if(!memcmp(bytes+i,marker,sizeof(marker))) {puts("synthetic environment readable");return 0;}
+  CHECK(0);
+ }
  CHECK(argc==10);
  int cpus=0;size_t cpus_size=sizeof(cpus);
  CHECK(sysctlbyname("hw.logicalcpu",&cpus,&cpus_size,NULL,0)==0 && cpus>0);

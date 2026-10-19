@@ -102,17 +102,24 @@ class IsolationTests(unittest.TestCase):
             auth.write_text('{"synthetic":true}');auth.chmod(0o600)
             with tempfile.TemporaryDirectory(prefix="hr-socket-", dir="/tmp") as socket_root, \
                     socket.socket() as allowed, socket.socket() as forbidden, socket.socket(socket.AF_UNIX) as unix, \
-                    subprocess.Popen(["/bin/sleep","10"],env={"GH_TOKEN":"synthetic-only"}) as target:
-                allowed.bind(("127.0.0.1",0));allowed.listen()
-                forbidden.bind(("127.0.0.1",0));forbidden.listen()
-                unix_path=str(Path(socket_root)/"canary.sock");unix.bind(unix_path);unix.listen()
-                with patch.dict(os.environ,{"CODEX_HOME":str(login)}):
-                    boundary=Boundary(binary,work,allowed.getsockname()[1])
-                command=boundary.wrap([str(binary),str(inside),str(outside),str(boundary.policy),str(auth),
-                    str(allowed.getsockname()[1]),str(forbidden.getsockname()[1]),unix_path,
-                    str(Path(boundary.environment["CODEX_HOME"])/"auth.json"),str(target.pid)])
-                target.terminate()
-                result=subprocess.run(command,cwd=work,env=boundary.environment,capture_output=True,timeout=10)
+                    subprocess.Popen([str(binary),"--sleep-canary"],env={"GH_TOKEN":"synthetic-only"}) as target:
+                try:
+                    allowed.bind(("127.0.0.1",0));allowed.listen()
+                    forbidden.bind(("127.0.0.1",0));forbidden.listen()
+                    unix_path=str(Path(socket_root)/"canary.sock");unix.bind(unix_path);unix.listen()
+                    with patch.dict(os.environ,{"CODEX_HOME":str(login)}):
+                        boundary=Boundary(binary,work,allowed.getsockname()[1])
+                    command=boundary.wrap([str(binary),str(inside),str(outside),str(boundary.policy),str(auth),
+                        str(allowed.getsockname()[1]),str(forbidden.getsockname()[1]),unix_path,
+                        str(Path(boundary.environment["CODEX_HOME"])/"auth.json"),str(target.pid)])
+                    self.assertIsNone(target.poll(), "canary target must be alive")
+                    baseline=subprocess.run([str(binary),"--read-canary",str(target.pid)],capture_output=True,timeout=5)
+                    self.assertEqual(baseline.returncode,0,baseline.stderr.decode())
+                    result=subprocess.run(command,cwd=work,env=boundary.environment,capture_output=True,timeout=10)
+                    self.assertIsNone(target.poll(), "canary target must survive the sandbox probe")
+                finally:
+                    target.terminate()
+                    target.wait(timeout=2)
             self.assertEqual(result.returncode,0,result.stderr.decode())
             self.assertIn(b"fork and shell denied",result.stdout)
             self.assertEqual(outside.read_text(),"outside")

@@ -52,8 +52,18 @@ def profile(executable, workdir, protected, auth, proxy_port):
     q = lambda value: json.dumps(str(value), ensure_ascii=True)
     # /System itself would include /System/Volumes/Data. Allow runtime subtrees
     # individually, never the entire system or Homebrew prefix.
+    # Seatbelt default does not cover every operation class: explicitly restrict
+    # process inspection, executable mappings, IOKit properties and NVRAM too.
     return f'''(version 1)
 (deny default)
+(deny file-map-executable iokit-get-properties process-info* nvram*)
+(deny dynamic-code-generation)
+(allow process-info* (target self))
+(allow file-map-executable
+  (literal {q(executable)}) (subpath "/System/Library")
+  (subpath "/System/Cryptexes") (subpath "/System/Volumes/Preboot/Cryptexes")
+  (subpath "/usr/lib"))
+(deny sysctl-read (sysctl-name-prefix "kern.proc"))
 (allow sysctl-read
   (sysctl-name-prefix "hw.")
   (sysctl-name "kern.ostype" "kern.osrelease" "kern.osversion"

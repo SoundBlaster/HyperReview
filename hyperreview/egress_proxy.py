@@ -111,8 +111,9 @@ def _resolve_public_addresses(host: str) -> list[tuple[int, tuple]]:
             raise ValueError("host returned a scoped address")
         address = ipaddress.ip_address(raw_address)
         mapped = getattr(address, "ipv4_mapped", None)
-        if (not address.is_global
-                or mapped is not None and not mapped.is_global):
+        if (not address.is_global or address.is_multicast or address.is_reserved
+                or mapped is not None and (not mapped.is_global or mapped.is_multicast
+                                           or mapped.is_reserved)):
             raise ValueError("host resolved to a non-global address")
         if (family, sockaddr) not in seen:
             seen.add((family, sockaddr))

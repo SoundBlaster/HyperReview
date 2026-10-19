@@ -72,6 +72,12 @@ class EgressProxyPolicyTests(unittest.TestCase):
         with mock.patch("hyperreview.egress_proxy.socket.getaddrinfo", return_value=[mapped_local]):
             with self.assertRaisesRegex(ValueError, "non-global"):
                 _resolve_public_addresses("api.openai.com")
+        for address in ("224.0.0.1", "239.255.255.250", "240.0.0.1"):
+            record = (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (address, 443))
+            with self.subTest(address=address), \
+                    mock.patch("hyperreview.egress_proxy.socket.getaddrinfo", return_value=[record]), \
+                    self.assertRaisesRegex(ValueError, "non-global"):
+                _resolve_public_addresses("api.openai.com")
         with mock.patch("hyperreview.egress_proxy.socket.getaddrinfo") as resolve:
             with self.assertRaises(ValueError):
                 _resolve_public_addresses("127.0.0.1")

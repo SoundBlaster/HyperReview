@@ -63,7 +63,7 @@ def _added_line(patch, target):
         match = re.match(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", row)
         if match:
             old_line, new_line = int(match.group(1)), int(match.group(2))
-        elif row.startswith("+++") or row.startswith("---") or old_line is None:
+        elif old_line is None:
             continue
         elif row.startswith("+"):
             if new_line == target:
@@ -203,7 +203,9 @@ def publish_review_gate(plan_dir, *, expected_plan_sha256, expected_comment_sha2
             receipt = read_json(receipt_path, max_bytes=65536)
             _require(type(receipt) is dict and receipt.get("plan_sha256") == expected_plan_sha256
                      and type(receipt.get("html_url")) is str)
-            return {"status": "already_published", "html_url": receipt["html_url"]}
+            status = "stale" if receipt.get("status") in ("stale", "stale_unverified") \
+                else "already_published"
+            return {"status": status, "html_url": receipt["html_url"]}
         api = api or intake.GitHub()
         account = _api_get(api, "user", "{login}").get("login")
         pr = intake.metadata(api, authorized_repository, plan["pr"])
@@ -243,13 +245,22 @@ def publish_review_gate(plan_dir, *, expected_plan_sha256, expected_comment_sha2
                      and item.get("line") == plan["line"]
                      and item.get("commit_id") == plan["head_sha"]]
         _require(len(confirmed) == 1 and confirmed[0].get("html_url") == response.get("html_url"))
+        try:
+            final_account = _api_get(api, "user", "{login}").get("login")
+            final_pr = intake.metadata(api, authorized_repository, plan["pr"])
+            final_blockers = _blockers_for_eligibility(
+                authorized_repository, plan["pr"], final_pr, final_account)
+            gate_status = ("created" if not final_blockers
+                           and final_pr.get("head_sha") == plan["head_sha"] else "stale")
+        except Exception:
+            gate_status = "stale_unverified"
         receipt = {"schema": "hyperreview.review-gate-receipt.v1",
                    "plan_sha256": expected_plan_sha256,
                    "comment_sha256": expected_comment_sha256,
                    "comment_id": response["id"], "html_url": response["html_url"],
-                   "status": "created", "created_at": datetime.now(timezone.utc)
+                   "status": gate_status, "created_at": datetime.now(timezone.utc)
                    .isoformat(timespec="seconds").replace("+00:00", "Z")}
         _atomic_private_json(receipt_path, receipt)
-        return {"status": "created", "html_url": response["html_url"]}
+        return {"status": gate_status, "html_url": response["html_url"]}
     finally:
         os.close(descriptor)

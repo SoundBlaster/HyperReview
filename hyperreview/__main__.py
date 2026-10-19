@@ -170,7 +170,7 @@ def main():
                       file=sys.stderr)
                 return 1
             print(f"Review gate: {receipt['status']}; {receipt['html_url']}")
-            return 0
+            return 0 if receipt["status"] in ("created", "already_published") else 2
         if args.command == "publish":
             from .publication import PublicationError, publish_comment
             try:

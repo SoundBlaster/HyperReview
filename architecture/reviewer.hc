@@ -8,6 +8,7 @@ HyperReview#hyperreview
     RepositoryAllowlist#repositories
       Repository#specgraph
       Repository#hypercode
+      Repository#sessionmonitor
     EligibilityPolicy#eligibility
     RevisionSnapshot#snapshot
     EvidencePack#evidence

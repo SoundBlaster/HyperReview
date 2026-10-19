@@ -79,6 +79,13 @@ class IntakeTests(unittest.TestCase):
             collect("other/repo", 1, api)
         self.assertEqual(api.calls, [])
 
+    def test_sessionmonitor_uses_the_same_own_pr_eligibility_policy(self):
+        repo = "SoundBlaster/SessionMonitor"
+        pr = {**PR, "base_repo": repo, "head_repo": repo}
+        eligible(repo, 761, pr, AUTHOR)
+        with self.assertRaises(IntakeError):
+            eligible(repo, 761, {**pr, "author": "other"}, AUTHOR)
+
     def test_path_filter(self):
         for path in ("../app.py", "/app.py", "a//app.py", "app\n.py", "AGENTS.md",
                      ".codex/settings.md", ".env", "credential.py", "private.key", "image.png"):

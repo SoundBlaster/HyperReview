@@ -23,8 +23,8 @@ local preview. Publishing is not implemented; a future publisher must remain
 behind explicit authorization, eligibility, artifact, tracking-confirmation,
 and security gates.
 
-The initial repository allowlist is `0al-spec/SpecGraph` and
-`0al-spec/Hypercode`, with PR author `SoundBlaster` and same-repository heads.
+The repository allowlist is `0al-spec/SpecGraph`, `0al-spec/Hypercode`, and
+`SoundBlaster/SessionMonitor`, with PR author `SoundBlaster` and same-repository heads.
 These are operator-owned settings, never instructions loaded from a PR.
 
 ## Specifications and architecture

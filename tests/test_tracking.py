@@ -42,6 +42,11 @@ def receipt(value):
 
 
 class TrackingTests(unittest.TestCase):
+    def test_sessionmonitor_tracking_event_is_accepted(self):
+        candidate = event()
+        candidate["metadata"]["repository"] = "SoundBlaster/SessionMonitor"
+        self.assertEqual(validate_event(candidate), candidate)
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

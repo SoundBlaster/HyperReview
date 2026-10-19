@@ -17,7 +17,8 @@ from uuid import uuid4
 from . import __version__
 
 
-ALLOWLIST = frozenset(("0al-spec/SpecGraph", "0al-spec/Hypercode"))
+ALLOWLIST = frozenset(("0al-spec/SpecGraph", "0al-spec/Hypercode",
+                       "SoundBlaster/SessionMonitor"))
 AUTHOR = "SoundBlaster"
 MAX_FILES = 30
 MAX_BYTES = 262144

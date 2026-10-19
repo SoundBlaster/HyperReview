@@ -17,6 +17,10 @@ HyperReview:
   slug: "0al-spec/Hypercode"
   enabled: true
 
+'#sessionmonitor':
+  slug: "SoundBlaster/SessionMonitor"
+  enabled: true
+
 '#eligibility':
   policy_library: "specification-core"
   author_login: "SoundBlaster"

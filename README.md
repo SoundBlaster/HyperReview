@@ -3,17 +3,18 @@
 A local PR reviewer that explains architectural changes using illustrative
 Hypercode projections, source references, and explicit evidence boundaries.
 
-**Status: manual compiled preview with local tracking.** A Python CLI collects pinned PR evidence,
+**Status: compiled previews with optional local worker publication.** A Python CLI collects pinned PR evidence,
 prepares a filtered request, proposes a result through Codex CLI or an explicitly
 selected local HTTP provider,
 and validates paired projections before rendering a local explanation.
 Metadata-only MLflow delivery and recovery are implemented. Controlled pilot
 fixtures, local Evidently reports, and explicit sanitized evaluation export to
 MLflow are available. Local own-PR feedback capture, a read-only publication dry-run,
-and the one-shot publisher implementation are available. Live publication still
-requires an exact operator-authorized plan. The first local worker increment
-prepares pinned evidence and filtered requests with a durable queue; a launchd
-plan can be generated for review. It does not run a model or publish unattended.
+and the one-shot publisher implementation are available. Manual publication uses
+an exact operator-authorized plan. An explicitly configured private-preview worker
+runs pinned isolated Codex; a separate publication worker can deliver its results
+under a standing repository-scoped operator grant. Each service has its own
+reviewable launchd plan and state. Neither plan generator installs a service.
 The Hypercode model still describes the proposed full reviewer.
 
 ## The pilot
@@ -495,3 +496,23 @@ interrupted jobs do not automatically resend source to the model.
 The generated `com.hyperreview.preview` LaunchAgent is separate from the default
 intake-only service and requires reviewing its config before installation.
 See [configuration, limits and recovery](SPECS/23-worker-private-preview.md).
+
+## Optional automatic comment publication
+
+Create a standing repository-scoped grant for an existing private-preview config:
+
+```sh
+python -m hyperreview publication-worker-config --preview-config ABS_CONFIG \
+  --authorize-repository 0al-spec/SpecGraph --authorize-mode comment
+python -m hyperreview publication-worker-tick --config ABS_PUBLICATION_CONFIG
+python -m hyperreview publication-worker-status --config ABS_PUBLICATION_CONFIG
+python -m hyperreview publication-worker-launchd-plan \
+  --config ABS_PUBLICATION_CONFIG --python ABS_PYTHON
+```
+
+The separate `com.hyperreview.publish` service snapshots validated private output,
+confirms metadata-only MLflow tracking, and uses the existing fresh-revision broker
+to create/update one owned HyperReview comment. It never invokes a model or merges
+a PR. Interrupted writes reuse their exact saved plans; failures have a bounded
+retry budget. Review and install the generated plist to enable scheduling.
+See [standing grants, recovery and retention](SPECS/24-automatic-publication.md).

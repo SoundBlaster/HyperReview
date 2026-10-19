@@ -68,3 +68,6 @@ nodes. Future tooling integration must preserve their IDs and status.
 
 - [Private worker previews](23-worker-private-preview.md): explicit pinned Codex
   isolation, one bounded job, terminal replay protection and private compiled output.
+
+- [Automatic publication](24-automatic-publication.md): repository-scoped standing
+  grants, metadata tracking, immutable private snapshots and comment delivery recovery.

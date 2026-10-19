@@ -32,6 +32,10 @@ HyperReview#hyperreview
     MarkdownRenderer#renderer
     LocalPreview#preview
   Delivery#delivery
+    AutomaticCommentDelivery
+      StandingPublicationGrant
+      PublicationSnapshot
+      DeliveryRecovery
     PublicationGate#publication-gate
     ReviewThreadGate#review-gate
     GitHubPublisher#publisher

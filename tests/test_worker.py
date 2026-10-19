@@ -227,6 +227,27 @@ class WorkerTests(unittest.TestCase):
         self.assertNotIn("GH_TOKEN", data["EnvironmentVariables"])
         self.assertEqual((plan / "agent.plist").stat().st_mode & 0o777, 0o600)
 
+    def test_launchd_plan_precreates_private_log_targets(self):
+        for name in worker._LOG_FILES:
+            (self.state / "logs" / name).unlink()
+        write_launchd_plan(config_path=self.config, python=Path(sys.executable),
+                           output_root=self.root / "plans")
+        for name in worker._LOG_FILES:
+            target = self.state / "logs" / name
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(target.read_bytes(), b"")
+
+    def test_rotation_leaves_private_current_and_previous_log_files(self):
+        target = self.state / "logs/worker.stdout.log"
+        content = b"x" * 65536
+        target.write_bytes(content)
+        worker._rotate_logs(self.state)
+        self.assertEqual(target.read_bytes(), b"")
+        self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+        previous = target.with_name(target.name + ".previous")
+        self.assertEqual(previous.read_bytes(), content)
+        self.assertEqual(previous.stat().st_mode & 0o777, 0o600)
+
 
 if __name__ == "__main__":
     unittest.main()

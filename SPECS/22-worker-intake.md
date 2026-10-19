@@ -85,6 +85,9 @@ before a bundle is journaled can cause one further collection, within the same
 two-attempt budget; it cannot repeat model inference because none occurs here.
 
 The two fixed launchd log files rotate at 64 KiB, keeping one previous file each.
+Setup and plan generation pre-create both log targets with mode 0600: launchd
+can open/create stdout/stderr files before applying the child process's Umask.
+Rotation immediately re-creates the current target with mode 0600 as well.
 One terminating tick may append its small status line to the rotated open file.
 Retention runs only while the worker executes; stopping the service also stops
 expiry. This stage never cleans pre-existing manual preview/tracking directories.

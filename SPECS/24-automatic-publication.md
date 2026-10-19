@@ -59,10 +59,15 @@ the worker never blindly creates a second comment or replans a pending write.
 
 Tracking/read failures retry within a budget of three delivery executions. A
 read-related blocked plan remains retryable, including derived revision blockers
-caused by missing reads. A complete observation of stale revisions, ineligibility
+caused by missing reads, only when no conclusive blocker is present. A complete observation of stale revisions, ineligibility
 or duplicate markers is terminal `blocked`. Exhaustion becomes `needs_attention`;
 it does not rerun inference. Post-write stale reconciliation reuses the same plan
-within the same budget. Each new revision produces its own upstream job identity.
+within the same budget. A newly persisted plan which fails the broker's completed
+fresh-state observation before any write becomes terminal `blocked_before_write`
+in the broker and `blocked` in the worker. A previously uncertain operation is
+preserved for reconciliation even if the PR subsequently changes; changed PR
+state cannot establish whether that earlier write happened. Each new revision
+produces its own upstream job identity.
 
 The queue prioritizes incomplete deliveries, then selects the newest eligible
 upstream preview not already journaled. There are at most 2048 delivery receipts;

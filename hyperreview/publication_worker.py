@@ -227,6 +227,25 @@ def _refresh(bundle, receipt):
         request, result, compiler, diff, tracking_status="confirmed"))
 
 
+def _retryable_plan(plan):
+    blockers = set(plan["blockers"])
+    transient = {"github_read_failed", "final_recheck_failed", "comment_inventory_incomplete"}
+    if not blockers & transient:
+        return False
+    definitive = {"repository_or_pr_not_allowlisted", "authenticated_account_mismatch",
+                  "pr_author_mismatch", "pr_not_open", "pr_is_draft", "cross_repository_pr",
+                  "pr_identity_mismatch", "pr_ineligible", "authenticated_account_changed",
+                  "duplicate_own_marker_comments", "review_gate_invalid",
+                  "review_gate_revision_changed", "tracking_unconfirmed", "live_revision_invalid"}
+    if blockers & definitive:
+        return False
+    # Read failures can leave current revisions unknown, producing derived
+    # mismatch blockers. A concrete observed mismatch is definitive instead.
+    return not any(publication._revision(plan.get("current_" + field))
+                   and plan["current_" + field] != plan[field]
+                   for field in ("base_sha", "head_sha", "merge_base_sha"))
+
+
 def tick(config_path):
     config, source = load_config(config_path)
     root = worker._private_directory(config["state_root"], create=True)
@@ -269,8 +288,7 @@ def tick(config_path):
                     output_root=worker._private_directory(root / "plans", create=True), api=_api())
                 worker._require(plan["repository"] == row["repository"] and plan["pr"] == row["pr"])
                 if plan["status"] != "ready":
-                    if set(plan["blockers"]) & {"github_read_failed", "final_recheck_failed",
-                                                 "comment_inventory_incomplete"}:
+                    if _retryable_plan(plan):
                         raise publication.PublicationError("Publication reads temporarily unavailable")
                     with db:
                         db.execute("UPDATE deliveries SET state='blocked',failure_code='publication_gate_blocked',updated_at=? WHERE job=?", (int(time.time()), job))
@@ -298,6 +316,11 @@ def tick(config_path):
                            (state, result.get("comment_id"), int(time.time()), job))
             return {**base, **result,
                     "comment_url": f"https://github.com/{row['repository']}/pull/{row['pr']}#issuecomment-{result['comment_id']}"}
+        except publication.PublicationBlockedBeforeWrite:
+            with db:
+                db.execute("UPDATE deliveries SET state='blocked',failure_code='fresh_gate_blocked',updated_at=? WHERE job=?",
+                           (int(time.time()), job))
+            return {**base, "status": "blocked", "failure_code": "fresh_gate_blocked"}
         except (publication.PublicationError, tracking.TrackingError, worker.WorkerError,
                 StorageError, ContractError, intake.IntakeError, OSError, ValueError, KeyError, TypeError):
             attempts = db.execute("SELECT attempts FROM deliveries WHERE job=?", (job,)).fetchone()[0]

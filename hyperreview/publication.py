@@ -29,6 +29,14 @@ class PublicationError(Exception):
     """Raised when local publication inputs are invalid or tampered."""
 
 
+class PublicationStateError(PublicationError):
+    """A completed live observation found an ineligible or stale PR."""
+
+
+class PublicationBlockedBeforeWrite(PublicationStateError):
+    """A new operation was conclusively blocked before any remote write."""
+
+
 class _CommentInventoryError(Exception):
     pass
 
@@ -482,20 +490,21 @@ def _live_publication_state(api, repo, number, expected):
     account = _api_get(api, "user", "{login}")["login"]
     pr = intake.metadata(api, repo, number)
     blockers = _eligibility_blockers(repo, number, pr, account)
-    if not _revision(pr.get("base_sha")) or not _revision(pr.get("head_sha")):
-        blockers.append("live_revision_invalid")
-        merge_base = None
-    else:
-        compare = _api_get(api, f"repos/{repo}/compare/{pr['base_sha']}...{pr['head_sha']}",
-                           "{merge_base_sha:.merge_base_commit.sha}")
-        merge_base = compare.get("merge_base_sha")
+    for field in ("base_sha", "head_sha"):
+        if not _revision(pr.get(field)) or pr[field] != expected.get(field):
+            blockers.append(field.replace("_sha", "") + "_revision_changed")
+    if blockers:
+        raise PublicationStateError("Publication authorization or PR state is no longer valid")
+    compare = _api_get(api, f"repos/{repo}/compare/{pr['base_sha']}...{pr['head_sha']}",
+                       "{merge_base_sha:.merge_base_commit.sha}")
+    merge_base = compare.get("merge_base_sha")
     revisions = {"base_sha": pr.get("base_sha"), "head_sha": pr.get("head_sha"),
                  "merge_base_sha": merge_base}
     for field in revisions:
         if not _revision(revisions[field]) or revisions[field] != expected.get(field):
             blockers.append(field.replace("_sha", "") + "_revision_changed")
     if blockers:
-        raise PublicationError("Publication authorization or PR state is no longer valid")
+        raise PublicationStateError("Publication authorization or PR state is no longer valid")
     return account, revisions
 
 
@@ -606,13 +615,27 @@ def publish_comment(plan_dir, *, expected_plan_sha256, expected_comment_sha256,
                                               plan["review_gate"]["url"])
                 _require(gate == plan["review_gate"]
                          and gate["commit_id"] == revisions["head_sha"])
+        except PublicationStateError:
+            if not previous_pending:
+                operation.update(status="blocked_before_write")
+                _atomic_private_json(receipt_path, operation)
+                raise PublicationBlockedBeforeWrite("Fresh state conclusively blocked publication") from None
+            # A previous uncertain operation may already have written a comment.
+            # Preserve its exact artifacts for reconciliation instead of treating
+            # a changed PR as proof that the earlier write never happened.
+            raise
         except (_CommentInventoryError, intake.IntakeError, KeyError, TypeError, AttributeError):
             raise PublicationError("Fresh publication checks failed") from None
         fresh_action, fresh_id, comment_blocker = _comment_action(comments, account, body)
         _require(comment_blocker is None)
         recovered_pending = (previous_pending and fresh_action == "unchanged"
                              and (action == "create" or fresh_id == planned_id))
-        _require(recovered_pending or (fresh_action == action and fresh_id == planned_id))
+        if not (recovered_pending or (fresh_action == action and fresh_id == planned_id)):
+            if not previous_pending:
+                operation.update(status="blocked_before_write")
+                _atomic_private_json(receipt_path, operation)
+                raise PublicationBlockedBeforeWrite("Comment inventory no longer matches the saved plan")
+            raise PublicationError("Comment inventory no longer matches the pending operation")
         if recovered_pending:
             comment_id = fresh_id
         elif action == "unchanged":

@@ -3,7 +3,7 @@ import hashlib
 import sys
 from pathlib import Path
 
-from .intake import IntakeError, collect, digest, encoded, save
+from .intake import IntakeError, collect, collect_historical, digest, encoded, save
 from .model_contract import ContractError, prepare_request
 from .storage import StorageError, read_json, write_bundle
 
@@ -16,6 +16,16 @@ def main():
     review.add_argument("--pr", required=True, type=int)
     review.add_argument("--preview", action="store_true", required=True)
     review.add_argument(
+        "--output-root", type=Path,
+        default=Path.home() / ".local/share/hyperreview/evidence",
+    )
+    historical = commands.add_parser(
+        "review-historical", help="Collect a merged PR for local read-only historical analysis",
+    )
+    historical.add_argument("--repo", required=True)
+    historical.add_argument("--pr", required=True, type=int)
+    historical.add_argument("--preview", action="store_true", required=True)
+    historical.add_argument(
         "--output-root", type=Path,
         default=Path.home() / ".local/share/hyperreview/evidence",
     )
@@ -286,7 +296,8 @@ def main():
             print(f"Included records: {len(request['sources'])}; omissions: {len(request['omissions'])}")
             print("Stage: request_prepared; no provider or tracking call made")
             return 0
-        pack = collect(args.repo, args.pr)
+        pack = (collect_historical(args.repo, args.pr)
+                if args.command == "review-historical" else collect(args.repo, args.pr))
         destination = save(pack, args.output_root)
     except (IntakeError, ContractError, StorageError, OSError, ValueError, KeyError, TypeError) as error:
         # API output and source text are never interpolated into diagnostics.
@@ -297,6 +308,8 @@ def main():
     print(f"Evidence preview: {destination / 'preview.md'}")
     print(f"Pack: {destination / 'evidence.json'}")
     print("Stage: evidence_collected; architecture analysis and tracking not started")
+    if args.command == "review-historical":
+        print("Mode: historical read-only; GitHub writes: 0; publication disabled")
     return 0
 
 

@@ -11,14 +11,19 @@ source artifacts, prompts, response bodies, claim text, or preview text are used
 
 Each compiled preview already contains a local tracking correlation ID. An event
 binds that ID and attempt to repository/PR, pinned revisions, input/output
-digests, profile versions, compiler identity, counts, and available metrics.
+digests, prompt and abstraction profile versions, compiler identity, counts, and
+available metrics. The generation receipt separately binds the exact reviewer
+profile; the request digest links it to the sanitized tracking event without
+changing the durable outbox metadata shape.
 The model identifier is fingerprinted rather than exported verbatim. Missing
 counts and missing historical timing remain unavailable, not zero.
 
 Before constructing an event, HyperReview rechecks evidence/request/result and
 receipt bindings, `.hc` contents, IR/diff fingerprints, and preview availability.
-The same event cannot silently acquire new content. Neither these local
-integrity checks nor MLflow delivery certify the model's interpretation.
+The same event cannot silently acquire new content. Pending `tracking-event.v1`
+records from `composition-v7` remain replayable after the prompt upgrade.
+Neither these local integrity checks nor MLflow delivery certify the model's
+interpretation.
 
 The fixed experiment is `HyperReview manual preview v1`. Its artifact location
 must exactly equal the trusted local root. The helper sets the exact SQLite URI

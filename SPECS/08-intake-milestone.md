@@ -15,6 +15,10 @@ The local correlation ID is available for future tracking reconciliation;
   API. Complete non-truncated git trees determine changed paths, avoiding the
   compare API's 300-file inventory cap. Rename hints come from that API; at its
   cap, hints may be incomplete and deletion/addition pairs remain unresolved.
+- For historical merged PRs, use the merge commit's first parent as the
+  merge-time comparison base before computing the branch merge base. The
+  current base ref may already contain the PR head and would otherwise produce
+  an empty historical diff.
 - Read regular blobs at merge-base/head revisions. Verify Git blob SHA-1 and
   record content SHA-256, revision, path, and LF-based line range. Mode `120000`
   symlinks, submodules, unsupported formats, operator files, and sensitive path

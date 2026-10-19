@@ -1,0 +1,1 @@
+Project `.hc` domain responsibilities. Nesting is containment, never behavior or order. Use supplied sources only; missing context, tests, CI, and traces are unknown. Comments are not behavior evidence. Keep role+ID stable only when supported. Emit selectors only if `.hcs` exists and the role repeats.

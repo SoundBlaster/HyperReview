@@ -252,6 +252,10 @@ class LocalProviderTests(unittest.TestCase):
             "elapsed_ms": receipt["attempts"][0]["elapsed_ms"],
         }])
         self.assertEqual(receipt["system_prompt_sha256"], receipt["attempts"][0]["system_prompt_sha256"])
+        self.assertEqual(receipt["reviewer_profile_version"],
+                         self.request["reviewer_profile"]["version"])
+        self.assertEqual(receipt["reviewer_profile_sha256"],
+                         self.request["reviewer_profile"]["sha256"])
         self.assertIsNone(receipt["model_revision"])
         self.assertGreaterEqual(receipt["elapsed_ms"], 0)
         self.assertNotIn("content", receipt)
@@ -295,7 +299,7 @@ class LocalProviderTests(unittest.TestCase):
             "Compare executable code and comments separately",
             "Read exact fields/objects compared",
             "Reason: concrete task plus changed/preserved condition, in Russian",
-            "Comments about another component are descriptions, not behavior evidence",
+            "Comments are not behavior evidence",
             "Summary MUST describe the actual difference first",
             "what code condition or comment wording changed, then what stayed and what cannot be established",
             "Limitations: specific missing evidence, without repeating request boilerplate",

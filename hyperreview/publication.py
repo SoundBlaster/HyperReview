@@ -285,7 +285,13 @@ def plan_publication(bundle, *, expected_preview_sha256, output_root, api=None):
                                 if key != "evidence_digest"})
              == event["metadata"]["evidence_digest"]
              and evidence.get("repository") == request["repository"]
-             and evidence.get("pr") == request["pr"])
+             and evidence.get("pr") == request["pr"]
+             and evidence.get("intake_mode", "live") == request.get("intake_mode", "live")
+             and evidence.get("publication_allowed", True)
+                 is request.get("publication_allowed", True))
+    if evidence.get("intake_mode", "live") == "historical_read_only" \
+            or evidence.get("publication_allowed", True) is not True:
+        raise PublicationError("Historical read-only previews cannot be publication planned")
     pinned = {field: evidence.get(field) for field in ("base_sha", "head_sha", "merge_base_sha")}
     repo, number = request["repository"], request["pr"]
     if repo not in intake.ALLOWLIST or type(number) is not int or number <= 0:

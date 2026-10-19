@@ -545,6 +545,8 @@ def generate(request, config):
         "provider_schema_compatibility": {"removed_keywords": ["uniqueItems"]},
         "provider_plan_digest": intake.digest(plan),
         "prompt_version": request["prompt_version"],
+        "reviewer_profile_version": request["reviewer_profile"]["version"],
+        "reviewer_profile_sha256": request["reviewer_profile"]["sha256"],
         "abstraction_profile": request["abstraction_profile"],
         "input_tokens": token_counts[0] if token_counts else None,
         "output_tokens": token_counts[1] if token_counts else None,

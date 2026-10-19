@@ -60,6 +60,15 @@ class TrackingTests(unittest.TestCase):
             with self.subTest(area=area, name=name), self.assertRaises(TrackingError):
                 validate_event(candidate)
 
+    def test_pending_legacy_prompt_event_remains_replayable(self):
+        legacy = event()
+        legacy["metadata"]["prompt_version"] = "composition-v7"
+        self.assertEqual(validate_event(legacy), legacy)
+        spool = self.arguments["spool_root"]
+        spool.mkdir()
+        (spool / (legacy["correlation_id"] + ".json")).write_bytes(intake.encoded(legacy))
+        self.assertEqual(list(pending_events(spool)), [legacy])
+
     def test_tracking_import_does_not_require_specification_core(self):
         script = """
 import sys
@@ -205,6 +214,8 @@ import hyperreview.tracking
                               "tracking_correlation_id": str(uuid4()), "delivery_mode": "preview", "attempt": 1},
             "generation-receipt.json": {**bound, "stage": "model_generated", "provider": "lmstudio",
                                         "model": "private_model_name_sentinel", "elapsed_ms": 1,
+                                        "reviewer_profile_version": request["reviewer_profile"]["version"],
+                                        "reviewer_profile_sha256": request["reviewer_profile"]["sha256"],
                                         "input_tokens": None, "output_tokens": None},
         }
         for name, field in (("before.ir.json", "before_ir_sha256"),
@@ -226,6 +237,12 @@ import hyperreview.tracking
         (self.root / "before.hc").write_text(result["before_hc"])
         (self.root / "after.hc").write_text(result["after_hc"])
         (self.root / "preview.md").write_text("private_preview_sentinel")
+        generation_path = self.root / "generation-receipt.json"
+        generation_path.write_bytes(intake.encoded(dict(
+            values["generation-receipt.json"], reviewer_profile_sha256="0" * 64)))
+        with self.assertRaisesRegex(TrackingError, "reviewer profile"):
+            build_event(self.root)
+        generation_path.write_bytes(intake.encoded(values["generation-receipt.json"]))
         exported = build_event(self.root)
         serialized = intake.encoded(exported).decode()
         for sentinel in ("private_source_sentinel", "private_model_summary_sentinel",

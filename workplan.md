@@ -102,7 +102,7 @@ Executable presence alone does not choose a backend.
 
 **Current step:** P3.1–P3.3 are complete and merged in PR #20; its CI passed.
 PR #21 subsequently added conditional selectors and passed its Hypercode and
-intake checks. P3.4 is the next milestone. As of 2026-10-07 there is no open
+intake checks. P3.4 is the next milestone. As of 2026-10-19 there is no open
 SpecGraph PR that meets the intake allowlist, author, and open/non-draft rules,
 so there is no eligible target for the live pilot. Do not create a dummy PR or
 publish to a closed historical PR to bypass this gate. When an eligible PR is

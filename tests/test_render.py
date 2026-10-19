@@ -49,6 +49,19 @@ class RenderTests(unittest.TestCase):
         self.assertIn("Ок или не ок", preview)
         self.assertIn("не означает порядок выполнения", preview)
 
+    def test_historical_compact_preview_marks_publication_disabled(self):
+        self.request["intake_mode"] = "historical_read_only"
+        self.request["publication_allowed"] = False
+        self.request["request_digest"] = "0" * 64
+        unsigned = {key: value for key, value in self.request.items() if key != "request_digest"}
+        from hyperreview import intake
+        self.request["request_digest"] = intake.digest(unsigned)
+        self.receipt["request_digest"] = self.request["request_digest"]
+        self.result["request_digest"] = self.request["request_digest"]
+        self.receipt["result_digest"] = digest(self.result)
+        preview = render_compact_preview(self.request, self.result, self.receipt, self.diff).decode()
+        self.assertIn("Исторический разбор, только локально; публикация отключена", preview)
+
     def test_compact_preview_escapes_prose_and_rejects_unbound_receipt(self):
         self.result["summary"] = "<script>bad</script> @someone"
         self.receipt["result_digest"] = digest(self.result)

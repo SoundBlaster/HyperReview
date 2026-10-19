@@ -49,7 +49,14 @@ see [HR-TRACK-003](06-mlflow.md#run-and-trace-contracts).
 operator authorization for the repository and delivery mode, plus a valid result
 and a fresh eligibility check. Setting an `.hcs` boolean alone MUST NOT bypass
 this broker check. The publisher may edit only its own identified comment;
-it MUST NOT approve, merge, push, resolve reviews, or edit other comments.
+it MUST NOT approve, merge, push, resolve reviews, or edit other comments. The
+separate review-gate operation may create one new inline review comment only
+after explicit authorization bound to private plan/comment digests. It MUST
+anchor to an added line in a supported changed file, recheck the pinned PR head,
+confirm the returned comment and permalink, and never resolve or edit the thread.
+A top-level timeline comment is informational; only repository branch
+protection requiring conversation resolution can make an unresolved thread a
+merge blocker. An expected completion timestamp is an estimate, not enforcement.
 
 **HR-SEC-006.** Audit events MUST record job IDs, transitions, versions, source
 revisions, gate decisions, omissions, and publication and MLflow correlation IDs while excluding

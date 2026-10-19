@@ -32,6 +32,23 @@ current revisions, result/preview identities, tracking IDs, gate outcomes and
 check time. Exclude feedback notes, credentials and source bodies from the plan.
 The draft retains the preview's inferred status, limitations and pinned links.
 
+## Diff-anchored review gate
+
+`review-gate-plan --repo OWNER/REPO --pr N --path PATH --line N
+--expected-completion ISO8601` validates that the selected line is an added
+line in a supported changed file and saves a private, read-only plan. The
+separate `review-gate` command requires exact plan/comment digests and explicit
+repository authorization, rechecks eligibility and the pinned head, then may
+create one inline review comment. Its confirmed `html_url` is the permalink.
+The operation recovers an exact prior comment from its private receipt and
+inventory; it cannot edit or resolve review conversations. A completed
+`publish-plan` may accept `--review-gate-url`, validate that it belongs to the
+authenticated operator, the same PR, and current head, and append the link to
+the ordinary comment draft. HyperReview does not query or claim the current
+resolved state of the thread; repository branch protection is responsible for
+blocking merge until the conversation is resolved. The stated completion time
+is informational only.
+
 ## CLI and boundaries
 
 `publish-plan --bundle ABS --expected-preview-sha256 HEX64` returns 0 for a ready

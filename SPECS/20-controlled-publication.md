@@ -6,6 +6,13 @@ This increment adds an explicitly invoked command that may create or update one
 ordinary issue comment for an allowlisted pull request. It does not add polling,
 automatic authorization, approvals, merges, pushes, or review-thread actions.
 
+The separate `review-gate` command can create one inline review comment on an
+operator-selected added line in the PR diff. It has its own read-only plan and
+digest-bound authorization; it cannot approve, edit, or resolve a thread. The
+ordinary issue-comment publisher may include a verified permalink to that
+comment. Repository branch protection, not HyperReview, enforces the open-
+conversation merge block.
+
 ## Contract
 
 **HR-PUBLISH-001 — Reviewed artifact binding.** The operator MUST provide the

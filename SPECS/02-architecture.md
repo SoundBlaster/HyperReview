@@ -25,6 +25,7 @@ projections HyperReview will create for analyzed PRs.
 | `#artifacts` | Assemble a reproducible analysis result | HR-DATA-005 |
 | `#renderer` / `#preview` | Render a local explanatory comment | HR-PROD-004 |
 | `#publication-gate` | Recheck operator authorization and PR state | HR-SEC-005 |
+| `#review-gate` | Prepare and create one diff-anchored review thread; return its permalink | HR-SEC-005 |
 | `#publisher` | Maintain the tool's ordinary PR comment | HR-DATA-006 |
 | `#tracking` / `#mlflow` / `#traces` | Record MLflow runs and sanitized workflow spans | HR-TRACK-001, HR-TRACK-002, HR-TRACK-003 |
 | `#evaluation` / `#cases` / `#scorers` / `#feedback` | Run technical fixture assessments and record local preview usefulness | HR-TRACK-004, HR-TRACK-005 |

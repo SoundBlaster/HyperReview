@@ -58,3 +58,6 @@ nodes. Future tooling integration must preserve their IDs and status.
 - [Codex generation](18-codex-generation.md): the selected manual pilot, restricted CLI invocation and standard validated artifacts.
 
 - [19 — SpecificationCore and project quality](19-specification-quality.md).
+
+- [Change-focused projections](21-change-focused-projections.md): profile v2
+  granularity guidance and the pinned SessionMonitor #117 extraction example.

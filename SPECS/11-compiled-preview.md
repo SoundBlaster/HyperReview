@@ -55,7 +55,11 @@ separate increments.
 Russian review aid with a paired structural diff, per-node reasons, and
 revision-specific source links. Both separate inferred model interpretations
 from compiler-derived structure, escape prose, and keep the scope limitation
-visible. When the paired trees are identical, the compact view says there is no
+visible. Compact diff matching includes each node's containing path, so a parent
+change is displayed as removal from the old branch and addition under the new
+owner even when the node text and indentation stay identical. This is a valid
+unified patch, not a shortest text edit or a compiler-proven move operation.
+When the paired trees are identical, the compact view says there is no
 structural change and includes the current `.hc` tree so readers can see what
 was compared. The compact view is for review and does not represent a publication
 decision. Neither an unchanged tree nor a missing witness establishes unchanged

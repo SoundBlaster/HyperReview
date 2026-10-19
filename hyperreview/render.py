@@ -8,7 +8,63 @@ from urllib.parse import quote
 from . import intake, model_contract
 
 
-COMPACT_RENDER_VERSION = "compact-v3"
+COMPACT_RENDER_VERSION = "compact-v5"
+_SMALL_PROJECTION_LINES = 40
+
+
+def _containment_keys(lines):
+    """Qualify generated node lines by their indentation-based ancestry.
+
+    These keys only control presentation matching. They do not establish
+    cross-revision identity or replace the compiler's IR comparison.
+    """
+    stack = []
+    occurrences = {}
+    keys = []
+    for line in lines:
+        if not line.strip():
+            keys.append(((), line))
+            continue
+        indent = len(line) - len(line.lstrip())
+        while stack and stack[-1][0] >= indent:
+            stack.pop()
+        parent = tuple(item[1] for item in stack)
+        label = line.strip()
+        sibling = (parent, label)
+        occurrence = occurrences.get(sibling, 0)
+        occurrences[sibling] = occurrence + 1
+        address = (label, occurrence)
+        keys.append((parent + (address,), line))
+        stack.append((indent, address))
+    return keys
+
+
+def _diff_range(start, stop):
+    length = stop - start
+    if length == 1:
+        return str(start + 1)
+    return f"{start if length == 0 else start + 1},{length}"
+
+
+def _composition_diff(before, after, context):
+    """Emit a valid unified patch that also exposes changed containing paths."""
+    matcher = difflib.SequenceMatcher(None, _containment_keys(before),
+                                     _containment_keys(after), autojunk=False)
+    lines = []
+    for group in matcher.get_grouped_opcodes(context):
+        if not lines:
+            lines.extend(["--- before.hc", "+++ after.hc"])
+        first, last = group[0], group[-1]
+        lines.append(f"@@ -{_diff_range(first[1], last[2])} "
+                     f"+{_diff_range(first[3], last[4])} @@")
+        for tag, before_start, before_stop, after_start, after_stop in group:
+            if tag == "equal":
+                lines.extend(" " + line for line in before[before_start:before_stop])
+            if tag in ("delete", "replace"):
+                lines.extend("-" + line for line in before[before_start:before_stop])
+            if tag in ("insert", "replace"):
+                lines.extend("+" + line for line in after[after_start:after_stop])
+    return "\n".join(lines)
 
 
 def _text(value):
@@ -125,13 +181,17 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
     render_preview(request, result, receipt, semantic_diff, tracking_status=tracking_status)
     before = result["before_hc"].splitlines() if result["before_hc"].strip() else []
     after = result["after_hc"].splitlines() if result["after_hc"].strip() else []
-    change = "\n".join(difflib.unified_diff(before, after, fromfile="before.hc",
-                                           tofile="after.hc", lineterm=""))
+    line_count = max(len(before), len(after))
+    context = line_count if line_count <= _SMALL_PROJECTION_LINES else 3
+    change = _composition_diff(before, after, context)
     lines = ["# HyperReview — архитектурный эскиз изменения\n",
              ("**Исторический разбор, только локально; публикация отключена.**\n\n"
               if request["intake_mode"] == "historical_read_only" else ""),
              _text(result["summary"]) + "\n",
              "Интерпретация выбранных исходников; порядок узлов не означает порядок выполнения.\n",
+             ("`−` и `+` показывают удаление и добавление в соответствующей ветке; "
+              "смена родителя тоже выделена, даже если строка узла не изменилась.\n"
+              if change else ""),
              (_fence(change, "diff") if change else
               "Структурных изменений в проекции нет. Текущая проекция:\n"
               + _fence(result["after_hc"]))]

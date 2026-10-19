@@ -167,7 +167,7 @@ then select that exact API model ID:
 
 ```sh
 python3 -m hyperreview generate --request /absolute/path/request.json \
-  --provider lmstudio --model hyperreview-gpt-oss-20b --context-tokens 8192
+  --provider lmstudio --model hyperreview-gpt-oss-20b --context-tokens 16384
 ```
 
 LM Studio defaults to `http://127.0.0.1:1234/v1`; Ollama defaults to
@@ -176,6 +176,9 @@ IP with the provider's exact API path. There are no redirects, proxy routing,
 tools, remote fallback, or automatic model downloads. The invocation has bounded
 context, response bytes, and time; `--max-tokens` and `--timeout-seconds` are
 trusted operator limits. The configured context must not exceed the loaded one.
+The HTTP default is 16384, leaving room for the versioned reviewer profile and
+a bounded repair. Load a model with at least that context
+or supply an explicit smaller budget; preflight still rejects oversized attempts.
 
 Prompt `composition-v8` combines the shared trusted reviewer profile with provider instructions and asks the provider for structured
 `hyperreview.composition-plan.v2` nodes. HyperReview validates the plan and

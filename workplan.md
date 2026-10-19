@@ -9,6 +9,8 @@ read-only publication planning, and a one-shot publisher implementation are
 present. The controlled one-shot publisher and recovery path are merged in PR
 #20; conditional Hypercode selectors are merged in PR #21. The explicitly
 authorized live publication pilot remains the P3 exit gate.
+An intake-only P4 increment now adds bounded discovery, private durable request
+handoff and a generated launchd plan; it has no model or publication authority.
 
 | Phase | Work | Exit evidence |
 |---|---|---|
@@ -91,6 +93,12 @@ Executable presence alone does not choose a backend.
 
 ## P4 — Local worker stages
 
+The first [intake-only increment](SPECS/22-worker-intake.md) implements a private
+serialized queue, bounded collection retries, request handoff and a generated
+LaunchAgent plan. It does not enable unattended inference or publication. Its
+provisional intake identity is separate from the full analysis job identity.
+The plan is prepared for operator review, not installed by the generator.
+
 1. Wrap the proven one-shot pipeline in a `launchd` job with one active lease
    per PR, a bounded queue, explicit allowlist, and no automatic provider
    fallback.
@@ -101,14 +109,15 @@ Executable presence alone does not choose a backend.
    publication authorization by itself.
 
 **Current step:** P3.1–P3.3 are complete and merged in PR #20; its CI passed.
-PR #21 subsequently added conditional selectors and passed its Hypercode and
-intake checks. P3.4 is the next milestone. As of 2026-10-19 there is no open
-SpecGraph PR that meets the intake allowlist, author, and open/non-draft rules,
-so there is no eligible target for the live pilot. Do not create a dummy PR or
-publish to a closed historical PR to bypass this gate. When an eligible PR is
-available, collect a fresh preview, compile and track it, prepare the read-only
-publication plan, and show its exact comment and digests for a separate
-per-plan authorization. P4 remains gated on successful P3.4 evidence.
+PR #21 subsequently added conditional selectors. The allowlist now also includes
+SessionMonitor; its PR #117 has received an explicitly authorized explanatory
+comment and revision-bound updates. This establishes real create/update delivery,
+not all P3.4 race/recovery acceptance scenarios. Do not create a dummy PR or
+publish to a closed historical PR to bypass eligibility. Further publication
+continues to require a fresh compiled/tracked preview and per-plan authorization.
+The first P4 intake-only increment is independently read-only; full unattended
+inference and publication remain gated on the outstanding pilot and Codex
+operational isolation evidence. See [the intake-stage boundary](SPECS/22-worker-intake.md).
 
 A later optional phase may compare explicit SpecGraph architectural intent
 against source-derived evidence. It must preserve accepted intent and inferred

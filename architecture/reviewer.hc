@@ -3,6 +3,8 @@ HyperReview#hyperreview
     Scheduler#scheduler
     JobQueue#queue
     JobJournal#journal
+    IntakeTaskPolicy#intake-task-policy
+    RequestHandoff#request-handoff
   Intake#intake
     GitHubSource#github
     RepositoryAllowlist#repositories

@@ -5,6 +5,7 @@ from pathlib import Path
 import plistlib
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -77,6 +78,35 @@ class WorkerPreviewTests(unittest.TestCase):
             self.assertEqual(self.tick(10600)["status"], "idle")
             self.assertEqual(run.call_count, 1)
         self.assertFalse((self.state / "previews").exists())
+
+    def test_final_observation_uses_new_deadline_after_discovery_client_expires(self):
+        self.tick()
+        clock = [10.0]
+        class DeadlineGitHub(WorkerGitHub):
+            def __init__(self):
+                super().__init__()
+                self.deadline = clock[0] + 300
+            def get(self, endpoint, query="."):
+                if clock[0] >= self.deadline:
+                    raise worker.intake.IntakeError("expired synthetic client")
+                return super().get(endpoint, query)
+        clients = []
+        def factory():
+            client = DeadlineGitHub()
+            clients.append(client)
+            return client
+        def generated(*args):
+            clock[0] += 301
+            return self.completed()
+        with patch("hyperreview.worker.intake.GitHub", side_effect=factory), \
+                patch("hyperreview.worker.time.monotonic", side_effect=lambda: clock[0]), \
+                patch("hyperreview.worker.time.time", return_value=10300), \
+                patch("hyperreview.worker_generation.run", side_effect=generated):
+            result = worker.tick(self.config)
+        self.assertEqual(result["status"], "preview_ready")
+        self.assertEqual(len(clients), 3)  # Discovery, pre-inference and final observation.
+        self.assertLess(clients[0].deadline, clock[0])
+        self.assertEqual(clients[-1].deadline, clock[0] + 30)
 
     def test_failed_job_never_automatically_repeats_cloud_request(self):
         self.tick()

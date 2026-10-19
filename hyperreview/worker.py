@@ -349,6 +349,13 @@ def _rotate_logs(root):
         _prepare_logs(root)
 
 
+def _observation_api():
+    """Give each revision observation its own short shared read deadline."""
+    client = intake.GitHub()
+    client.deadline = min(client.deadline, time.monotonic() + 30)
+    return client
+
+
 def tick(config_path, *, api=None):
     """Perform at most one intake or explicitly configured private-preview job."""
     config = load_config(config_path)
@@ -369,11 +376,14 @@ def tick(config_path, *, api=None):
                               " WHERE state!='stale'").fetchall():
             if row["repository"] not in config["repositories"] or row["pipeline"] != pipeline:
                 _transition(db, row["candidate"], "stale", now, "policy_changed")
+        injected_api = api is not None
         api = api or intake.GitHub()
         discovered, full = _discover(db, config, api, pipeline, now)
         if "preview" in config:
             from .worker_preview import process_one
-            completed_preview = process_one(db, config, root, api, now)
+            completed_preview = process_one(
+                db, config, root, api, now,
+                observation_factory=(lambda: api) if injected_api else _observation_api)
             if completed_preview is not None:
                 return {"discovered": discovered, "queue_full": full, **completed_preview}
         policy = WorkerTaskEligibility()

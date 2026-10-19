@@ -68,7 +68,8 @@ preview inference and requires an explicit retention/policy decision. Receipts
 are not evicted to permit another source transmission.
 
 Eligibility and exact base/head are checked before generation and after the
-complete pipeline. A closed/draft/foreign-author or changed PR becomes stale;
+complete pipeline. Each observation uses a new GitHub client with its own
+30-second deadline, independent of the earlier discovery client and model work. A closed/draft/foreign-author or changed PR becomes stale;
 no ready preview is saved for it. This is a pair of live observations, not an
 atomic GitHub lock: a PR can change immediately after the final check. Every
 future publication path must still perform its own fresh revision check.

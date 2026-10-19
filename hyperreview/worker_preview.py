@@ -102,9 +102,10 @@ def _settings(options):
         raise worker.WorkerError("Private preview pipeline is unavailable") from error
 
 
-def process_one(db, config, root, api, now):
+def process_one(db, config, root, api, now, *, observation_factory=None):
     """Consume one retained intake handoff; never automatically replay a job key."""
     from . import worker
+    observation_factory = observation_factory or (lambda: api)
     _setup(db)
     _expire(db, root, now)
     settings = _settings(config["preview"])
@@ -138,7 +139,7 @@ def process_one(db, config, root, api, now):
             _transition(db, job, "queued", now)
     try:
         worker._require(worker._retained_handoff(root, selected), "Intake handoff is unavailable")
-        if not _fresh(selected, api):
+        if not _fresh(selected, observation_factory()):
             _transition(db, job, "stale", int(time.time()), "eligibility_or_revisions_changed")
             return {**base, "status": "preview_stale"}
         directory = root / "artifacts" / selected["artifact"]
@@ -152,7 +153,7 @@ def process_one(db, config, root, api, now):
         base["generation_runs"] = 1
         completed = worker_generation.run(evidence, request, config["preview"])
         base["provider_attempts"] = completed["provider_attempts"]
-        if not _fresh(selected, api):
+        if not _fresh(selected, observation_factory()):
             _transition(db, job, "stale", int(time.time()), "eligibility_or_revisions_changed")
             return {**base, "status": "preview_stale"}
         artifacts = completed["artifacts"]

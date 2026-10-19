@@ -564,7 +564,7 @@ class LocalProviderTests(unittest.TestCase):
             result = invalid if len(self.fixture.requests) == 1 else valid
             return 200, {"Content-Type": "application/json"}, self._envelope(self.config, result=result)
 
-        fixture = self._start(callback=callback)
+        fixture = self._start(callback=callback, context_tokens=16384)
         outcome = generate(self.request, self.config)
         self.assertEqual(outcome["receipt"]["repair_errors"], ["absent_side"])
         repaired = json.loads(fixture.requests[1]["body"])
@@ -582,7 +582,7 @@ class LocalProviderTests(unittest.TestCase):
             result = invalid if len(self.fixture.requests) == 1 else valid
             return 200, {"Content-Type": "application/json"}, self._envelope(self.config, result=result)
 
-        fixture = self._start(callback=callback)
+        fixture = self._start(callback=callback, context_tokens=16384)
         outcome = generate(self.request, self.config)
         self.assertEqual(outcome["receipt"]["repair_errors"], ["parent_missing"])
         repaired_system = json.loads(fixture.requests[1]["body"])["messages"][0]["content"]
@@ -592,7 +592,7 @@ class LocalProviderTests(unittest.TestCase):
     def test_invalid_repair_stops_after_two_posts_with_fixed_codes(self):
         invalid = make_plan(self.request)
         invalid["nodes"][0]["after_refs"] = []
-        fixture = self._start(callback=lambda _request: (
+        fixture = self._start(context_tokens=16384, callback=lambda _request: (
             200, {"Content-Type": "application/json"}, self._envelope(self.config, result=invalid)))
         with self.assertRaisesRegex(ProviderError, r"failed local validation.*missing_refs"):
             generate(self.request, self.config)
@@ -641,7 +641,7 @@ class LocalProviderTests(unittest.TestCase):
                 ("", 0),
             ], raw)
 
-        fixture = self._start(callback=slow, timeout_seconds=1)
+        fixture = self._start(callback=slow, timeout_seconds=1, context_tokens=16384)
         started = time.monotonic()
         with self.assertRaisesRegex(ProviderError, "transport failed or timed out"):
             generate(self.request, self.config)
@@ -746,7 +746,7 @@ class LocalProviderTests(unittest.TestCase):
         invalid_type["nodes"][0]["after_type"] = "PredicateSpec[Context]"
         for result in (wrong_digest, unknown, invalid_type, make_result(self.request)):
             self.fixture = None
-            fixture = self._start(callback=lambda _request, result=result:
+            fixture = self._start(context_tokens=16384, callback=lambda _request, result=result:
                                   (200, {"Content-Type": "application/json"},
                                    self._envelope(self.config, result=result)))
             with self.assertRaisesRegex(ProviderError, "failed local validation"):

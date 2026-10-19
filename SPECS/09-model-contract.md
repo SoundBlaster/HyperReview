@@ -20,6 +20,13 @@ Requests carry an origin evidence digest, prompt/profile versions, omissions,
 coverage limits, and a request digest binding subsequent output to those inputs.
 The reviewer profile version and SHA-256 are checked against the installed
 trusted profile and included in generation and tracking receipts.
+Profile v2 asks for comparable before/after granularity at the smallest scope
+that exposes a source-supported architectural change. Extraction and relocation
+should show affected parts inside their former and new boundaries, preserving
+their responsibility names where justified. It does not require a larger diff,
+invented ownership, or a file/type inventory. Unchanged structure remains valid
+when the evidence only supports nonstructural changes. Existing v1 bundles stay
+immutable; a v2 run requires a fresh request prepared from the pinned evidence.
 They also carry per-revision `.hcs` presence derived from each complete pinned
 tree. The model never supplies or infers this selector-policy input.
 

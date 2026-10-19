@@ -101,7 +101,8 @@ class IsolationTests(unittest.TestCase):
             login=root/"login";login.mkdir();auth=login/"auth.json"
             auth.write_text('{"synthetic":true}');auth.chmod(0o600)
             with tempfile.TemporaryDirectory(prefix="hr-socket-", dir="/tmp") as socket_root, \
-                    socket.socket() as allowed, socket.socket() as forbidden, socket.socket(socket.AF_UNIX) as unix:
+                    socket.socket() as allowed, socket.socket() as forbidden, socket.socket(socket.AF_UNIX) as unix, \
+                    subprocess.Popen(["/bin/sleep","10"],env={"GH_TOKEN":"synthetic-only"}) as target:
                 allowed.bind(("127.0.0.1",0));allowed.listen()
                 forbidden.bind(("127.0.0.1",0));forbidden.listen()
                 unix_path=str(Path(socket_root)/"canary.sock");unix.bind(unix_path);unix.listen()
@@ -109,7 +110,8 @@ class IsolationTests(unittest.TestCase):
                     boundary=Boundary(binary,work,allowed.getsockname()[1])
                 command=boundary.wrap([str(binary),str(inside),str(outside),str(boundary.policy),str(auth),
                     str(allowed.getsockname()[1]),str(forbidden.getsockname()[1]),unix_path,
-                    str(Path(boundary.environment["CODEX_HOME"])/"auth.json")])
+                    str(Path(boundary.environment["CODEX_HOME"])/"auth.json"),str(target.pid)])
+                target.terminate()
                 result=subprocess.run(command,cwd=work,env=boundary.environment,capture_output=True,timeout=10)
             self.assertEqual(result.returncode,0,result.stderr.decode())
             self.assertIn(b"fork and shell denied",result.stdout)

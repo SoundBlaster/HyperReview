@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
+#include <sys/sysctl.h>
 #include <unistd.h>
 extern char **environ;
 static int denied(int result) { return result == -1 && (errno == EPERM || errno == EACCES); }
@@ -20,7 +21,13 @@ static int tcp(int port) {
  int r=connect(fd,(void*)&addr,sizeof(addr));int e=errno;close(fd);errno=e;return r;
 }
 int main(int argc,char **argv) {
- CHECK(argc==9);
+ CHECK(argc==10);
+ int cpus=0;size_t cpus_size=sizeof(cpus);
+ CHECK(sysctlbyname("hw.logicalcpu",&cpus,&cpus_size,NULL,0)==0 && cpus>0);
+ int mib[]={CTL_KERN,KERN_PROCARGS2,atoi(argv[9])};char args_buffer[65536];size_t args_size=sizeof(args_buffer);
+ int args_result=sysctl(mib,3,args_buffer,&args_size,NULL,0);
+ if(args_result==0){fputs("process arguments were readable\n",stderr);return 1;}
+ CHECK(denied(args_result));
  int fd=open(argv[1],O_RDONLY);CHECK(fd>=0);close(fd);
  fd=open("inside-write",O_WRONLY|O_CREAT,0600);CHECK(fd>=0);close(fd);
  CHECK(denied(open(argv[2],O_RDONLY)));

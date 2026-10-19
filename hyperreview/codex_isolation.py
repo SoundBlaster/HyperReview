@@ -54,7 +54,11 @@ def profile(executable, workdir, protected, auth, proxy_port):
     # individually, never the entire system or Homebrew prefix.
     return f'''(version 1)
 (deny default)
-(allow sysctl-read)
+(allow sysctl-read
+  (sysctl-name-prefix "hw.")
+  (sysctl-name "kern.ostype" "kern.osrelease" "kern.osversion"
+    "kern.osproductversion" "kern.argmax" "kern.maxfilesperproc"
+    "kern.maxprocperuid" "sysctl.proc_translated"))
 (allow file-read-metadata)
 (allow file-read* (literal "/")
   (subpath "/System/Library") (subpath "/System/Cryptexes")

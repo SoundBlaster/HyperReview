@@ -108,7 +108,8 @@ refresh must happen outside this boundary; an expired login may fail and does
 not authorize widening access or writing credentials back.
 
 Only the native executable may be executed again; fork and other executables
-are denied. The existing tool disable flags, ignored rules/configuration,
+are denied. Sysctl reads are limited to hardware and named runtime parameters;
+process argument/environment inspection is denied. The existing tool disable flags, ignored rules/configuration,
 JSONL event audit, output validation and shared deadline remain mandatory.
 This boundary is not a VM or protection against a compromised same-user broker,
 OS/kernel defects, or an operator replacing trusted binaries/policy files.
@@ -133,7 +134,8 @@ outer process boundary. The installed intake timer remains intake-only.
 The macOS CI job compiles a native canary and exercises syscalls directly:
 workspace read/write and proxy-port access are positive controls; unrelated
 reads/writes, symlink traversal, policy/login writes, other TCP destinations,
-Unix sockets, fork and shell execution must fail with permission errors. These
+Unix sockets, another process's arguments/environment, fork and shell execution
+must fail with permission errors. These
 synthetic checks need no real credentials or inference. Linux CI runs deterministic
 policy, proxy and compatibility fixtures; it does not claim Seatbelt evidence.
 
@@ -141,6 +143,7 @@ policy, proxy and compatibility fixtures; it does not claim Seatbelt evidence.
 
 On macOS 27.0, installed native Codex CLI 0.156.1 completed the synthetic paired
 `Assessment` request with `gpt-6-luna`, reasoning `low`, in one attempt (12,247 ms).
+A repeat with the narrowed sysctl policy also succeeded in one attempt (9,518 ms).
 The returned plan passed the ordinary local request/result checks. Both feature
 inventory and generation used the outer boundary; unrelated home files and
 GitHub credentials were not granted. This is an observed compatibility slice,

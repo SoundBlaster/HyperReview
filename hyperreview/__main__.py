@@ -57,6 +57,8 @@ def main():
     generation.add_argument("--model")
     generation.add_argument("--reasoning-effort", choices=("low", "medium", "high"))
     generation.add_argument("--codex-executable", type=Path)
+    generation.add_argument("--isolate-process", action="store_true",
+                            help="Require outer macOS filesystem/process/egress isolation for Codex")
     generation.add_argument("--allow-cloud-source", action="store_true",
                             help="Acknowledge sending filtered source to the Codex cloud service")
     generation.add_argument("--instruction-role", choices=("system", "developer"))
@@ -345,6 +347,7 @@ def main():
                 config = CodexConfig(model=args.model or "gpt-6-luna",
                                      reasoning_effort=args.reasoning_effort or "low",
                                      executable=str(args.codex_executable) if args.codex_executable is not None else None,
+                                     isolate_process=args.isolate_process,
                                      timeout_seconds=args.timeout_seconds,
                                      allow_cloud_source=args.allow_cloud_source)
                 generator = generate_codex
@@ -352,7 +355,7 @@ def main():
             else:
                 if args.allow_cloud_source:
                     parser.error("--allow-cloud-source is only supported with --provider codex")
-                if args.reasoning_effort is not None or args.codex_executable is not None:
+                if args.reasoning_effort is not None or args.codex_executable is not None or args.isolate_process:
                     parser.error("Codex executable and reasoning options require --provider codex")
                 if not args.model:
                     parser.error("Local HTTP generation requires --model")

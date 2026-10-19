@@ -152,3 +152,16 @@ Specification backed by SpycificationCore; pinned SpecificationMetrics collectio
 of application S/U and Python LOC/CC/Cog. CI and local SQLite snapshots retain
 scope/status rather than introducing a composite score or quality threshold.
 See [contract](SPECS/19-specification-quality.md).
+
+
+### P4 process isolation increment
+
+An explicit `--isolate-process` generation route wraps the native Codex process
+in macOS Seatbelt and a supervised OpenAI-only CONNECT proxy. Native canaries
+check permitted workspace/proxy access and denied external reads/writes,
+symlink traversal, policy/login mutation, other network/Unix endpoints and
+process creation. The macOS CI job repeats these credential-free checks.
+Operational evidence for the installed CLI is recorded separately from fixtures.
+The live launchd job remains intake-only. Next: after this increment is reviewed,
+wire isolated generation into one bounded worker job ending in a private preview;
+publication keeps its existing authorization and revision checks.

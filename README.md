@@ -150,6 +150,19 @@ source interpretation quality.
 
 ## Generate with Codex
 
+For an outer macOS filesystem/process/egress boundary, add `--isolate-process`:
+
+```sh
+python3 -m hyperreview generate --request /absolute/path/request.json \
+  --allow-cloud-source --isolate-process
+```
+
+This requires a native installed Codex CLI and owner-private file-based login;
+unsupported environments stop without falling back. The login is read-only,
+so refresh it outside the boundary when needed. The launchd intake job does not
+start inference automatically. See [isolation details](SPECS/18-codex-generation.md#outer-process-isolation-on-macos).
+
+
 The pilot defaults to the installed Codex CLI, `gpt-6-luna`, reasoning `low`,
 using the operator's existing Codex authentication. Each invocation requires
 `--allow-cloud-source` to acknowledge sending filtered source to the cloud:

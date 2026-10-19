@@ -65,6 +65,7 @@ class CodexConfig:
     timeout_seconds: int = 120
     allow_cloud_source: bool = False
     isolate_process: bool = False
+    expected_executable_sha256: Optional[str] = None
 
 
 def _require(condition, message):
@@ -75,6 +76,10 @@ def _require(condition, message):
 def _validate_config(config):
     _require(type(config) is CodexConfig, "Codex config has an invalid type")
     _require(type(config.isolate_process) is bool, "Codex isolation option must be boolean")
+    _require(config.expected_executable_sha256 is None or
+             (type(config.expected_executable_sha256) is str and
+              re.fullmatch(r"[0-9a-f]{64}", config.expected_executable_sha256) is not None),
+             "Codex executable fingerprint is invalid")
     _require(config.allow_cloud_source is True,
              "Codex requires explicit acknowledgement that filtered source is sent to its cloud service")
     _require(type(config.model) is str and 1 <= len(config.model) <= 128
@@ -473,6 +478,9 @@ def generate(request, config):
         executable, executable_sha256 = _resolve_executable(config.executable, deadline, config.isolate_process)
     except (IsolationError, OSError) as error:
         raise CodexError("Codex process isolation could not be prepared") from error
+    _require(config.expected_executable_sha256 is None or
+             executable_sha256 == config.expected_executable_sha256,
+             "Codex executable SHA256 does not match the operator pin")
     schema = _codex_schema(request)
     schema_bytes = _wire_bytes(schema)
     _require(len(schema_bytes) <= MAX_SCHEMA_BYTES, "Codex output schema exceeds 1 MiB")

@@ -5,6 +5,9 @@ HyperReview#hyperreview
     JobJournal#journal
     IntakeTaskPolicy#intake-task-policy
     RequestHandoff#request-handoff
+    PrivatePreviewJobs
+      PreviewJournal
+      PreviewHandoff
   Intake#intake
     GitHubSource#github
     RepositoryAllowlist#repositories

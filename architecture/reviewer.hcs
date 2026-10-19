@@ -248,3 +248,38 @@ HyperReview:
     source_execution_allowed: bool
     model_tools_allowed: bool
     capability_verification_required: bool
+
+# Private-preview execution is an explicit v2 config, independent of publication.
+PrivatePreviewJobs:
+  enabled: false
+  implementation: "hyperreview/worker_preview.py"
+  max_jobs_per_tick: 1
+  replay_failed: false
+  output: "private-preview"
+
+PreviewJournal:
+  implementation: "hyperreview/worker_preview.py"
+  store: "sqlite"
+
+PreviewHandoff:
+  implementation: "hyperreview/worker_generation.py"
+  tracking_status: "not_started"
+  github_writes: 0
+
+@worker_stage[private_preview]:
+  '#scheduler':
+    implemented_stage: "private-preview"
+    inference_enabled: true
+  PrivatePreviewJobs:
+    enabled: true
+
+@contract:
+  PrivatePreviewJobs:
+    enabled: bool
+    implementation: string
+    max_jobs_per_tick: int >= 1 <= 1
+    replay_failed: bool
+    output: string
+  PreviewHandoff:
+    tracking_status: string
+    github_writes: int >= 0 <= 0

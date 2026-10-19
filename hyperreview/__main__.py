@@ -11,15 +11,23 @@ from .storage import StorageError, read_json, write_bundle
 def main():
     parser = argparse.ArgumentParser(description="Prepare and validate local PR explanations.")
     commands = parser.add_subparsers(dest="command", required=True)
-    worker_config = commands.add_parser("worker-config", help="Prepare private intake worker settings")
+    worker_config = commands.add_parser("worker-config", help="Prepare private worker settings")
     worker_config.add_argument("--repo", action="append", required=True)
     worker_config.add_argument("--interval-seconds", type=int, default=300)
-    worker_config.add_argument("--state-root", type=Path,
-                               default=Path.home() / ".local/share/hyperreview/worker")
+    worker_config.add_argument("--state-root", type=Path)
     worker_config.add_argument("--output-root", type=Path,
                                default=Path.home() / ".local/share/hyperreview/worker-configs")
+    worker_config.add_argument("--private-preview", action="store_true")
+    worker_config.add_argument("--allow-cloud-source", action="store_true")
+    worker_config.add_argument("--codex-executable", type=Path)
+    worker_config.add_argument("--codex-sha256")
+    worker_config.add_argument("--compiler", type=Path)
+    worker_config.add_argument("--compiler-sha256")
+    worker_config.add_argument("--model")
+    worker_config.add_argument("--reasoning-effort", choices=("low", "medium", "high"))
+    worker_config.add_argument("--preview-timeout-seconds", type=int)
     for name in ("worker-tick", "worker-status"):
-        command = commands.add_parser(name, help="Read-only intake worker; no inference or publication")
+        command = commands.add_parser(name, help="Run or inspect configured intake/private-preview worker")
         command.add_argument("--config", required=True, type=Path)
     launchd = commands.add_parser("worker-launchd-plan", help="Prepare a launchd plist without installing it")
     launchd.add_argument("--config", required=True, type=Path)
@@ -144,23 +152,40 @@ def main():
             from .launchd import LaunchdError, write_launchd_plan
             try:
                 if args.command == "worker-config":
-                    destination = create_config(repositories=args.repo, state_root=args.state_root,
+                    preview = None
+                    if args.private_preview:
+                        if not args.allow_cloud_source or any(value is None for value in (
+                                args.codex_executable, args.codex_sha256, args.compiler, args.compiler_sha256)):
+                            parser.error("Private preview requires cloud acknowledgement and pinned Codex/compiler")
+                        preview = {"allow_cloud_source": True,
+                                   "codex_executable": str(args.codex_executable), "codex_sha256": args.codex_sha256,
+                                   "compiler": str(args.compiler), "compiler_sha256": args.compiler_sha256,
+                                   "model": args.model if args.model is not None else "gpt-6-luna",
+                                   "reasoning_effort": args.reasoning_effort or "low",
+                                   "timeout_seconds": args.preview_timeout_seconds if args.preview_timeout_seconds is not None else 180}
+                    elif (args.allow_cloud_source or any(value is not None for value in (
+                            args.codex_executable, args.codex_sha256, args.compiler, args.compiler_sha256,
+                            args.model, args.reasoning_effort, args.preview_timeout_seconds))):
+                        parser.error("Preview settings require --private-preview")
+                    state_root = args.state_root or (Path.home() / ".local/share/hyperreview" /
+                                                     ("preview-worker" if preview is not None else "worker"))
+                    destination = create_config(repositories=args.repo, state_root=state_root,
                                                 interval_seconds=args.interval_seconds,
-                                                output_root=args.output_root)
+                                                output_root=args.output_root, preview=preview)
                     print(f"Worker config: {destination / 'config.json'}")
                     return 0
                 if args.command == "worker-launchd-plan":
                     destination = write_launchd_plan(config_path=args.config, python=args.python,
                                                      output_root=args.output_root)
                     print(f"Launchd plan: {destination / 'agent.plist'}")
-                    print("Not installed; intake only; model calls: 0; GitHub writes: 0")
+                    print("Not installed; authority follows the reviewed worker config; GitHub writes: 0")
                     return 0
                 result = tick(args.config) if args.command == "worker-tick" else status(args.config)
                 print(json.dumps(result, sort_keys=True))
-                return 1 if result["status"] == "failed" else 0
+                return 1 if result["status"] in ("failed", "preview_failed", "preview_capacity_reached") else 0
             except (WorkerError, LaunchdError, IntakeError, StorageError, ContractError,
                     sqlite3.Error, OSError, ValueError, TypeError, KeyError):
-                print("HyperReview: worker operation failed; no inference or publication attempted",
+                print("HyperReview: worker operation failed; inspect the private journal; GitHub writes: 0",
                       file=sys.stderr)
                 return 1
         if args.command == "publish-plan":

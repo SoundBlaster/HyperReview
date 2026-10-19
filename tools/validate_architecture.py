@@ -11,7 +11,8 @@ import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILES = [("default", ())] + [
+PROFILES = [("default", ()),
+            ("codex-private-preview", ("backend=codex", "mode=preview", "worker_stage=private_preview"))] + [
     (f"{backend}-{mode}", (f"backend={backend}", f"mode={mode}"))
     for backend, mode in itertools.product(
         ("codex", "lmstudio", "ollama"), ("preview", "publish")

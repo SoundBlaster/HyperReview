@@ -165,3 +165,17 @@ Operational evidence for the installed CLI is recorded separately from fixtures.
 The live launchd job remains intake-only. Next: after this increment is reviewed,
 wire isolated generation into one bounded worker job ending in a private preview;
 publication keeps its existing authorization and revision checks.
+
+
+### P4 bounded private-preview worker
+
+The v2 worker consumes one prepared request through pinned, isolated Codex,
+compiler validation and private Markdown. Its separate job journal prevents
+automatic replay after ambiguous failure or interruption; eligibility/revisions
+are checked before and after work. Intake-only v1 remains supported. The optional
+LaunchAgent plan uses a separate label/state root and does not install itself.
+
+Next: review/merge the isolation → private-preview stack, then activate the
+reviewed preview timer configuration and observe a real due tick. Comment
+publication and review-gate automation remain a separate explicitly authorized
+increment after private-output recovery is observed.

@@ -482,3 +482,16 @@ These code observations do not measure the accuracy of generated explanations.
 
 See [setup, local history and comparison](quality/README.md) and the
 [quality integration contract](SPECS/19-specification-quality.md).
+
+
+## Optional private-preview worker
+
+Use `worker-config --private-preview --allow-cloud-source` with explicit native
+Codex/compiler paths and SHA256 pins to prepare a v2 config. One due tick collects
+a request; a later tick runs isolated generation and compilation into a private
+preview. Status exposes the result path without publishing it. Failed or
+interrupted jobs do not automatically resend source to the model.
+
+The generated `com.hyperreview.preview` LaunchAgent is separate from the default
+intake-only service and requires reviewing its config before installation.
+See [configuration, limits and recovery](SPECS/23-worker-private-preview.md).

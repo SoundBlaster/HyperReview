@@ -103,7 +103,7 @@ def write_launchd_plan(*, config_path: Path, python: Path, output_root: Path) ->
     _private_directory(log_root, "State logs")
 
     plist = {
-        "Label": _LABEL,
+        "Label": "com.hyperreview.preview" if "preview" in loaded else _LABEL,
         "ProgramArguments": [
             str(interpreter), "-B", "-m", "hyperreview", "worker-tick",
             "--config", str(config),
@@ -124,7 +124,7 @@ def write_launchd_plan(*, config_path: Path, python: Path, output_root: Path) ->
         },
     }
     plist_bytes = plistlib.dumps(plist, fmt=plistlib.FMT_XML, sort_keys=True)
-    instructions = _installation_instructions()
+    instructions = _installation_instructions(private_preview="preview" in loaded)
     try:
         destination = write_bundle(
             {"agent.plist": plist_bytes, "installation.md": instructions}, output_root
@@ -134,9 +134,9 @@ def write_launchd_plan(*, config_path: Path, python: Path, output_root: Path) ->
     return destination
 
 
-def _installation_instructions():
+def _installation_instructions(private_preview=False):
     """Static instructions intentionally contain no input-controlled shell text."""
-    return b"""# HyperReview worker launchd plan
+    instructions = b"""# HyperReview worker launchd plan
 
 Review `agent.plist` before installation. This plan runs only the bounded worker
 intake tick. It reads GitHub state and prepares private evidence/request
@@ -167,3 +167,17 @@ launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.hyperreview.int
 To re-enable it later, review the plist again, run `launchctl enable
 "gui/$(id -u)/com.hyperreview.intake"`, then bootstrap the plist as above.
 """
+
+    if private_preview:
+        instructions = instructions.replace(b"com.hyperreview.intake", b"com.hyperreview.preview")
+        instructions = instructions.replace(
+            b"Review `agent.plist` before installation. This plan runs only the bounded worker\n"
+            b"intake tick. It reads GitHub state and prepares private evidence/request\n"
+            b"artifacts. Unattended inference and publication remain disabled until a separate\n"
+            b"operational gate is approved.",
+            b"Review `agent.plist`, the private-preview config, cloud acknowledgement and\n"
+            b"binary pins before installation. This plan runs bounded intake and isolated\n"
+            b"Codex generation through a private compiled preview. It does not publish,\n"
+            b"track, create review gates or merge PRs. It uses a separate preview service\n"
+            b"label; keep its state root separate from an existing intake-only timer.")
+    return instructions

@@ -49,6 +49,31 @@ class RenderTests(unittest.TestCase):
         self.assertIn("Ок или не ок", preview)
         self.assertIn("не означает порядок выполнения", preview)
 
+    def test_small_extraction_diff_keeps_root_and_all_shared_parts_visible(self):
+        self.result["before_hc"] = (
+            "Application\n  Feature\n    DomainPresentation\n    DomainState\n"
+            "    CardHeader\n    Badge\n    Metric\n    CardSurface\n    EvidenceDisclosure\n")
+        self.result["after_hc"] = self.result["before_hc"].replace(
+            "    CardHeader\n", "  DesignSystem\n    CardHeader\n")
+        self.receipt["result_digest"] = digest(self.result)
+        preview = render_compact_preview(self.request, self.result, self.receipt, self.diff).decode()
+        diff = preview.split("```diff\n", 1)[1].split("```", 1)[0]
+        self.assertIn(" Application\n", diff)
+        self.assertIn("+  DesignSystem\n", diff)
+        self.assertIn("     EvidenceDisclosure\n", diff)
+
+    def test_large_projection_diff_keeps_distant_unchanged_parts_out(self):
+        self.result["before_hc"] = "Application\n" + "".join(
+            f"  Responsibility{index}\n" for index in range(60))
+        self.result["after_hc"] = self.result["before_hc"].replace(
+            "  Responsibility30\n", "  RevisedResponsibility\n")
+        self.receipt["result_digest"] = digest(self.result)
+        preview = render_compact_preview(self.request, self.result, self.receipt, self.diff).decode()
+        diff = preview.split("```diff\n", 1)[1].split("```", 1)[0]
+        self.assertIn("+  RevisedResponsibility\n", diff)
+        self.assertNotIn(" Application\n", diff)
+        self.assertNotIn(" Responsibility59\n", diff)
+
     def test_historical_compact_preview_marks_publication_disabled(self):
         self.request["intake_mode"] = "historical_read_only"
         self.request["publication_allowed"] = False

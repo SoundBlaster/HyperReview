@@ -8,7 +8,8 @@ from urllib.parse import quote
 from . import intake, model_contract
 
 
-COMPACT_RENDER_VERSION = "compact-v3"
+COMPACT_RENDER_VERSION = "compact-v4"
+_SMALL_PROJECTION_LINES = 40
 
 
 def _text(value):
@@ -125,8 +126,10 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
     render_preview(request, result, receipt, semantic_diff, tracking_status=tracking_status)
     before = result["before_hc"].splitlines() if result["before_hc"].strip() else []
     after = result["after_hc"].splitlines() if result["after_hc"].strip() else []
+    line_count = max(len(before), len(after))
+    context = line_count if line_count <= _SMALL_PROJECTION_LINES else 3
     change = "\n".join(difflib.unified_diff(before, after, fromfile="before.hc",
-                                           tofile="after.hc", lineterm=""))
+                                           tofile="after.hc", lineterm="", n=context))
     lines = ["# HyperReview — архитектурный эскиз изменения\n",
              ("**Исторический разбор, только локально; публикация отключена.**\n\n"
               if request["intake_mode"] == "historical_read_only" else ""),

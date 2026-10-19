@@ -4,6 +4,13 @@ Reviewer profile v2 asks for the smallest source-supported composition that
 makes an architectural change visible at comparable depth on both sides.
 For extraction, it names the affected parts and preserves their identities as
 their containing boundary changes. The root must encompass both boundaries.
+If the new shared layer has an established name, it remains an explicit parent
+of its parts. The common application root must not replace that layer. An owner
+is a declared node with its own identity and correct-side source references.
+New shared files do not make an existing responsibility absent on the before
+side: inline and feature-local implementations provide its before references.
+For an executable refactor, accompanying documentation supports code boundaries
+rather than becoming extra Knowledge/Documentation responsibilities.
 Containment describes implementation ownership at this scope; it does not
 declare consumer usage, runtime order, or behavioral equivalence.
 
@@ -17,33 +24,38 @@ the source evidence and explanations.
 
 The [reviewed PR](https://github.com/SoundBlaster/SessionMonitor/pull/117)
 extracts common visual components from context-insight UI code. The original
-projection showed only an added `DesignSystem` leaf. The final v2 replay shows
-the previously feature-owned parts at the common UI scope:
+projection showed only an added `DesignSystem` leaf. An intermediate v2 draft
+exposed the parts but flattened them into the application root. The revised
+profile preserves the named shared owner and its extracted composition:
 
 ```diff
- MonitorUIComposition
-   ContextInsightFeatureUI
--    StatusBadgePresentation
--    LabeledMetricPresentation
--    AdaptiveCardHeader
--    EvidenceDisclosurePresentation
--    CardSurfacePresentation
-+  StatusBadgePresentation
-+  LabeledMetricPresentation
-+  AdaptiveCardHeader
-+  EvidenceDisclosurePresentation
-+  CardSurfacePresentation
+ MonitorMacApplication
+   ContextAnatomyFeature
+     ContextInsightPresentation
+     ContextInsightCardComposition
++  DesignSystem
+     AdaptiveCardHeader
+     EvidenceDisclosure
+     InsightMetric
+     InsightBadge
+     DesignCardSurface
 ```
 
 These are inferred responsibilities, not one node per Swift type. Before-side
 references identify badge/metric definitions and header/disclosure/surface
 composition in the feature. After-side references identify their shared
 implementations. Feature-specific content, formatting and state remain in
-`ContextInsightFeatureUI`; moving a visual responsibility does not assert that
+`ContextAnatomyFeature`; moving a visual responsibility does not assert that
 the feature stopped displaying it.
-The compiler's IR diff reports ten path changes (five removals and five
-additions). Reading those as five relocations relies on the paired identity
-map and source evidence; it is not a compiler-proven move operation.
+The text diff adds one parent line, which changes containment of the following
+five nodes. Their names and indentation need not change. The compiler's IR diff
+reports five removed feature paths and an added `DesignSystem` subtree. Reading
+those as five relocations relies on the paired identity map and source evidence;
+it is not a compiler-proven move operation.
+
+Compact renderer v4 includes the full context of projections up to 40 lines,
+so the root, named owner and all its parts stay visible in this small example.
+Larger projections retain the usual focused diff context.
 
 The replay used the same 16 selected source records, source-byte budget and
 pinned revisions as the published original:
@@ -54,8 +66,11 @@ pinned revisions as the published original:
 - Same Hypercode compiler SHA256:
   `6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f`.
 - Final result passed the compiler, reference and identity checks on one model
-  attempt. Two intermediate prompt drafts produced an opaque destination or
-  unchanged tree and were discarded.
+  attempt. Intermediate drafts produced an opaque destination, unchanged tree,
+  flattened owner, or missing before-side primitives and were not accepted as
+  the final example. Invalid parent IDs and duplicate references were rejected
+  locally; the schema now explains those fields and before-side presence more
+  explicitly without relaxing the validator.
 
 This is a worked example, not a model reliability measurement. Compilation
 checks the declared composition and references; it does not prove the

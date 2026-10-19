@@ -78,6 +78,12 @@ remain in private operator-managed bundles and are not MLflow artifacts.
 
 ## Evidence and limits
 
+Reviewer profile v2 raises the shared API/CLI HTTP context default to 16384 so
+small requests retain room for their bounded repair attempt. Operators must
+load a model with at least the configured context or explicitly choose a lower
+limit. Both the initial payload and any repair still pass the conservative
+budget check; a larger default is not a guarantee that every source pack fits.
+
 Offline fixtures cover wire shapes, input/output validation, local-only policy,
 redirect/size/deadline bounds, and unavailable metrics. A live readiness probe on
 this Mac used LM Studio's existing local `openai/gpt-oss-20b` model at context

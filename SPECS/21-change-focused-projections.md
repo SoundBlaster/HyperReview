@@ -63,7 +63,8 @@ interpretation, runtime behavior or visual parity. The old bundle and published
 comment remain intact. A revised comment requires separate operator review and
 publication authorization.
 
-The expanded profile also consumes context budget. HTTP repair fixtures reserve
-16384 units where a repair is expected; the production default and conservative
-preflight remain unchanged. Budget-boundary tests still reject oversized input
-before a request is sent.
+The expanded profile also consumes context budget. The shared HTTP default is
+16384 for both the Python API and CLI, so the existing small repair fixtures can
+exercise the default configuration. A loaded model must support the configured
+context. The conservative preflight and explicit overrides remain in force;
+budget-boundary tests still reject oversized input before a request is sent.

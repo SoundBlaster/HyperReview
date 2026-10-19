@@ -269,7 +269,7 @@ class LocalProviderTests(unittest.TestCase):
         from hyperreview.local_provider import SYSTEM_PROMPT
         self.assertIn(SYSTEM_PROMPT.encode("utf-8")[:20], posted["body"])
         self.assertEqual([message["role"] for message in body["messages"]], ["system", "user"])
-        self.assertEqual(self.config.context_tokens, 8192)
+        self.assertEqual(self.config.context_tokens, 16384)
         self.assertEqual(body["temperature"], 0)
         self.assertEqual(body["max_tokens"], 1024)
         self.assertEqual(body["messages"][1]["content"], intake.encoded(self.request).decode())
@@ -477,8 +477,8 @@ class LocalProviderTests(unittest.TestCase):
         self.assertNotIn(b"\\u", posted["body"].split(b'"messages":', 1)[0])
         from hyperreview.local_provider import SYSTEM_PROMPT
         self.assertIn(SYSTEM_PROMPT.encode("utf-8")[:20], posted["body"])
-        self.assertEqual(self.config.context_tokens, 8192)
-        self.assertEqual(body["options"], {"temperature": 0, "num_predict": 1024, "num_ctx": 8192})
+        self.assertEqual(self.config.context_tokens, 16384)
+        self.assertEqual(body["options"], {"temperature": 0, "num_predict": 1024, "num_ctx": 16384})
         self.assertEqual(body["keep_alive"], 0)
         self.assertIsInstance(body["format"], dict)
         self.assertNotIn("tools", body)
@@ -564,7 +564,7 @@ class LocalProviderTests(unittest.TestCase):
             result = invalid if len(self.fixture.requests) == 1 else valid
             return 200, {"Content-Type": "application/json"}, self._envelope(self.config, result=result)
 
-        fixture = self._start(callback=callback, context_tokens=16384)
+        fixture = self._start(callback=callback)
         outcome = generate(self.request, self.config)
         self.assertEqual(outcome["receipt"]["repair_errors"], ["absent_side"])
         repaired = json.loads(fixture.requests[1]["body"])
@@ -582,7 +582,7 @@ class LocalProviderTests(unittest.TestCase):
             result = invalid if len(self.fixture.requests) == 1 else valid
             return 200, {"Content-Type": "application/json"}, self._envelope(self.config, result=result)
 
-        fixture = self._start(callback=callback, context_tokens=16384)
+        fixture = self._start(callback=callback)
         outcome = generate(self.request, self.config)
         self.assertEqual(outcome["receipt"]["repair_errors"], ["parent_missing"])
         repaired_system = json.loads(fixture.requests[1]["body"])["messages"][0]["content"]
@@ -592,7 +592,7 @@ class LocalProviderTests(unittest.TestCase):
     def test_invalid_repair_stops_after_two_posts_with_fixed_codes(self):
         invalid = make_plan(self.request)
         invalid["nodes"][0]["after_refs"] = []
-        fixture = self._start(context_tokens=16384, callback=lambda _request: (
+        fixture = self._start(callback=lambda _request: (
             200, {"Content-Type": "application/json"}, self._envelope(self.config, result=invalid)))
         with self.assertRaisesRegex(ProviderError, r"failed local validation.*missing_refs"):
             generate(self.request, self.config)
@@ -641,7 +641,7 @@ class LocalProviderTests(unittest.TestCase):
                 ("", 0),
             ], raw)
 
-        fixture = self._start(callback=slow, timeout_seconds=1, context_tokens=16384)
+        fixture = self._start(callback=slow, timeout_seconds=1)
         started = time.monotonic()
         with self.assertRaisesRegex(ProviderError, "transport failed or timed out"):
             generate(self.request, self.config)
@@ -746,7 +746,7 @@ class LocalProviderTests(unittest.TestCase):
         invalid_type["nodes"][0]["after_type"] = "PredicateSpec[Context]"
         for result in (wrong_digest, unknown, invalid_type, make_result(self.request)):
             self.fixture = None
-            fixture = self._start(context_tokens=16384, callback=lambda _request, result=result:
+            fixture = self._start(callback=lambda _request, result=result:
                                   (200, {"Content-Type": "application/json"},
                                    self._envelope(self.config, result=result)))
             with self.assertRaisesRegex(ProviderError, "failed local validation"):

@@ -292,7 +292,7 @@ def main():
             print("Stage: projections_validated; claims remain inferred; tracking not started")
             return 0
         if args.command == "generate":
-            from .local_provider import ProviderConfig, ProviderError, generate
+            from .local_provider import DEFAULT_CONTEXT_TOKENS, ProviderConfig, ProviderError, generate
             request = read_json(args.request)
             if args.provider == "codex":
                 from .codex_provider import CodexConfig, CodexError, generate as generate_codex
@@ -320,7 +320,7 @@ def main():
                     "ollama": "http://127.0.0.1:11434/api",
                 }[args.provider]
                 config = ProviderConfig(args.provider, endpoint, args.model,
-                                        args.context_tokens if args.context_tokens is not None else 8192,
+                                        args.context_tokens if args.context_tokens is not None else DEFAULT_CONTEXT_TOKENS,
                                         args.max_tokens if args.max_tokens is not None else 1024,
                                         args.timeout_seconds, args.instruction_role or "system")
                 generator = generate

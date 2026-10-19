@@ -67,13 +67,13 @@ def _require(condition):
         raise PublicationError("Publication input or preview bundle is invalid")
 
 
-def _safe_output_root(path, bundle):
+def _safe_output_root(path, bundle=None):
     try:
         root = Path(path)
     except (TypeError, ValueError):
         raise PublicationError("Publication input or preview bundle is invalid") from None
     _require(root.is_absolute() and ".." not in root.parts
-             and root != bundle and bundle not in root.parents)
+             and (bundle is None or (root != bundle and bundle not in root.parents)))
     for parent in (*reversed(root.parents), root):
         _require(not parent.is_symlink())
     if root.exists():

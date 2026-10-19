@@ -142,7 +142,7 @@ def plan_review_gate(*, repository, pr_number, path, line, expected_completion,
         f"{repository}|{pr_number}|{pr['head_sha']}|{path}|{line}|{expected_utc}".encode()
     ).hexdigest()[:20]
     body = _gate_body(expected_utc, gate_id)
-    root = _safe_output_root(output_root, Path("/tmp/hyperreview-not-a-preview"))
+    root = _safe_output_root(output_root)
     plan = {"schema": GATE_PLAN_SCHEMA, "status": "ready", "repository": repository,
             "pr": pr_number, "head_sha": pr["head_sha"], "path": path, "line": line,
             "side": "RIGHT", "expected_completion": deadline.astimezone(timezone.utc)
@@ -183,6 +183,14 @@ def publish_review_gate(plan_dir, *, expected_plan_sha256, expected_comment_sha2
              and re.fullmatch(r"[0-9a-f]{20}", plan["gate_id"]) is not None
              and body.startswith(f"{GATE_MARKER}{plan['gate_id']} -->\n\n")
              and hashlib.sha256(body_bytes).hexdigest() == plan.get("body_sha256"))
+    try:
+        expected_completion = datetime.fromisoformat(
+            plan["expected_completion"].replace("Z", "+00:00"))
+    except (AttributeError, ValueError, KeyError):
+        raise PublicationError("Reviewed review-gate artifacts are invalid") from None
+    _require(expected_completion.tzinfo is not None
+             and expected_completion.utcoffset().total_seconds() == 0
+             and expected_completion > datetime.now(timezone.utc))
     root = _private_state_root(state_root)
     receipt_path = root / f"gate-{authorized_repository.replace('/', '-')}-{plan['pr']}-{plan['gate_id']}.json"
     lock_path = receipt_path.with_suffix(".lock")

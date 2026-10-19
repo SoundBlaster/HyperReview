@@ -33,12 +33,17 @@ profile preserves the named shared owner and its extracted composition:
    ContextAnatomyFeature
      ContextInsightPresentation
      ContextInsightCardComposition
+-    AdaptiveCardHeader
+-    EvidenceDisclosure
+-    InsightMetric
+-    InsightBadge
+-    DesignCardSurface
 +  DesignSystem
-     AdaptiveCardHeader
-     EvidenceDisclosure
-     InsightMetric
-     InsightBadge
-     DesignCardSurface
++    AdaptiveCardHeader
++    EvidenceDisclosure
++    InsightMetric
++    InsightBadge
++    DesignCardSurface
 ```
 
 These are inferred responsibilities, not one node per Swift type. Before-side
@@ -47,13 +52,17 @@ composition in the feature. After-side references identify their shared
 implementations. Feature-specific content, formatting and state remain in
 `ContextAnatomyFeature`; moving a visual responsibility does not assert that
 the feature stopped displaying it.
-The text diff adds one parent line, which changes containment of the following
-five nodes. Their names and indentation need not change. The compiler's IR diff
+An ordinary text diff adds only one parent line: the five child lines keep
+their names and indentation. Compact renderer v5 instead matches lines together
+with their containing paths, exposing removal from the old branch and addition
+under the new owner. This remains a valid unified patch of the same two files;
+it deliberately favors visible ownership changes over the shortest text edit.
+These display keys do not establish cross-revision identity. The compiler's IR diff
 reports five removed feature paths and an added `DesignSystem` subtree. Reading
 those as five relocations relies on the paired identity map and source evidence;
 it is not a compiler-proven move operation.
 
-Compact renderer v4 includes the full context of projections up to 40 lines,
+Compact renderer v5 includes the full context of projections up to 40 lines,
 so the root, named owner and all its parts stay visible in this small example.
 Larger projections retain the usual focused diff context.
 
@@ -74,9 +83,9 @@ pinned revisions as the published original:
 
 This is a worked example, not a model reliability measurement. Compilation
 checks the declared composition and references; it does not prove the
-interpretation, runtime behavior or visual parity. The old bundle and published
-comment remain intact. A revised comment requires separate operator review and
-publication authorization.
+interpretation, runtime behavior or visual parity. Earlier preview bundles and
+publication plans are retained as historical evidence. Updating a comment requires operator
+review and publication authorization.
 
 The expanded profile also consumes context budget. The shared HTTP default is
 16384 for both the Python API and CLI, so the existing small repair fixtures can

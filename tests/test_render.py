@@ -60,7 +60,8 @@ class RenderTests(unittest.TestCase):
         diff = preview.split("```diff\n", 1)[1].split("```", 1)[0]
         self.assertIn(" Application\n", diff)
         self.assertIn("+  DesignSystem\n", diff)
-        self.assertIn("     EvidenceDisclosure\n", diff)
+        self.assertIn("-    EvidenceDisclosure\n", diff)
+        self.assertIn("+    EvidenceDisclosure\n", diff)
 
     def test_large_projection_diff_keeps_distant_unchanged_parts_out(self):
         self.result["before_hc"] = "Application\n" + "".join(

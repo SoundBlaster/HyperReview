@@ -5,9 +5,25 @@ HyperReview:
 '#scheduler':
   poll_interval_seconds: 300
   install_enabled: false
+  implemented_stage: "intake-only"
+  inference_enabled: false
+  publication_enabled: false
 
 '#queue':
   concurrency: 1
+  max_pending_intake_tasks: 32
+
+'#journal':
+  intake_store: "sqlite"
+  max_intake_receipts: 2048
+
+'#intake-task-policy':
+  policy_library: "specification-core"
+  max_collection_attempts: 2
+
+'#request-handoff':
+  stage: "request_prepared"
+  delivery_mode: "request_only"
 
 '#specgraph':
   slug: "0al-spec/SpecGraph"
@@ -152,10 +168,23 @@ HyperReview:
 # Applicable in every context. These constrain values, not worker behavior.
 @contract:
   '#scheduler':
-    poll_interval_seconds: int >= 60 <= 3600
+    poll_interval_seconds: int >= 300 <= 86400
     install_enabled: bool
+    implemented_stage: string
+    inference_enabled: bool
+    publication_enabled: bool
   '#queue':
     concurrency: int >= 1 <= 1
+    max_pending_intake_tasks: int >= 1 <= 32
+  '#journal':
+    intake_store: string
+    max_intake_receipts: int >= 1 <= 2048
+  '#intake-task-policy':
+    policy_library: string
+    max_collection_attempts: int >= 1 <= 2
+  '#request-handoff':
+    stage: string
+    delivery_mode: string
   Repository:
     slug: string
     enabled: bool

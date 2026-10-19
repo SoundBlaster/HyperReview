@@ -51,6 +51,13 @@ and disabled LLM judging are the initial policy; MLflow does not own job leases
 or GitHub publication authority. See [the MLflow contract](../SPECS/06-mlflow.md).
 No MLflow server is started by resolving this model.
 
+The first implemented worker stage maps `#scheduler`, `#queue`, `#journal`,
+`#intake-task-policy` and `#request-handoff` to read-only discovery and pinned
+request preparation. It does not invoke `#modelgateway` or `#publisher`.
+Its operator JSON configuration is separate from this illustrative `.hcs`.
+The generated launchd plist is not installed automatically. See
+[the implemented intake boundary](../SPECS/22-worker-intake.md).
+
 The implemented read-only `publish-plan` command exercises part of
 `#publication-gate`: preview/tracking bindings, live eligibility, revisions and
 owned-comment inventory. It prepares a private draft for `#publisher` without

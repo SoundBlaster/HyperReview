@@ -11,6 +11,21 @@ from .storage import StorageError, read_json, write_bundle
 def main():
     parser = argparse.ArgumentParser(description="Prepare and validate local PR explanations.")
     commands = parser.add_subparsers(dest="command", required=True)
+    worker_config = commands.add_parser("worker-config", help="Prepare private intake worker settings")
+    worker_config.add_argument("--repo", action="append", required=True)
+    worker_config.add_argument("--interval-seconds", type=int, default=300)
+    worker_config.add_argument("--state-root", type=Path,
+                               default=Path.home() / ".local/share/hyperreview/worker")
+    worker_config.add_argument("--output-root", type=Path,
+                               default=Path.home() / ".local/share/hyperreview/worker-configs")
+    for name in ("worker-tick", "worker-status"):
+        command = commands.add_parser(name, help="Read-only intake worker; no inference or publication")
+        command.add_argument("--config", required=True, type=Path)
+    launchd = commands.add_parser("worker-launchd-plan", help="Prepare a launchd plist without installing it")
+    launchd.add_argument("--config", required=True, type=Path)
+    launchd.add_argument("--python", required=True, type=Path)
+    launchd.add_argument("--output-root", type=Path,
+                         default=Path.home() / ".local/share/hyperreview/launchd-plans")
     review = commands.add_parser("review")
     review.add_argument("--repo", required=True)
     review.add_argument("--pr", required=True, type=int)
@@ -120,6 +135,32 @@ def main():
                        default=Path.home() / ".local/share/hyperreview/pilot")
     args = parser.parse_args()
     try:
+        if args.command.startswith("worker-"):
+            import json
+            import sqlite3
+            from .worker import WorkerError, create_config, status, tick
+            from .launchd import LaunchdError, write_launchd_plan
+            try:
+                if args.command == "worker-config":
+                    destination = create_config(repositories=args.repo, state_root=args.state_root,
+                                                interval_seconds=args.interval_seconds,
+                                                output_root=args.output_root)
+                    print(f"Worker config: {destination / 'config.json'}")
+                    return 0
+                if args.command == "worker-launchd-plan":
+                    destination = write_launchd_plan(config_path=args.config, python=args.python,
+                                                     output_root=args.output_root)
+                    print(f"Launchd plan: {destination / 'agent.plist'}")
+                    print("Not installed; intake only; model calls: 0; GitHub writes: 0")
+                    return 0
+                result = tick(args.config) if args.command == "worker-tick" else status(args.config)
+                print(json.dumps(result, sort_keys=True))
+                return 1 if result["status"] == "failed" else 0
+            except (WorkerError, LaunchdError, IntakeError, StorageError, ContractError,
+                    sqlite3.Error, OSError, ValueError, TypeError, KeyError):
+                print("HyperReview: worker operation failed; no inference or publication attempted",
+                      file=sys.stderr)
+                return 1
         if args.command == "publish-plan":
             from .publication import PublicationError, plan_publication
             try:

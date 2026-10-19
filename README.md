@@ -4,24 +4,25 @@ A local PR reviewer that explains architectural changes using illustrative
 Hypercode projections, source references, and explicit evidence boundaries.
 
 **Status: manual compiled preview with local tracking.** A Python CLI collects pinned PR evidence,
-prepares a filtered request, proposes a result through LM Studio or Ollama,
+prepares a filtered request, proposes a result through Codex CLI or an explicitly
+selected local HTTP provider,
 and validates paired projections before rendering a local explanation.
 Metadata-only MLflow delivery and recovery are implemented. Controlled pilot
 fixtures, local Evidently reports, and explicit sanitized evaluation export to
 MLflow are available. Local own-PR feedback capture, a read-only publication dry-run,
 and the one-shot publisher implementation are available. Live publication still
-requires an exact operator-authorized plan; the launchd worker remains future
-work. The Hypercode model describes the proposed full reviewer, not an installed
-service.
+requires an exact operator-authorized plan. The first local worker increment
+prepares pinned evidence and filtered requests with a durable queue; a launchd
+plan can be generated for review. It does not run a model or publish unattended.
+The Hypercode model still describes the proposed full reviewer.
 
 ## The pilot
 
 For an eligible PR, collect pinned before/after source data, build a paired
 architecture projection with stable IDs, validate the artifacts, and produce
 one concise Markdown explanation with a Hypercode diff. Initial operation is
-local preview. Publishing is not implemented; a future publisher must remain
-behind explicit authorization, eligibility, artifact, tracking-confirmation,
-and security gates.
+local preview. The one-shot publisher requires explicit authorization,
+eligibility, artifact, tracking-confirmation, and security gates.
 
 The repository allowlist is `0al-spec/SpecGraph`, `0al-spec/Hypercode`, and
 `SoundBlaster/SessionMonitor`, with PR author `SoundBlaster` and same-repository heads.
@@ -62,6 +63,12 @@ HTTP API. Backend readiness and isolation must be verified before use; an
 installed executable alone does not establish a safe unattended setup.
 
 ## Manual evidence preview
+
+For periodic intake, see [local worker intake](SPECS/22-worker-intake.md).
+`worker-config`, `worker-tick`, `worker-status` and `worker-launchd-plan` prepare
+the trusted configuration, private queue, requests and reviewable LaunchAgent.
+The generator does not install a service. Automatic inference and publishing
+remain disabled at this stage.
 
 Requirements: Python 3.10+ and an authenticated `gh` CLI for `github.com`.
 Install into a Python 3.10+ environment before running from this repository:

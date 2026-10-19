@@ -12,6 +12,8 @@ projections HyperReview will create for analyzed PRs.
 | `#scheduler` | Poll configured repositories and resume after wake | HR-ARCH-003 |
 | `#queue` | Serialize work and deduplicate job identities | HR-DATA-004 |
 | `#journal` | Persist recoverable job transitions | HR-DATA-004 |
+| `#intake-task-policy` | Bound intake retries through a pure policy rule | HR-SEC-007 |
+| `#request-handoff` | Persist pinned evidence/request without inference authority | HR-DATA-001 |
 | `#github` | Read PR metadata and pinned source | HR-DATA-001, HR-SEC-001 |
 | `#repositories` | Hold operator-owned repository allowlist | HR-SEC-001 |
 | `#eligibility` | Reject non-eligible PRs before model access | HR-SEC-001 |

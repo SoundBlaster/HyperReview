@@ -61,3 +61,7 @@ nodes. Future tooling integration must preserve their IDs and status.
 
 - [Change-focused projections](21-change-focused-projections.md): profile v2
   granularity guidance and the pinned SessionMonitor #117 extraction example.
+
+- [Local worker intake](22-worker-intake.md): serialized discovery, pinned request
+  handoff, bounded retries/retention and a reviewable launchd plan; no inference
+  or publication authority.

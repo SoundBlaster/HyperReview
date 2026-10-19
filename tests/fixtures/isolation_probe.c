@@ -34,6 +34,8 @@ int main(int argc,char **argv) {
  CHECK(denied(open(argv[2],O_WRONLY)));
  CHECK(denied(open("outside-link",O_RDONLY)));
  CHECK(denied(open(argv[3],O_WRONLY)));
+ CHECK(denied(link(argv[3],"policy-hardlink")));
+ CHECK(denied(link(argv[4],"auth-hardlink")));
  CHECK(denied(open(argv[4],O_WRONLY)));
  CHECK(denied(unlink(argv[8])));
  fd=open(argv[4],O_RDONLY);CHECK(fd>=0);close(fd);

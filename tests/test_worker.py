@@ -248,6 +248,28 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(previous.read_bytes(), content)
         self.assertEqual(previous.stat().st_mode & 0o777, 0o600)
 
+    def test_plan_normalizes_existing_private_logs_to_writable_mode(self):
+        for name, mode in zip(worker._LOG_FILES, (0o400, 0o000)):
+            (self.state / "logs" / name).chmod(mode)
+        write_launchd_plan(config_path=self.config, python=Path(sys.executable),
+                           output_root=self.root / "plans")
+        for name in worker._LOG_FILES:
+            self.assertEqual((self.state / "logs" / name).stat().st_mode & 0o777, 0o600)
+
+    def test_log_creation_and_rotation_override_restrictive_umask(self):
+        for name in worker._LOG_FILES:
+            (self.state / "logs" / name).unlink()
+        previous_mask = os.umask(0o777)
+        try:
+            worker._prepare_logs(self.state)
+            target = self.state / "logs/worker.stdout.log"
+            target.write_bytes(b"x" * 65536)
+            worker._rotate_logs(self.state)
+        finally:
+            os.umask(previous_mask)
+        for name in worker._LOG_FILES:
+            self.assertEqual((self.state / "logs" / name).stat().st_mode & 0o777, 0o600)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -74,6 +74,9 @@ def _prepare_logs(root):
                                  | getattr(os, "O_NOFOLLOW", 0), 0o600)
             os.close(descriptor)
         _private_file(path)
+        # Owner-private can still be 0400/000; creation is also affected by the
+        # caller's umask. launchd needs writable targets, not just private ones.
+        os.chmod(path, 0o600, follow_symlinks=False)
     return log_root
 
 
@@ -325,9 +328,7 @@ def _rotate_logs(root):
         os.replace(path, previous)
         # launchd opens log targets before applying the child's Umask. Leave a
         # private current target for the next launch instead of a missing path.
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL
-                             | getattr(os, "O_NOFOLLOW", 0), 0o600)
-        os.close(descriptor)
+        _prepare_logs(root)
 
 
 def tick(config_path, *, api=None):

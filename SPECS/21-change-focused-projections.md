@@ -41,6 +41,9 @@ composition in the feature. After-side references identify their shared
 implementations. Feature-specific content, formatting and state remain in
 `ContextInsightFeatureUI`; moving a visual responsibility does not assert that
 the feature stopped displaying it.
+The compiler's IR diff reports ten path changes (five removals and five
+additions). Reading those as five relocations relies on the paired identity
+map and source evidence; it is not a compiler-proven move operation.
 
 The replay used the same 16 selected source records, source-byte budget and
 pinned revisions as the published original:

@@ -84,3 +84,11 @@ compiler validation and rendering. The `worker_stage=private_preview` context
 enables this declared stage; it is not an installed scheduler setting. These
 unique roles need no extra synonymous selectors. Behavioral obligations and
 limits are in [the private-preview contract](../SPECS/23-worker-private-preview.md).
+
+`AutomaticCommentDelivery` is an independent consumer in `publication_worker.py`.
+Its standing operator grant pins the upstream config and repository subset;
+snapshots keep the original preview manifest unchanged while MLflow tracking and
+the existing comment broker perform delivery. `DeliveryRecovery` persists exact
+plans across uncertain writes. `publication_stage=automatic_comment` illustrates
+the optional stage; it grants no runtime authority or service installation.
+See [the automatic-publication contract](../SPECS/24-automatic-publication.md).

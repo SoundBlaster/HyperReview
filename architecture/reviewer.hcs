@@ -87,6 +87,31 @@ HyperReview:
   delivery_mode: "preview"
   comment_marker_namespace: "hyperreview"
 
+AutomaticCommentDelivery:
+  enabled: false
+  implementation: "hyperreview/publication_worker.py"
+  max_jobs_per_tick: 1
+  model_calls: 0
+  publication_mode: "comment"
+
+StandingPublicationGrant:
+  source: "operator_config"
+  source_config_digest_required: true
+  repository_subset_required: true
+
+PublicationSnapshot:
+  upstream_manifest_preserved: true
+  tracking_confirmation_required: true
+
+DeliveryRecovery:
+  max_delivery_attempts: 3
+  reuse_exact_pending_plan: true
+  retained_receipt_limit: 2048
+
+@publication_stage[automatic_comment]:
+  AutomaticCommentDelivery:
+    enabled: true
+
 '#budget':
   analysis_timeout_seconds: 300
   max_model_attempts: 2

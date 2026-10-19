@@ -34,6 +34,24 @@ def main():
     launchd.add_argument("--python", required=True, type=Path)
     launchd.add_argument("--output-root", type=Path,
                          default=Path.home() / ".local/share/hyperreview/launchd-plans")
+    pubconfig = commands.add_parser("publication-worker-config", help="Grant standing comment publication for selected preview repositories")
+    pubconfig.add_argument("--preview-config", required=True, type=Path)
+    pubconfig.add_argument("--authorize-repository", action="append", required=True)
+    pubconfig.add_argument("--authorize-mode", required=True, choices=("comment",))
+    pubconfig.add_argument("--interval-seconds", type=int, default=300)
+    pubconfig.add_argument("--state-root", type=Path, default=Path.home() / ".local/share/hyperreview/publication-worker")
+    pubconfig.add_argument("--publication-state-root", type=Path, default=Path.home() / ".local/share/hyperreview/publication-state")
+    pubconfig.add_argument("--output-root", type=Path, default=Path.home() / ".local/share/hyperreview/publication-worker-configs")
+    pubconfig.add_argument("--runtime-python", type=Path, default=Path.home() / ".local/share/hyperreview/runtime/bin/python")
+    pubconfig.add_argument("--database", type=Path, default=Path.home() / ".local/share/hyperreview/mlflow/tracking.db")
+    pubconfig.add_argument("--artifacts-root", type=Path, default=Path.home() / ".local/share/hyperreview/mlflow/artifacts")
+    pubconfig.add_argument("--spool-root", type=Path, default=Path.home() / ".local/share/hyperreview/tracking-spool")
+    for name in ("publication-worker-tick", "publication-worker-status", "publication-worker-launchd-plan"):
+        pubcommand = commands.add_parser(name)
+        pubcommand.add_argument("--config", required=True, type=Path)
+        if name.endswith("launchd-plan"):
+            pubcommand.add_argument("--python", required=True, type=Path)
+            pubcommand.add_argument("--output-root", type=Path, default=Path.home() / ".local/share/hyperreview/launchd-plans")
     review = commands.add_parser("review")
     review.add_argument("--repo", required=True)
     review.add_argument("--pr", required=True, type=int)
@@ -145,6 +163,40 @@ def main():
                        default=Path.home() / ".local/share/hyperreview/pilot")
     args = parser.parse_args()
     try:
+        if args.command.startswith("publication-worker-"):
+            import json
+            import sqlite3
+            from . import publication_worker
+            from .launchd import LaunchdError
+            from .worker import WorkerError
+            from .tracking import TrackingError
+            from .publication import PublicationError
+            try:
+                if args.command == "publication-worker-config":
+                    destination = publication_worker.create_config(
+                        preview_config=args.preview_config, repositories=args.authorize_repository,
+                        mode=args.authorize_mode, state_root=args.state_root, output_root=args.output_root,
+                        publication_state_root=args.publication_state_root,
+                        interval_seconds=args.interval_seconds,
+                        tracking_options={key: getattr(args, key) for key in
+                                          ("runtime_python", "database", "artifacts_root", "spool_root")})
+                    print(f"Publication worker config: {destination / 'config.json'}")
+                    return 0
+                if args.command == "publication-worker-launchd-plan":
+                    destination = publication_worker.write_launchd_plan(
+                        config_path=args.config, python=args.python, output_root=args.output_root)
+                    print(f"Publication launchd plan: {destination / 'agent.plist'}")
+                    print("Not installed; standing comment authority follows the reviewed configuration")
+                    return 0
+                result = (publication_worker.tick(args.config) if args.command.endswith("-tick")
+                          else publication_worker.status(args.config))
+                print(json.dumps(result, sort_keys=True))
+                return 1 if result["status"] in ("delivery_failed", "capacity_reached") else 0
+            except (WorkerError, LaunchdError, TrackingError, PublicationError,
+                    StorageError, ContractError, sqlite3.Error,
+                    OSError, ValueError, TypeError, KeyError):
+                print("HyperReview: publication worker failed; inspect its private journal; remote outcome may require reconciliation", file=sys.stderr)
+                return 1
         if args.command.startswith("worker-"):
             import json
             import sqlite3

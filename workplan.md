@@ -175,7 +175,22 @@ automatic replay after ambiguous failure or interruption; eligibility/revisions
 are checked before and after work. Intake-only v1 remains supported. The optional
 LaunchAgent plan uses a separate label/state root and does not install itself.
 
-Next: review/merge the isolation → private-preview stack, then activate the
-reviewed preview timer configuration and observe a real due tick. Comment
-publication and review-gate automation remain a separate explicitly authorized
-increment after private-output recovery is observed.
+The isolation → private-preview stack is merged and its reviewed timer is active.
+Real due ticks produced SessionMonitor #117 and SpecGraph #773 private previews.
+Comment publication is the separately authorized increment below; automated
+review-thread gates remain a later step.
+
+### P4 automatic comment delivery
+
+The isolation/private-preview stack (#30 → #31) is merged. The Mac's isolated
+preview timer produced real SessionMonitor #117 and SpecGraph #773 previews.
+The operator subsequently requested automatic publication for the selected
+repositories. The separate publisher in `publication_worker.py` consumes those
+previews under an explicit standing repository grant, confirms local metadata
+tracking and invokes the existing fresh-revision comment broker. It reuses exact
+pending plans after uncertain writes and preserves the original preview manifest.
+
+The first delivery published the #773 architectural preview in one attempt as
+[comment 6272175746](https://github.com/0al-spec/SpecGraph/pull/773#issuecomment-6272175746).
+The permanent service remains an operational activation step after integration.
+This increment does not automate review-thread gates or merging.

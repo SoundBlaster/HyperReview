@@ -117,10 +117,11 @@ def _finish_gate(db, root, config, task, job, outcome, observation_factory):
         return {"review_gate_completion": "pending"}
 
 
-def process_one(db, config, root, api, now, *, observation_factory=None):
+def process_one(db, config, root, api, now, *, observation_factory=None, gate_factory=None):
     """Consume one retained intake handoff; never automatically replay a job key."""
     from . import worker
     observation_factory = observation_factory or (lambda: api)
+    gate_factory = gate_factory or observation_factory
     _setup(db)
     _expire(db, root, now)
     gated = "review_gate" in config
@@ -137,7 +138,7 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
     if gated:
         from .automatic_review_gate import GateError, reconcile
         try:
-            reconcile(db, root, config, observation_factory)
+            reconcile(db, root, config, gate_factory)
         except GateError:
             return {"status": "review_gate_reconciliation_pending", "github_writes": None,
                     "generation_runs": 0, "provider_attempts": None}
@@ -165,14 +166,14 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
         worker._require(worker._retained_handoff(root, selected), "Intake handoff is unavailable")
         if not _fresh(selected, observation_factory()):
             _transition(db, job, "stale", int(time.time()), "eligibility_or_revisions_changed")
-            base.update(_finish_gate(db, root, config, selected, job, "stale", observation_factory))
+            base.update(_finish_gate(db, root, config, selected, job, "stale", gate_factory))
             return {**base, "status": "preview_stale"}
         directory = root / "artifacts" / selected["artifact"]
         evidence = read_json(directory / "evidence.json")
         request = read_json(directory / "request.json")
         if gated and selected["repository"] in config["review_gate"]["repositories"]:
             from .automatic_review_gate import ensure
-            base["review_gate_url"] = ensure(db, root, config, selected, job, observation_factory)
+            base["review_gate_url"] = ensure(db, root, config, selected, job, gate_factory)
         # Persist before entering code which can contact the model. A crash or
         # ambiguous provider failure consumes this key instead of replaying it.
         with db:
@@ -183,7 +184,7 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
         base["provider_attempts"] = completed["provider_attempts"]
         if not _fresh(selected, observation_factory()):
             _transition(db, job, "stale", int(time.time()), "eligibility_or_revisions_changed")
-            base.update(_finish_gate(db, root, config, selected, job, "stale", observation_factory))
+            base.update(_finish_gate(db, root, config, selected, job, "stale", gate_factory))
             return {**base, "status": "preview_stale"}
         artifacts = completed["artifacts"]
         worker._require(set(artifacts) == FILES)
@@ -195,7 +196,7 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
             db.execute("UPDATE preview_jobs SET artifact=?,bundle_digest=?,provider_attempts=? WHERE job=?",
                        (destination.name, manifest, completed["provider_attempts"], job))
             _transition(db, job, "preview_ready", int(time.time()))
-        base.update(_finish_gate(db, root, config, selected, job, "success", observation_factory))
+        base.update(_finish_gate(db, root, config, selected, job, "success", gate_factory))
         return {**base, "status": "preview_ready", "bundle": str(destination),
                 "preview": str(destination / "preview-compact.md"), "tracking_status": "not_started"}
     except worker_generation.PreviewJobError as error:
@@ -208,7 +209,7 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
             raise
         code = error.code
     _transition(db, job, "failed", int(time.time()), code)
-    base.update(_finish_gate(db, root, config, selected, job, "failed", observation_factory))
+    base.update(_finish_gate(db, root, config, selected, job, "failed", gate_factory))
     return {**base, "status": "preview_failed", "failure_code": code}
 
 

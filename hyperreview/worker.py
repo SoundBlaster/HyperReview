@@ -370,6 +370,13 @@ def _observation_api():
     return client
 
 
+def _gate_observation_api():
+    """Budget a multi-read gate transaction separately from a revision check."""
+    client = intake.GitHub()
+    client.deadline = min(client.deadline, time.monotonic() + 120)
+    return client
+
+
 def tick(config_path, *, api=None):
     """Perform at most one intake or explicitly configured private-preview job."""
     config = load_config(config_path)
@@ -397,7 +404,8 @@ def tick(config_path, *, api=None):
             from .worker_preview import process_one
             completed_preview = process_one(
                 db, config, root, api, now,
-                observation_factory=(lambda: api) if injected_api else _observation_api)
+                observation_factory=(lambda: api) if injected_api else _observation_api,
+                gate_factory=(lambda: api) if injected_api else _gate_observation_api)
             if completed_preview is not None:
                 return {"discovered": discovered, "queue_full": full, **completed_preview}
         policy = WorkerTaskEligibility()

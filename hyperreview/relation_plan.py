@@ -18,7 +18,7 @@ def schema(request):
         "type": "array", "maxItems": MAX_RELATIONS,
         "description": (
             "Up to six important source-supported relationships, separate from the .hc tree. "
-            "Prefer obligation -> policy -> application, typed facts, reuse, and build/artifact/deploy boundaries. "
+            "Prioritize one shared rule -> multiple named application sites when inspected; distinguish direct from indirect reuse. Also show obligation -> policy -> application, typed facts, and build/artifact/deploy boundaries. "
             "Endpoints can name an obligation or source-established symbol without adding tree nodes. "
             "Use [] if no relationship has evidence; never invent execution or claim runtime observation."
         ),

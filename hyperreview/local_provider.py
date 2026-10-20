@@ -12,7 +12,7 @@ import threading
 import time
 from urllib.parse import urlsplit
 
-from . import intake, model_contract, reviewer_profile
+from . import intake, model_contract, reviewer_profile, source_analysis
 from .composition_plan import CompositionPlanError, plan_schema, to_result
 
 
@@ -217,7 +217,7 @@ def _issue_for_error(error):
 
 
 def _comparison_content(request):
-    """Optional bounded same-path diffs; source text stays in an untrusted role."""
+    """Optional bounded diffs and AST reference hints, all in an untrusted role."""
     sides = {side: {} for side in ("before", "after")}
     ambiguous = {side: set() for side in sides}
     for source in request["sources"]:
@@ -251,8 +251,18 @@ def _comparison_content(request):
         if len(_wire_bytes(candidate)) > 2048:
             break
         comparisons.append(item)
-    return (_wire_bytes({"trust": "untrusted_source_data", "same_path_diffs": comparisons})
-            .decode("utf-8") if comparisons else None)
+    payload = {"trust": "untrusted_source_data", "same_path_diffs": comparisons}
+    hints = []
+    for hint in source_analysis.policy_reuse_hints(request):
+        candidate = {**payload, "policy_reference_hints": hints + [hint],
+                     "hint_scope": "Python identifier references only; verify binding and meaning in source."}
+        if len(_wire_bytes(candidate)) > 6144:
+            break
+        hints.append(hint)
+    if hints:
+        payload["policy_reference_hints"] = hints
+        payload["hint_scope"] = "Python identifier references only; verify binding and meaning in source."
+    return _wire_bytes(payload).decode("utf-8") if comparisons or hints else None
 
 
 def _attempt_payload(config, schema, user_content, issue=None, comparison_content=None):

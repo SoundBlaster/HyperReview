@@ -525,7 +525,7 @@ class LocalProviderTests(unittest.TestCase):
             result = invalid if len(self.fixture.requests) == 1 else valid
             return 200, {"Content-Type": "application/json"}, self._envelope(self.config, result=result)
 
-        fixture = self._start(callback=callback, context_tokens=16384)
+        fixture = self._start(callback=callback, context_tokens=32768)
         outcome = generate(self.request, self.config)
         self.assertEqual(len(fixture.requests), 2)
         self.assertEqual(outcome["plan"], valid)

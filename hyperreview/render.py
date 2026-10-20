@@ -8,7 +8,7 @@ from urllib.parse import quote
 from . import intake, model_contract, relation_sheet
 
 
-COMPACT_RENDER_VERSION = "compact-v6"
+COMPACT_RENDER_VERSION = "compact-v7"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -154,6 +154,51 @@ def _configuration_coverage(request):
     return lines
 
 
+def _source_groups(refs, sources):
+    groups = {}
+    for ref in dict.fromkeys(refs):
+        source = sources[ref]
+        groups.setdefault(source["path"], {}).setdefault(source["side"], []).append(source)
+    return groups
+
+
+def _source_url(request, source, *, lines=False):
+    url = (f"https://github.com/{request['repository']}/blob/{source['revision']}/"
+           f"{quote(source['path'], safe='/')}")
+    if lines:
+        url += f"#L{source['line_start']}-L{source['line_end']}"
+    return url
+
+
+def _compact_source_links(request, groups):
+    links = []
+    for path, sides in groups.items():
+        versions = [f"[{'до' if side == 'before' else 'после'}]"
+                    f"({_source_url(request, sides[side][0])})"
+                    for side in ("before", "after") if side in sides]
+        links.append(_text(path) + " — " + " / ".join(versions))
+    return "; ".join(links)
+
+
+def _identity_source_ranges(request, result, sources, labels):
+    """Keep exact per-node evidence ranges available outside the main prose."""
+    lines = ["\n### Точные диапазоны источников по узлам\n"]
+    for identity in result["identity_map"]:
+        lines.append("\n**" + _text(labels[identity["architecture_id"]]) + "**\n")
+        groups = _source_groups(identity["before_refs"] + identity["after_refs"], sources)
+        for path, sides in groups.items():
+            versions = []
+            for side in ("before", "after"):
+                if side not in sides:
+                    continue
+                refs = sorted(sides[side], key=lambda source: (source["line_start"], source["line_end"]))
+                ranges = [f"[L{source['line_start']}–{source['line_end']}]"
+                          f"({_source_url(request, source, lines=True)})" for source in refs]
+                versions.append(("до: " if side == "before" else "после: ") + ", ".join(ranges))
+            lines.append("- " + _text(path) + " — " + "; ".join(versions) + "\n")
+    return lines
+
+
 def render_preview(request, result, receipt, semantic_diff, *, tracking_status="not_started"):
     """Inputs must come from the successful compiler boundary, never raw model output.
 
@@ -263,15 +308,10 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
     sources = {source["id"]: source for source in request["sources"]}
     address_labels = _address_labels(result)
     for identity in result["identity_map"]:
-        links = []
         refs = list(dict.fromkeys(identity["after_refs"] + identity["before_refs"]))
-        for ref in refs:
-            source = sources[ref]
-            url = (f"https://github.com/{request['repository']}/blob/{source['revision']}/"
-                   f"{quote(source['path'], safe='/')}#L{source['line_start']}-L{source['line_end']}")
-            links.append(f"[{_text(source['path'])}]({url})")
+        links = _compact_source_links(request, _source_groups(refs, sources))
         lines.append(f"- `{address_labels[identity['architecture_id']]}` — {_text(identity['reason'])} "
-                     + "; ".join(links) + "\n")
+                     + links + "\n")
     lines.extend(["\n<details>\n<summary>Границы анализа и основания</summary>\n",
                   f"PR #{request['pr']}: `{request['merge_base_sha']}` → `{request['head_sha']}`.\n",
                   f"Исходников в анализе: {len(request['sources'])}; пропущено: {len(request['omissions'])}.\n",
@@ -283,5 +323,6 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
     for omission in request["omissions"]:
         lines.append("- Пропущено: " + _text(omission.get("path") or "путь скрыт политикой")
                      + " — " + _text(omission["reason"]) + ".\n")
+    lines.extend(_identity_source_ranges(request, result, sources, address_labels))
     lines.extend(["\n</details>\n", "**Ок или не ок?**\n"])
     return "\n".join(lines).encode("utf-8")

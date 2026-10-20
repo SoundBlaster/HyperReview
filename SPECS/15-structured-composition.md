@@ -118,6 +118,11 @@ Compilation produces both `preview.md` (verbose diagnostics) and
 tracking confirmation, `track --bundle` re-renders both files; the verbose view
 shows the confirmed tracking status.
 
+Compact node explanations group citations by file path, with one short
+before/after version link per file. Exact per-node excerpt ranges remain linked
+inside the expanded evidence section. Grouping presentation does not discard
+source references or imply that the whole linked file was supplied to the model.
+
 The practical acceptance is a compiled, compact preview that the operator can
 mark **ok** or **not ok**, optionally identifying an unclear or incorrect node.
 The local `feedback` CLI implements capture

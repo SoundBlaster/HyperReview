@@ -51,6 +51,44 @@ def _fail(code):
     raise PreviewJobError(code)
 
 
+def _provider_failure(error):
+    """Classify known local diagnostics; never persist arbitrary error prose."""
+    from .codex_provider import CodexError
+    from .local_provider import _ISSUE_CODES
+    if type(error) is not CodexError:
+        return "generation_failed"
+    message = str(error)
+    known = {
+        "Codex CLI timed out": "codex_timeout",
+        "Codex CLI preparation timed out": "codex_timeout",
+        "Codex CLI could not be started": "codex_process_start_failed",
+        "Codex CLI process failed": "codex_process_failed",
+        "Codex CLI exited unsuccessfully": "codex_process_exit",
+        "Codex CLI output exceeds 1 MiB": "codex_output_limit",
+        "Codex emitted malformed JSONL events": "codex_event_format",
+        "Codex emitted an unexpected event": "codex_event_rejected",
+        "Codex emitted an unexpected item or tool action": "codex_action_rejected",
+        "Codex item is outside its active turn": "codex_event_sequence",
+        "Codex thread start is out of order": "codex_event_sequence",
+        "Codex turn start is out of order": "codex_event_sequence",
+        "Codex turn completion is out of order": "codex_event_sequence",
+        "Codex did not complete exactly one turn": "codex_turn_incomplete",
+        "Codex did not emit exactly one final message": "codex_final_message_count",
+        "Codex final message is unavailable": "codex_output_missing",
+        "Codex final message is not UTF-8": "codex_output_encoding",
+        "Codex final message is invalid JSON": "codex_output_json",
+        "Codex event message does not match its bound final output": "codex_output_binding",
+        "Codex process isolation could not be prepared": "codex_isolation_prepare_failed",
+        "Codex process isolation failed": "codex_isolation_failed",
+    }
+    prefix = "Codex result failed local validation (issue codes: "
+    if message.startswith(prefix) and message.endswith(")"):
+        issues = message[len(prefix):-1].split(", ")
+        if 1 <= len(issues) <= 2 and all(issue in _ISSUE_CODES for issue in issues):
+            return "codex_plan_rejected_" + "_".join(issues)
+    return known.get(message, "generation_failed")
+
+
 def validate_options(options):
     """Validate the closed worker configuration without requiring macOS."""
     try:
@@ -215,7 +253,7 @@ def run(evidence, request, options):
         # Provider diagnostics can contain request material; expose only a stable code.
         if isinstance(error, PreviewJobError):
             raise
-        _fail("generation_failed")
+        _fail(_provider_failure(error))
     if time.monotonic() >= deadline:
         _fail("generation_failed")
 

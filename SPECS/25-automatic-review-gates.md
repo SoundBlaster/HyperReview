@@ -67,6 +67,11 @@ are bounded; unresolved outcomes remain visible for operator attention with
 their exact private plans retained. The controller never infers a successful
 remote write from a local exception or a deadline.
 
+Generation failures retain only a closed diagnostic code: known Codex process,
+timeout, event, output or isolation failures, or one/two allowlisted plan issue
+codes. Arbitrary provider exception text, raw responses and source excerpts are
+not persisted. Unknown exceptions retain the generic failure classification.
+
 The existing source worker's lock serializes gate creation, generation and
 completion. Gate records bind the operator policy, analysis job, repository,
 PR, revisions, plan/comment hashes, root comment, thread and permalink. Logs and

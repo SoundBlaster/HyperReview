@@ -41,6 +41,7 @@ HyperReview#hyperreview
       AutomaticGateLifecycle
         ReviewStartNotice
         GateCompletion
+          PublishedReviewLink
         GateRecovery
     GitHubPublisher#publisher
   Observability#observability

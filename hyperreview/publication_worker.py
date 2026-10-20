@@ -5,10 +5,11 @@ from itertools import islice
 from pathlib import Path
 import plistlib
 import re
+import sqlite3
 import time
 from uuid import UUID
 
-from . import intake, publication, render, tracking, worker, worker_preview
+from . import intake, publication, render, review_summary_link, tracking, worker, worker_preview
 from .storage import StorageError, read_json, write_bundle
 from .model_contract import ContractError
 
@@ -97,7 +98,7 @@ def write_launchd_plan(*, config_path, python, output_root):
              "EnvironmentVariables": {"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
                                       "PYTHONDONTWRITEBYTECODE": "1"}}
     return write_bundle({"agent.plist": plistlib.dumps(plist, sort_keys=True),
-                         "installation.md": b"# Publication worker\n\nThis plan can create/update one owned HyperReview comment per configured PR.\nReview the standing repository grant, pinned preview config, MLflow paths and plist before installing as com.hyperreview.publish.\nThe generator does not install or start services. Disable/unload that label to revoke scheduled publication.\n"},
+                         "installation.md": b"# Publication worker\n\nThis plan can create/update one owned HyperReview comment per configured PR. When its pinned v3 source grants automatic review threads, it can also add one journaled summary link in its own completed thread.\nReview the standing repository grant, pinned preview config, MLflow paths and plist before installing as com.hyperreview.publish.\nThe generator does not install or start services. Disable/unload that label to revoke scheduled publication.\n"},
                         worker._private_directory(output_root, create=True))
 
 
@@ -115,6 +116,7 @@ def _setup(db, config):
         failure_code TEXT, updated_at INTEGER NOT NULL, review_gate_url TEXT)""")
     if "review_gate_url" not in {row[1] for row in db.execute("PRAGMA table_info(deliveries)")}:
         db.execute("ALTER TABLE deliveries ADD COLUMN review_gate_url TEXT")
+    review_summary_link.setup(db)
     db.commit()
 
 
@@ -200,7 +202,11 @@ def _api():
 
 def _expire(db, root, now):
     """Expire terminal/orphan artifacts; retain receipts and pending operations."""
-    pending = db.execute("SELECT snapshot,plan FROM deliveries WHERE state IN ('tracking','publishing','needs_attention')").fetchall()
+    pending = db.execute("""SELECT d.snapshot,d.plan FROM deliveries d
+        LEFT JOIN review_summary_links n ON n.job=d.job
+        WHERE d.state IN ('tracking','publishing','needs_attention')
+        OR (d.state='published' AND d.review_gate_url IS NOT NULL
+            AND (n.job IS NULL OR n.status IN ('pending','creating','checking')))""").fetchall()
     for name, allowed, field in (("snapshots", worker_preview.FILES | {"tracking-receipt.json"}, "snapshot"),
                                  ("plans", {"plan.json", "comment.md"}, "plan")):
         directory = worker._path(root / name)
@@ -255,6 +261,15 @@ def _retryable_plan(plan):
                    for field in ("base_sha", "head_sha", "merge_base_sha"))
 
 
+def _notify_link(db, root, config, source, delivery):
+    try:
+        return review_summary_link.deliver(db, root, config, source, delivery)
+    except (sqlite3.Error, worker.WorkerError, StorageError, OSError, ValueError, TypeError, KeyError):
+        # A completed ordinary-comment delivery stays completed if the separate
+        # notification journal is temporarily unavailable.
+        return "pending"
+
+
 def tick(config_path):
     config, source = load_config(config_path)
     root = worker._private_directory(config["state_root"], create=True)
@@ -268,6 +283,12 @@ def tick(config_path):
             return {"status": "not_due"}
         worker._set_meta(db, "next_poll", now + config["interval_seconds"])
         _expire(db, root, now)
+        notice = review_summary_link.next_delivery(db, config, source)
+        if notice is not None:
+            result = _notify_link(db, root, config, source, notice)
+            if result != "preview_busy":
+                return {"status": "review_link_" + result, "job": notice["job"],
+                        "repository": notice["repository"], "pr": notice["pr"]}
         row = db.execute("SELECT * FROM deliveries WHERE state IN ('tracking','publishing')"
                          " ORDER BY updated_at LIMIT 1").fetchone()
         if row is None:
@@ -324,7 +345,11 @@ def tick(config_path):
             with db:
                 db.execute("UPDATE deliveries SET state=?,comment_id=?,failure_code=NULL,updated_at=? WHERE job=?",
                            (state, result.get("comment_id"), int(time.time()), job))
-            return {**base, **result,
+            notification = {}
+            if state == "published":
+                delivered = db.execute("SELECT * FROM deliveries WHERE job=?", (job,)).fetchone()
+                notification["review_link_status"] = _notify_link(db, root, config, source, delivered)
+            return {**base, **result, **notification,
                     "comment_url": f"https://github.com/{row['repository']}/pull/{row['pr']}#issuecomment-{result['comment_id']}"}
         except publication.PublicationBlockedBeforeWrite:
             with db:
@@ -347,6 +372,7 @@ def status(config_path):
             return {"status": "busy"}
         _setup(db, config)
         return {"status": "ok", "repositories": config["repositories"], "mode": config["mode"],
+                **review_summary_link.status(db),
                 "next_poll": worker._meta(db, "next_poll"),
                 "counts": {r["state"]: r["n"] for r in db.execute("SELECT state,count(*) n FROM deliveries GROUP BY state")},
                 "deliveries": [dict(r) for r in db.execute("SELECT job,repository,pr,state,attempts,comment_id,failure_code,updated_at FROM deliveries ORDER BY updated_at DESC LIMIT 32")]}

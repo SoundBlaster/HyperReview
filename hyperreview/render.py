@@ -5,10 +5,10 @@ import difflib
 import re
 from urllib.parse import quote
 
-from . import intake, model_contract, relation_sheet
+from . import intake, model_contract, relation_sheet, source_analysis
 
 
-COMPACT_RENDER_VERSION = "compact-v7"
+COMPACT_RENDER_VERSION = "compact-v8"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -107,18 +107,26 @@ def _relation_table(request, result):
         return []
     sources = {source["id"]: source for source in request["sources"]}
     lines = ["\n## Связи и основания\n",
-             "Связи интерпретированы по источникам и не заданы вложенностью `.hc`. "
-             "Конфигурация показывает заявленную передачу данных; её выполнение здесь не наблюдалось.\n",
+             "Связи описаны отдельно от вложенности `.hc`; основания — в правой колонке.\n",
              "| Связь | Что видно в источниках | Основания |",
              "| --- | --- | --- |"]
     for claim in claims[:6]:
-        links = []
+        groups = {}
         for ref in claim["source_refs"]:
             source = sources[ref]
-            url = (f"https://github.com/{request['repository']}/blob/{source['revision']}/"
-                   f"{quote(source['path'], safe='/')}#L{source['line_start']}-L{source['line_end']}")
-            label = source["path"].rsplit("/", 1)[-1]
-            links.append(f"[{_text(label)}:{source['line_start']}–{source['line_end']}]({url})")
+            spans = source_analysis.citation_spans(source, claim["text"] + " " + claim["scope"])
+            locations = groups.setdefault(source["path"], {})
+            if spans:
+                for span in spans:
+                    narrowed = {**source, "line_start": span["line_start"], "line_end": span["line_end"]}
+                    url = _source_url(request, narrowed, lines=True)
+                    locations[url] = (f"[{_text(span['label'])} L{span['line_start']}–{span['line_end']}]"
+                                      f"({url})")
+            else:
+                url = _source_url(request, source, lines=True)
+                locations[url] = f"[L{source['line_start']}–{source['line_end']}]({url})"
+        links = [_text(path.rsplit("/", 1)[-1]) + ": " + ", ".join(locations.values())
+                 for path, locations in groups.items()]
         # Newlines would split Markdown table rows; escape every model field
         # through the same text boundary as ordinary explanations.
         text = _text(" ".join(claim["text"].split()))
@@ -316,7 +324,10 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
                   f"PR #{request['pr']}: `{request['merge_base_sha']}` → `{request['head_sha']}`.\n",
                   f"Исходников в анализе: {len(request['sources'])}; пропущено: {len(request['omissions'])}.\n",
                   "Компилятор проверил структуру Hypercode и ссылки. Соответствие интерпретации коду "
-                  "и поведение программы этим не доказаны.\n"])
+                  "и поведение программы этим не доказаны. Конфигурация описывает заявленную передачу "
+                  "данных; её выполнение здесь не наблюдалось. Ссылки на функции и места обращения "
+                  "уточнены синтаксически по полученному Python-коду; одинаковое имя само по себе "
+                  "не доказывает общее связывание символа или достижимость вызова.\n"])
     lines.extend(_configuration_coverage(request))
     for limitation in [*request["scope"], *request["limitations"], *result["limitations"]]:
         lines.append("- " + _text(limitation) + "\n")

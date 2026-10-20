@@ -33,8 +33,14 @@ Profile v3 adds bounded relationships outside the containment tree, requests
 precise file/symbol-level omissions, and distinguishes binding declarations from
 inspected callsites. Workflow/spec/passport excerpts follow the same untrusted
 source boundary; they never supply provider instructions or publication grants.
-The prompt/profile change requires a fresh request. Already sanitized v7/v8
+The prompt/profile change requires a fresh request. Already sanitized v7/v8/v9
 tracking events remain replayable without accepting their old inference requests.
+Profile v4 prioritizes shared-rule application sites, separates direct from
+indirect reuse, and consolidates generic caveats. Bounded Python AST hints stay
+in an optional untrusted provider message; they do not modify canonical source
+records or establish symbol binding. The renderer uses AST spans for more
+precise source navigation when possible. See the change-focused projection
+specification for scope and fallback behavior.
 Requests also carry per-revision `.hcs` presence derived from each complete pinned
 tree. The model never supplies or infers this selector-policy input.
 

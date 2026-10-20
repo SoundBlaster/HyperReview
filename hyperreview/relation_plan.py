@@ -18,7 +18,7 @@ def schema(request):
         "type": "array", "maxItems": MAX_RELATIONS,
         "description": (
             "Up to six important source-supported relationships, separate from the .hc tree. "
-            "Prefer obligation -> policy -> application, typed facts, reuse, and build/artifact/deploy boundaries. "
+            "Prioritize one shared rule -> multiple named application sites when inspected; distinguish direct from indirect reuse. Also show obligation -> policy -> application, typed facts, and build/artifact/deploy boundaries. "
             "Endpoints can name an obligation or source-established symbol without adding tree nodes. "
             "Use [] if no relationship has evidence; never invent execution or claim runtime observation."
         ),
@@ -29,7 +29,8 @@ def schema(request):
                 "owner_id": {"type": "string", "pattern": r"^#[A-Za-z][A-Za-z0-9_]{0,79}$",
                              "maxLength": 81,
                              "description": "# plus the exact id of a declared node present on this side. Its generated .hcs properties carry this relationship; choose the responsible owner, not a new node just for the edge."},
-                "from": label, "to": label,
+                "from": {**label, "description": "For calls: the caller function. For reuses_policy: ONE shared rule symbol."},
+                "to": {**label, "description": "For calls: the callee policy. For reuses_policy: at least two named application sites; mark via another policy when indirect."},
                 "kind": {"type": "string", "enum": list(_KINDS)},
                 "side": {"type": "string", "enum": ["before", "after"]},
                 "basis": {"type": "string", "enum": list(_BASES),

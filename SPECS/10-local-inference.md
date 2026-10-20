@@ -107,3 +107,10 @@ boundary is verified.
 
 Next: validate proposed `.hc` with the pinned Hypercode compiler, assemble the
 paired IR and diff, and render an explanation with explicit evidence scope.
+
+Reviewer profile v4 raises the shared API/CLI HTTP default to 32768. Its
+relationship schema and guidance otherwise exhaust the conservative 16384
+preflight budget even for small fixtures, before reaching the intended transport
+or repair checks. Explicit context settings and boundary rejection remain in
+force. Operators must load a local HTTP model supporting that context; this
+change does not reload a model or alter the native Codex worker.

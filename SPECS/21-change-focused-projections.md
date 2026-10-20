@@ -90,5 +90,40 @@ review and publication authorization.
 The expanded profile also consumes context budget. The shared HTTP default is
 16384 for both the Python API and CLI, so the existing small repair fixtures can
 exercise the default configuration. A loaded model must support the configured
-context. The conservative preflight and explicit overrides remain in force;
+context. That v2 default was subsequently raised to 32768 for profile v4, whose larger
+relation schema and guidance also need room in repair requests. Loaded HTTP
+models must explicitly support the configured context; this does not reload
+models or change Codex worker settings. The conservative preflight and explicit overrides remain in force;
 budget-boundary tests still reject oversized input before a request is sent.
+
+## Shared rules and precise application sites
+
+Reviewer profile v4 prioritizes a small number of `reuses_policy` relationships
+when one inspected policy serves distinct application sites. The direction is
+one rule → several named sites, with direct calls distinguished from a path
+through another policy. These are consumer-defined `.hcs` properties; the
+`.hc` tree continues to describe responsibility containment.
+
+An optional, bounded Python AST pass supplies identifier-reference hints to the
+model as untrusted data. It ignores imports and definitions and groups actual
+name references by enclosing function or policy assignment, separately for
+each revision. Conventional test paths are omitted from these hints so that a
+verification call does not masquerade as a second production application.
+It cannot resolve imports, aliases, shadowing, dynamic calls or
+runtime reachability. The reviewer must still inspect the supplied source.
+No completeness or behavioral-equivalence check is added.
+
+The relation table links mentioned Python functions and policy references to
+AST-derived line ranges contained in the supplied source record. If the
+language, syntax or matching does not support a precise location, it retains
+the supplied range. The canonical request, source hashes and claim references
+remain unchanged. Generic interpretation/runtime caveats belong in the common
+limitations section; a row retains any specific missing evidence that affects
+its interpretation.
+
+For the SpecGraph #773 pilot, the source-grounded questions are whether
+`TEST_SUITE_SPEC` serves both fresh JUnit and retained JSON, and whether
+`SOURCE_SNAPSHOT_SPEC` is used directly in `run_tests` and within
+`TEST_OBSERVATION_SPEC`. Showing these sites demonstrates reuse in the inspected
+source; it does not prove that all executions share a rule or that divergence
+has been prevented.

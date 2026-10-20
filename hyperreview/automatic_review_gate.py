@@ -997,4 +997,3 @@ def link(db, job):
         _fail("review_gate_state_invalid")
     _load_plan(row)
     return row["url"]
-

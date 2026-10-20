@@ -298,14 +298,16 @@ def citation_spans(source, text):
             caller = function or _enclosing_assignment(node, parents)
             label = f"{caller} / {name}" if caller else name
             fallback.append((span[0], span[1], label))
-    for name, nodes in definitions.items():
-        for node in nodes:
-            span = _span(node, start - 1, start, end)
-            if span is not None:
-                fallback.append((span[0], span[1], name))
-    # Prefer concrete call sites in named functions; otherwise expose the
-    # mentioned rule references and exact definitions in source order.
-    candidates = preferred if preferred else fallback
+    # Keep intermediate policy composition references alongside function calls.
+    # A concrete call must not hide the assignment that establishes an indirect
+    # path in the same file. Whole definitions are only a navigation fallback.
+    candidates = preferred + fallback
+    if not candidates:
+        for name, nodes in definitions.items():
+            for node in nodes:
+                span = _span(node, start - 1, start, end)
+                if span is not None:
+                    candidates.append((span[0], span[1], name))
     unique = []
     seen = set()
     for line_start, line_end, label in sorted(candidates, key=lambda item: (item[0], item[1], item[2])):

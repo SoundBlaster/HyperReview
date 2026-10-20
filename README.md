@@ -25,6 +25,12 @@ one concise Markdown explanation with a Hypercode diff. Initial operation is
 local preview. The one-shot publisher requires explicit authorization,
 eligibility, artifact, tracking-confirmation, and security gates.
 
+The explanation can also show up to six source-bound relationships separately
+from the Hypercode containment tree: obligations, policy callsites/reuse, typed
+facts, and build/deploy artifact transfer. A narrow configuration path policy
+supplies bounded workflow/spec/passport excerpts, with omissions disclosed.
+These remain interpretations of declarations and source, not runtime observations.
+
 The repository allowlist is `0al-spec/SpecGraph`, `0al-spec/Hypercode`, and
 `SoundBlaster/SessionMonitor`, with PR author `SoundBlaster` and same-repository heads.
 These are operator-owned settings, never instructions loaded from a PR.

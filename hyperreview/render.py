@@ -5,10 +5,10 @@ import difflib
 import re
 from urllib.parse import quote
 
-from . import intake, model_contract
+from . import intake, model_contract, relation_sheet
 
 
-COMPACT_RENDER_VERSION = "compact-v5"
+COMPACT_RENDER_VERSION = "compact-v6"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -100,6 +100,60 @@ def _address_labels(result):
     return labels
 
 
+def _relation_table(request, result):
+    """Render the bounded explanation extension from canonical inferred claims."""
+    claims = [claim for claim in result["claims"] if claim["id"].startswith("relation-")]
+    if not claims:
+        return []
+    sources = {source["id"]: source for source in request["sources"]}
+    lines = ["\n## Связи и основания\n",
+             "Связи интерпретированы по источникам и не заданы вложенностью `.hc`. "
+             "Конфигурация показывает заявленную передачу данных; её выполнение здесь не наблюдалось.\n",
+             "| Связь | Что видно в источниках | Основания |",
+             "| --- | --- | --- |"]
+    for claim in claims[:6]:
+        links = []
+        for ref in claim["source_refs"]:
+            source = sources[ref]
+            url = (f"https://github.com/{request['repository']}/blob/{source['revision']}/"
+                   f"{quote(source['path'], safe='/')}#L{source['line_start']}-L{source['line_end']}")
+            label = source["path"].rsplit("/", 1)[-1]
+            links.append(f"[{_text(label)}:{source['line_start']}–{source['line_end']}]({url})")
+        # Newlines would split Markdown table rows; escape every model field
+        # through the same text boundary as ordinary explanations.
+        text = _text(" ".join(claim["text"].split()))
+        scope = _text(" ".join(claim["scope"].split()))
+        lines.append(f"| {text} | {scope} | {'; '.join(links)} |")
+    lines.append("")
+    return lines
+
+
+def _companion_view(receipt):
+    sheets = receipt.get("relationship_sheets", {})
+    if not sheets:
+        return []
+    lines = ["\n<details>\n<summary>Связи в Hypercode (.hcs)</summary>\n"]
+    for side in ("before", "after"):
+        if side in sheets:
+            lines.extend([f"### {side}.hcs\n", _fence(sheets[side]["content"], "hcs")])
+    lines.append("</details>\n")
+    return lines
+
+
+def _configuration_coverage(request):
+    lines = []
+    for coverage in request.get("configuration_coverage", []):
+        omissions = coverage["omissions"]
+        ranges = "; ".join(f"L{item['line_start']}–{item['line_end']}: {item['reason']}"
+                           for item in omissions[:8])
+        extra = f"; ещё {len(omissions) - 8} диапазонов" if len(omissions) > 8 else ""
+        lines.append("- Конфигурация: " + _text(coverage["path"]) + "; "
+                     + _text(coverage["side"]) + "; охват " + _text(coverage["coverage"])
+                     + f"; фрагментов {len(coverage['source_ids'])}. "
+                     + _text(ranges + extra) + "\n")
+    return lines
+
+
 def render_preview(request, result, receipt, semantic_diff, *, tracking_status="not_started"):
     """Inputs must come from the successful compiler boundary, never raw model output.
 
@@ -108,6 +162,14 @@ def render_preview(request, result, receipt, semantic_diff, *, tracking_status="
     """
     model_contract.validate_request(request)
     model_contract.validate_result(result, request)
+    try:
+        sheets = relation_sheet.build(request, result)
+    except ValueError as error:
+        raise model_contract.ContractError("Rendering relationship sheets are invalid") from error
+    if sheets or receipt.get("relationship_sheets"):
+        if (receipt.get("relationship_sheets") != sheets
+                or receipt.get("relationship_properties_sha256") != relation_sheet.properties_digest(sheets)):
+            raise model_contract.ContractError("Rendering requires bound resolved relationship sheets")
     if tracking_status not in ("not_started", "tracking_pending", "confirmed"):
         raise model_contract.ContractError("Rendering tracking status is invalid")
     tracking_label = {"not_started": "Tracking has not been confirmed.",
@@ -165,6 +227,7 @@ def render_preview(request, result, receipt, semantic_diff, *, tracking_status="
                      f"Before refs: {', '.join(_text(ref) for ref in identity['before_refs']) or 'none'}; "
                      f"after refs: {', '.join(_text(ref) for ref in identity['after_refs']) or 'none'}.\n")
     lines.append("\n## Limitations and omissions\n")
+    lines.extend(_configuration_coverage(request))
     for limitation in [*request["scope"], *request["limitations"], *result["limitations"]]:
         lines.append("- " + _text(limitation) + "\n")
     for omission in request["omissions"]:
@@ -195,6 +258,8 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
              (_fence(change, "diff") if change else
               "Структурных изменений в проекции нет. Текущая проекция:\n"
               + _fence(result["after_hc"]))]
+    lines.extend(_relation_table(request, result))
+    lines.extend(_companion_view(receipt))
     sources = {source["id"]: source for source in request["sources"]}
     address_labels = _address_labels(result)
     for identity in result["identity_map"]:
@@ -212,7 +277,11 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
                   f"Исходников в анализе: {len(request['sources'])}; пропущено: {len(request['omissions'])}.\n",
                   "Компилятор проверил структуру Hypercode и ссылки. Соответствие интерпретации коду "
                   "и поведение программы этим не доказаны.\n"])
+    lines.extend(_configuration_coverage(request))
     for limitation in [*request["scope"], *request["limitations"], *result["limitations"]]:
         lines.append("- " + _text(limitation) + "\n")
+    for omission in request["omissions"]:
+        lines.append("- Пропущено: " + _text(omission.get("path") or "путь скрыт политикой")
+                     + " — " + _text(omission["reason"]) + ".\n")
     lines.extend(["\n</details>\n", "**Ок или не ок?**\n"])
     return "\n".join(lines).encode("utf-8")

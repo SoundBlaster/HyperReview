@@ -27,7 +27,7 @@ Compare executable code and comments separately. Read exact fields/objects compa
 
 Reason: concrete task plus changed/preserved condition, in Russian. Summary MUST describe the actual difference first: what code condition or comment wording changed, then what stayed and what cannot be established. Do not just summarize a functions purpose. Limitations: specific missing evidence, without repeating request boilerplate. Interpretations are inferred; execution is unverified.
 
-Before/after describe ONE responsibility. UNCHANGED code needs BOTH types and nonempty refs. Null means absent, never unchanged. Absent: type=null, parent=null, refs=[]. Use unique correct-side refs; parent is a node ID; each nonempty side is one rooted tree. Emit .hc, identity_map and claims."""
+Before/after describe ONE responsibility. UNCHANGED code needs BOTH types and nonempty refs. Null means absent, never unchanged. Absent: type=null, parent=null, refs=[]. Use unique correct-side refs; parent is a node ID; each nonempty side is one rooted tree. Emit the nodes and relations declared by the supplied plan schema; the trusted adapter derives .hc, identity_map and claims."""
 
 SYSTEM_PROMPT = _BASE_SYSTEM_PROMPT + "\n\n" + reviewer_profile.content()
 
@@ -134,7 +134,7 @@ def _strict_json(text):
 
 
 def _specialized_schema(request):
-    return plan_schema(request)
+    return plan_schema(request, include_relations=True)
 
 
 def _provider_payload(config, schema, user_content):

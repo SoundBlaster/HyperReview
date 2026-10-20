@@ -1,5 +1,26 @@
 # HyperReview implementation workplan
 
+## Review clarity follow-up — SpecGraph #773
+
+Author feedback on [the published sketch](https://github.com/0al-spec/SpecGraph/pull/773#issuecomment-6272175746)
+at `6bddebd00e159ba222173c6003671a2d3c24b8db` identifies three concrete gaps:
+
+1. Supply bounded changed workflow/spec/passport/binding excerpts under an
+   explicit path policy. General YAML/JSON and operator files remain excluded.
+2. Keep the responsibility tree compact; put up to six source-bound relationships
+   on existing owners in companion `.hcs`, resolve them into IR, and render a
+   table explaining obligations, policy callsites/reuse and build/deploy transfer.
+3. Describe omissions precisely. The selected Python contained `run_tests`;
+   the unsupported Makefile was the missing orchestration entry point.
+
+The implementation updates the trusted review profile and generation identity;
+existing generated bundles remain historical artifacts, never silently rewritten.
+Next delivery: integrate this increment, prepare a fresh #773 preview on its
+current pinned head, and inspect whether the relations answer the author's
+questions before automatic delivery. No new repository blocking checks.
+
+---
+
 **Current delivery:** specifications, a parsable desired-system Hypercode model,
 and a manual Python pipeline through filtered requests, Codex inference,
 and compiled paired projections with local Markdown output and metadata-only

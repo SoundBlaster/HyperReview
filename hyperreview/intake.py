@@ -190,6 +190,21 @@ def _source_exclusion(path):
     return reason
 
 
+def _source_priority(item):
+    """Keep connecting configuration and implementation ahead of prose/tests."""
+    path = item["after_path"] or item["before_path"]
+    if configuration_evidence.accepts_path(path, exclusion(path)):
+        rank = 0
+    elif PurePosixPath(path).suffix == ".md":
+        rank = 3
+    elif (any(part.lower() in ("test", "tests", "fixtures") for part in path.split("/"))
+          or PurePosixPath(path).name.startswith("test_")):
+        rank = 2
+    else:
+        rank = 1
+    return rank, path
+
+
 def tree(api, repo, sha):
     response = api.get(f"repos/{repo}/git/trees/{sha}?recursive=1")
     if response.get("truncated") is not False:
@@ -319,7 +334,7 @@ def _collect(repo, number, api=None, *, historical=False):
     selected = 0
     source_records_count = 0
     configuration_bytes_used = 0
-    for item in inventory:
+    for item in sorted(inventory, key=_source_priority):
         paths = [p for p in (item["before_path"], item["after_path"]) if p is not None]
         reason = next((_source_exclusion(p) for p in paths if _source_exclusion(p)), None)
         if reason or selected >= MAX_FILES:

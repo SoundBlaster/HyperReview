@@ -46,10 +46,9 @@ def build(request, result):
         number = int(match.group(2))
         if number > 6 or len(seen) >= 6:
             raise ValueError("relationship sheet exceeds six bounded rows")
-        key = f"{kind}_{number}"
-        if key in seen:
+        if claim_id in seen:
             raise ValueError("relationship property identity is duplicated")
-        seen.add(key)
+        seen.add(claim_id)
         refs = claim.get("source_refs")
         if (type(refs) is not list or not 1 <= len(refs) <= 8
                 or any(type(ref) is not str for ref in refs) or len(refs) != len(set(refs))):
@@ -69,33 +68,42 @@ def build(request, result):
         if not _IDENTITY.fullmatch(owner_id):
             raise ValueError("relationship owner identity is invalid")
         selector = role if role_counts[side][role] == 1 else "'" + owner_id + "'"
-        values = {
-            key: _line(claim.get("text"), 400),
-            key + "_scope": _line(claim.get("scope"), 1200),
-            key + "_sources": _line(", ".join(refs), 600),
-        }
-        rows[side].append((selector, owner_id, role, values))
-        for property_name, value in values.items():
-            property_records.append([side, owner_id, property_name, value])
+        rows[side].append((selector, owner_id, role, kind,
+                           _line(claim.get("text"), 400),
+                           _line(claim.get("scope"), 1200),
+                           _line(", ".join(refs), 600)))
 
     sheets = {}
+    if not seen:
+        return sheets
     for side, entries in rows.items():
-        if not entries:
-            continue
         grouped = {}
-        for selector, owner_id, role, values in entries:
+        for selector, owner_id, role, kind, text, scope, refs in entries:
             group = grouped.setdefault((selector, owner_id, role), {})
-            if set(group) & set(values):
-                raise ValueError("relationship properties collide on one owner")
-            group.update(values)
+            values = group.setdefault(kind, [])
+            if any(existing[0] == text for existing in values):
+                raise ValueError("relationship is duplicated on one owner")
+            values.append((text, scope, refs))
         lines = []
-        for (selector, _owner_id, _role), values in sorted(grouped.items()):
+        for (selector, owner_id, _role), values in sorted(grouped.items()):
             lines.append(f"{selector}:")
-            for key, value in sorted(values.items()):
+            for key, annotations in sorted(values.items()):
+                annotations.sort()
+                value = "; ".join(item[0] for item in annotations)
+                # Evidence annotations stay comments, outside the semantic
+                # property diff. Revision/source IDs and before/after labels
+                # must not turn an unchanged relationship into a change.
+                for _text, scope, refs in annotations:
+                    lines.extend((f"  # {scope}", f"  # Sources: {refs}"))
                 # Hypercode strips only the outer quotes, so values are made
                 # single-line and are not JSON-escaped.
                 lines.append(f'  {key}: "{value}"')
-        content = "\n".join(lines) + "\n"
+                property_records.append([side, owner_id, key, value])
+        # A paired empty companion preserves selector identities when only
+        # the other side has a recorded relationship. Otherwise adding sheet
+        # properties alone would look like removing/recreating repeated roles.
+        content = ("\n".join(lines) + "\n" if lines else
+                   "# Paired review context; no relationship recorded on this side.\n")
         sheets[side] = {"content": content,
                         "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
                         "properties": [record for record in property_records if record[0] == side]}

@@ -127,8 +127,7 @@ def _validate_plan(plan, request):
     rows = plan.get("relations", [])
     rows = rows if type(rows) is list else []
     selector_context = {
-        f"{side}_hcs_present": (request["selector_context"][f"{side}_hcs_present"]
-                                or any(type(row) is dict and row.get("side") == side for row in rows))
+        f"{side}_hcs_present": (request["selector_context"][f"{side}_hcs_present"] or bool(rows))
         for side in ("before", "after")
     }
     role_counts = {

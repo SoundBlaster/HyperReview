@@ -78,8 +78,10 @@ Wrong-side, missing and duplicate references are rejected during conversion.
 The adapter gives these relationships a Hypercode representation as properties
 of the owner in a generated companion `.hcs`. Property names come from a fixed
 review vocabulary (`calls`, `uses_facts`, `reuses_policy`, `transfers_artifact`,
-`binds_obligation`), with bounded ordinal suffixes, explanation and source-ref
-properties. This vocabulary is interpreted by HyperReview, not built-in edge
+`binds_obligation`). Several relationships of one kind on an owner form a sorted
+string value. Explanations and source refs remain sheet comments and bound claim
+metadata; revision-specific annotations do not enter semantic property values.
+This vocabulary is interpreted by HyperReview, not built-in edge
 semantics in Hypercode. No new tree nodes are needed just for relationships.
 
 The compiler resolves the `.hc`/`.hcs` pair and checks the resulting property
@@ -89,8 +91,10 @@ from the inspected repository's configuration. They are an inferred review
 artifact, never accepted intent or a runtime configuration file. The temporary
 sheet contains no imports or operator-controlled context overrides.
 
-A repeated role gains selectors when its generated side has a companion sheet,
-even if the inspected repository had none. Unique roles stay selector-free.
+A repeated role gains selectors when generated companion sheets are present,
+even if the inspected repository had none. Both sides receive a companion
+(possibly empty) to preserve paired identities when only one has relationships.
+Unique roles stay selector-free.
 
 This validation establishes reference integrity only. Spec bindings declare an
 obligation; inspected callsites may support an interpretation of implementation;

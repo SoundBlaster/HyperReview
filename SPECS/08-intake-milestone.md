@@ -45,6 +45,9 @@ The ordinary source extension allowlist is unchanged. Three additional changed
 path families may supply configuration excerpts: `.github/workflows/*.yml`,
 `specs/nodes/*.yaml`, and `tools/feature_passports/*.json`. Operator-file and
 sensitive-path exclusions take precedence; arbitrary YAML/JSON remains excluded.
+Configuration and application code are selected before tests and prose under
+the existing shared byte cap, so new configuration cannot silently displace the
+adapter implementing the policy. Remaining omissions are still reported.
 These files are read as untrusted text, never executed or used as configuration
 for HyperReview. No repository-controlled import, include or URL is followed.
 

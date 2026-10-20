@@ -62,6 +62,11 @@ def _line_secret(line):
 
 
 def _workflow_safe_lines(lines):
+    # A recognized private-key opener may live under an innocuous YAML key or
+    # inside a shell heredoc. Dropping only that line would export its body.
+    if any(_SECRET_VALUE[0].search(line) for line in lines):
+        return [False] * len(lines), [(number, "configuration_secret_file")
+                                      for number in range(1, len(lines) + 1)]
     safe = []
     omissions = []
     env_indent = None

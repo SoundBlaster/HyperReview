@@ -98,4 +98,8 @@ grant permits review-start threads before inference and completion of only owned
 journaled automatic gates. `GateRecovery` keeps uncertain writes separate from
 model execution. `review_gate_stage=automatic` illustrates the optional v3 stage;
 it cannot grant permissions or enforce GitHub rules by resolving the model.
+`PublishedReviewLink` maps to `review_summary_link.py`: after confirmed ordinary
+publication, the publisher checks both grants and posts one bound link in the
+completed automatic thread. Its notification journal is independent of analysis
+and ordinary-comment delivery; recovery cannot replay either of those actions.
 See [the automatic-gate contract](../SPECS/25-automatic-review-gates.md).

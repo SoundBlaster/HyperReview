@@ -125,6 +125,13 @@ GateCompletion:
   fresh_revision_check_required: true
   analysis_failure_keeps_open: true
 
+PublishedReviewLink:
+  implementation: "hyperreview/review_summary_link.py"
+  confirmed_publication_required: true
+  owned_completed_thread_only: true
+  max_post_attempts: 1
+  replay_inference: false
+
 GateRecovery:
   replay_inference: false
   duplicate_creation_allowed: false

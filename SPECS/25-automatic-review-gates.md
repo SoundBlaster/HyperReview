@@ -52,6 +52,23 @@ idempotent completion reply and resolves only its own journaled automatic thread
 Ordinary comment publication is independent and can happen afterward. Its summary
 includes the validated permalink back to the review-start thread.
 
+After ordinary publication is confirmed, the publisher adds one short reply in
+that completed automatic thread, linking back to the review summary and naming
+the reviewed revision. This requires both the publisher repository grant and
+the pinned v3 source's thread grant. The exact retained publication plan/body
+digests, delivered comment ID, live comment body/author/PR and journaled root are
+checked before a possible write. Existing completed deliveries with retained
+plans are eligible too, including a PR that has since merged.
+
+The link has its own per-job marker and journal, one possible POST and at most
+three recovery passes. An uncertain POST is reconciled by complete bounded
+comment inventory; it is never blindly repeated. A changed summary body blocks
+a new link for that older delivery. Failures leave ordinary publication marked
+successful and never reopen/resolve gates or replay inference. Pending link
+plans remain retained. Legacy v1/v2 sources grant no thread notification writes.
+Ordinary incomplete deliveries and newly available previews take priority over
+old notification backfills, which run only when no ordinary delivery is ready.
+
 Failed and interrupted analyses keep their threads open with an explicit failure
 notice; they are not silently retried or reported as successful reviews. A stale
 analysis keeps its gate open until an eligible replacement review succeeds.

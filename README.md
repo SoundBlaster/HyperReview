@@ -527,5 +527,8 @@ notice. ETA expiry does not release the gate. Repository rules must require
 conversation resolution for this to block merge.
 
 The ordinary publisher links its review summary back to the start thread.
+After confirmed publication it also posts a short summary link in that completed
+thread. Retained completed deliveries can receive the link without rerunning
+analysis. Uncertain notification writes are reconciled without duplicate posts.
 This separate grant cannot resolve manual gates or other review discussions.
 See [configuration and recovery](SPECS/25-automatic-review-gates.md).

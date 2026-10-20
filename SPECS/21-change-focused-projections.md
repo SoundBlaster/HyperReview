@@ -90,7 +90,10 @@ review and publication authorization.
 The expanded profile also consumes context budget. The shared HTTP default is
 16384 for both the Python API and CLI, so the existing small repair fixtures can
 exercise the default configuration. A loaded model must support the configured
-context. The conservative preflight and explicit overrides remain in force;
+context. That v2 default was subsequently raised to 32768 for profile v4, whose larger
+relation schema and guidance also need room in repair requests. Loaded HTTP
+models must explicitly support the configured context; this does not reload
+models or change Codex worker settings. The conservative preflight and explicit overrides remain in force;
 budget-boundary tests still reject oversized input before a request is sent.
 
 ## Shared rules and precise application sites

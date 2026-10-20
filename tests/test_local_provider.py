@@ -269,7 +269,7 @@ class LocalProviderTests(unittest.TestCase):
         from hyperreview.local_provider import SYSTEM_PROMPT
         self.assertIn(SYSTEM_PROMPT.encode("utf-8")[:20], posted["body"])
         self.assertEqual([message["role"] for message in body["messages"]], ["system", "user"])
-        self.assertEqual(self.config.context_tokens, 16384)
+        self.assertEqual(self.config.context_tokens, 32768)
         self.assertEqual(body["temperature"], 0)
         self.assertEqual(body["max_tokens"], 1024)
         self.assertEqual(body["messages"][1]["content"], intake.encoded(self.request).decode())
@@ -477,8 +477,8 @@ class LocalProviderTests(unittest.TestCase):
         self.assertNotIn(b"\\u", posted["body"].split(b'"messages":', 1)[0])
         from hyperreview.local_provider import SYSTEM_PROMPT
         self.assertIn(SYSTEM_PROMPT.encode("utf-8")[:20], posted["body"])
-        self.assertEqual(self.config.context_tokens, 16384)
-        self.assertEqual(body["options"], {"temperature": 0, "num_predict": 1024, "num_ctx": 16384})
+        self.assertEqual(self.config.context_tokens, 32768)
+        self.assertEqual(body["options"], {"temperature": 0, "num_predict": 1024, "num_ctx": 32768})
         self.assertEqual(body["keep_alive"], 0)
         self.assertIsInstance(body["format"], dict)
         self.assertNotIn("tools", body)

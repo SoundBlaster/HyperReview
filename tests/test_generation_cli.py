@@ -50,7 +50,7 @@ class GenerationCLITests(unittest.TestCase):
         _, generate, _ = self.invoke(["--provider", "lmstudio", "--model", "local-model"], "lmstudio")
         config = generate.call_args.args[1]
         self.assertEqual((config.model, config.context_tokens, config.max_tokens, config.instruction_role),
-                         ("local-model", 16384, 1024, "system"))
+                         ("local-model", 32768, 1024, "system"))
         _, generate, _ = self.invoke([
             "--provider", "lmstudio", "--model", "local-model", "--context-tokens", "8192",
         ], "lmstudio")

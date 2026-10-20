@@ -39,6 +39,10 @@ remain responsible for actual merge enforcement; HyperReview does not change
 rulesets or treat an inline comment as an atomic GitHub lock. ETA expiry does not
 release a gate.
 
+The gate transaction uses its own bounded GitHub read client (120 seconds),
+separate from a short revision observation (30 seconds). Creation, inventory and
+thread binding must not consume an already-exhausted revision-check deadline.
+
 ## Completion and recovery
 
 The analysis success condition is a committed `preview_ready` bundle followed

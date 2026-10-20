@@ -206,7 +206,7 @@ def _expire(db, root, now):
         LEFT JOIN review_summary_links n ON n.job=d.job
         WHERE d.state IN ('tracking','publishing','needs_attention')
         OR (d.state='published' AND d.review_gate_url IS NOT NULL
-            AND (n.job IS NULL OR n.status IN ('pending','creating','checking')))""").fetchall()
+            AND (n.job IS NULL OR n.status IN ('pending','creating','checking','needs_attention')))""").fetchall()
     for name, allowed, field in (("snapshots", worker_preview.FILES | {"tracking-receipt.json"}, "snapshot"),
                                  ("plans", {"plan.json", "comment.md"}, "plan")):
         directory = worker._path(root / name)

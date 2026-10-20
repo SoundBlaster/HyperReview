@@ -94,12 +94,27 @@ def _fresh(task, api):
     return (pr["base_sha"], pr["head_sha"]) == (task["base_sha"], task["head_sha"])
 
 
-def _settings(options):
+def _settings(options, gate_options=None):
     from . import worker
     try:
-        return worker_generation.fingerprint(options)
+        fingerprint = worker_generation.fingerprint(options)
+        return intake.digest([fingerprint, gate_options]) if gate_options is not None else fingerprint
     except worker_generation.PreviewJobError as error:
         raise worker.WorkerError("Private preview pipeline is unavailable") from error
+
+
+def _finish_gate(db, root, config, task, job, outcome, observation_factory):
+    if "review_gate" not in config or task["repository"] not in config["review_gate"]["repositories"]:
+        return {}
+    from .automatic_review_gate import GateError, complete
+    from .worker import WorkerError
+    try:
+        complete(db, root, config, task, job, outcome, observation_factory)
+        return {"review_gate_completion": "recorded"}
+    except (GateError, WorkerError, intake.IntakeError, StorageError, OSError, ValueError, KeyError, TypeError):
+        # Analysis receipts remain truthful if remote completion is interrupted.
+        # A later due tick reconciles this independently of model execution.
+        return {"review_gate_completion": "pending"}
 
 
 def process_one(db, config, root, api, now, *, observation_factory=None):
@@ -108,7 +123,8 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
     observation_factory = observation_factory or (lambda: api)
     _setup(db)
     _expire(db, root, now)
-    settings = _settings(config["preview"])
+    gated = "review_gate" in config
+    settings = _settings(config["preview"], config.get("review_gate"))
     for row in db.execute("SELECT j.job,j.state,j.settings,t.state task_state,t.artifact task_artifact FROM preview_jobs j"
                           " LEFT JOIN tasks t ON t.candidate=j.candidate").fetchall():
         if row["state"] == "analyzing":
@@ -118,17 +134,25 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
         elif row["state"] != "stale" and (row["settings"] != settings
                                           or row["task_state"] != "request_prepared"):
             _transition(db, row["job"], "stale", now, "candidate_or_settings_changed")
+    if gated:
+        from .automatic_review_gate import GateError, reconcile
+        try:
+            reconcile(db, root, config, observation_factory)
+        except GateError:
+            return {"status": "review_gate_reconciliation_pending", "github_writes": None,
+                    "generation_runs": 0, "provider_attempts": None}
     selected = None
     for task in db.execute("SELECT * FROM tasks WHERE state='request_prepared'"
                            " AND artifact IS NOT NULL ORDER BY updated_at,candidate"):
-        job = intake.digest([task["candidate"], task["request_digest"], task["handoff_digest"], settings])
+        identity = [task["candidate"], task["request_digest"], task["handoff_digest"], settings]
+        job = intake.digest(identity)
         existing = db.execute("SELECT * FROM preview_jobs WHERE job=?", (job,)).fetchone()
         if existing is None or (existing["state"] == "queued" and existing["generation_runs"] == 0):
             selected = task
             break
     if selected is None:
         return None
-    base = {"candidate": selected["candidate"], "job": job, "github_writes": 0,
+    base = {"candidate": selected["candidate"], "job": job, "github_writes": None if gated else 0,
             "generation_runs": 0, "provider_attempts": None}
     if existing is None and db.execute("SELECT count(*) FROM preview_jobs").fetchone()[0] >= worker.MAX_RECEIPTS:
         return {**base, "status": "preview_capacity_reached"}
@@ -141,10 +165,14 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
         worker._require(worker._retained_handoff(root, selected), "Intake handoff is unavailable")
         if not _fresh(selected, observation_factory()):
             _transition(db, job, "stale", int(time.time()), "eligibility_or_revisions_changed")
+            base.update(_finish_gate(db, root, config, selected, job, "stale", observation_factory))
             return {**base, "status": "preview_stale"}
         directory = root / "artifacts" / selected["artifact"]
         evidence = read_json(directory / "evidence.json")
         request = read_json(directory / "request.json")
+        if gated and selected["repository"] in config["review_gate"]["repositories"]:
+            from .automatic_review_gate import ensure
+            base["review_gate_url"] = ensure(db, root, config, selected, job, observation_factory)
         # Persist before entering code which can contact the model. A crash or
         # ambiguous provider failure consumes this key instead of replaying it.
         with db:
@@ -155,6 +183,7 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
         base["provider_attempts"] = completed["provider_attempts"]
         if not _fresh(selected, observation_factory()):
             _transition(db, job, "stale", int(time.time()), "eligibility_or_revisions_changed")
+            base.update(_finish_gate(db, root, config, selected, job, "stale", observation_factory))
             return {**base, "status": "preview_stale"}
         artifacts = completed["artifacts"]
         worker._require(set(artifacts) == FILES)
@@ -166,21 +195,28 @@ def process_one(db, config, root, api, now, *, observation_factory=None):
             db.execute("UPDATE preview_jobs SET artifact=?,bundle_digest=?,provider_attempts=? WHERE job=?",
                        (destination.name, manifest, completed["provider_attempts"], job))
             _transition(db, job, "preview_ready", int(time.time()))
+        base.update(_finish_gate(db, root, config, selected, job, "success", observation_factory))
         return {**base, "status": "preview_ready", "bundle": str(destination),
                 "preview": str(destination / "preview-compact.md"), "tracking_status": "not_started"}
     except worker_generation.PreviewJobError as error:
         code = error.code
     except (intake.IntakeError, worker.WorkerError, StorageError, OSError, ValueError, KeyError, TypeError):
         code = "preview_job_failed"
+    except Exception as error:
+        from .automatic_review_gate import GateError
+        if not isinstance(error, GateError):
+            raise
+        code = error.code
     _transition(db, job, "failed", int(time.time()), code)
+    base.update(_finish_gate(db, root, config, selected, job, "failed", observation_factory))
     return {**base, "status": "preview_failed", "failure_code": code}
 
 
-def status(db, root, options):
+def status(db, root, options, *, gate_options=None):
     from . import worker
     _setup(db)
     previews = []
-    settings = _settings(options)
+    settings = _settings(options, gate_options)
     for row in db.execute("SELECT j.*,t.repository,t.pr,t.request_digest FROM preview_jobs j"
                           " JOIN tasks t ON t.candidate=j.candidate WHERE j.state='preview_ready'"
                           " AND t.state='request_prepared' AND j.artifact IS NOT NULL AND j.settings=?"

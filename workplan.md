@@ -193,4 +193,19 @@ pending plans after uncertain writes and preserves the original preview manifest
 The first delivery published the #773 architectural preview in one attempt as
 [comment 6272175746](https://github.com/0al-spec/SpecGraph/pull/773#issuecomment-6272175746).
 The permanent service remains an operational activation step after integration.
-This increment does not automate review-thread gates or merging.
+This increment does not automate review-thread gates or merging. PR #33 is now
+merged; the permanent publisher confirmed #773 creation and #117 update without
+duplicate owned markers.
+
+### P4 automatic review-start gates
+
+The operator requested automatic start threads after enabling publication.
+V3 worker configuration grants thread authority for an explicit repository
+subset. Analysis starts only after an owned unresolved thread is confirmed;
+completed current-revision analysis resolves it. Failure keeps the gate open,
+and completion recovery cannot rerun inference. The ordinary review summary
+links to that thread. GitHub effective rules for both selected repositories
+require review-thread resolution; HyperReview does not change those rules.
+
+Next: integrate and activate the explicit v3 timer config, then observe a real
+start → analysis → completion cycle. Automatic PR merging is outside this stage.

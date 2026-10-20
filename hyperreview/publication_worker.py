@@ -112,7 +112,9 @@ def _setup(db, config):
         state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
         snapshot TEXT NOT NULL, identity_digest TEXT NOT NULL, event_digest TEXT NOT NULL,
         plan TEXT, plan_digest TEXT, comment_digest TEXT, comment_id INTEGER,
-        failure_code TEXT, updated_at INTEGER NOT NULL)""")
+        failure_code TEXT, updated_at INTEGER NOT NULL, review_gate_url TEXT)""")
+    if "review_gate_url" not in {row[1] for row in db.execute("PRAGMA table_info(deliveries)")}:
+        db.execute("ALTER TABLE deliveries ADD COLUMN review_gate_url TEXT")
     db.commit()
 
 
@@ -151,7 +153,7 @@ def _snapshot_one(db, root, config, source, now):
         if upstream is None:
             return None, "preview_busy"
         worker_preview._setup(upstream)
-        settings = worker_preview._settings(source["preview"])
+        settings = worker_preview._settings(source["preview"], source.get("review_gate"))
         rows = upstream.execute("""SELECT j.*,t.repository,t.pr FROM preview_jobs j
             JOIN tasks t ON t.candidate=j.candidate WHERE j.state='preview_ready'
             AND t.state='request_prepared' AND j.artifact IS NOT NULL AND j.settings=?
@@ -161,6 +163,13 @@ def _snapshot_one(db, root, config, source, now):
                 continue
             if db.execute("SELECT 1 FROM deliveries WHERE job=?", (row["job"],)).fetchone():
                 continue
+            gate_url = None
+            if "review_gate" in source:
+                from .automatic_review_gate import link
+                gate_url = link(upstream, row["job"])
+                if row["repository"] in source["review_gate"]["repositories"]:
+                    worker._require(type(gate_url) is str and gate_url,
+                                    "Current gated preview lacks its automatic thread binding")
             worker._require(str(UUID(row["artifact"])) == row["artifact"])
             original = Path(source["state_root"]) / "previews" / row["artifact"]
             if not original.exists():
@@ -175,10 +184,10 @@ def _snapshot_one(db, root, config, source, now):
                             and event["metadata"]["pr"] == str(row["pr"]))
             with db:
                 db.execute("""INSERT INTO deliveries
-                    (job,repository,pr,state,snapshot,identity_digest,event_digest,updated_at)
-                    VALUES (?,?,?,?,?,?,?,?)""",
+                    (job,repository,pr,state,snapshot,identity_digest,event_digest,updated_at,review_gate_url)
+                    VALUES (?,?,?,?,?,?,?,?,?)""",
                            (row["job"], row["repository"], row["pr"], "tracking", destination.name,
-                            _snapshot_identity(destination), intake.digest(event), now))
+                            _snapshot_identity(destination), intake.digest(event), now, gate_url))
             return db.execute("SELECT * FROM deliveries WHERE job=?", (row["job"],)).fetchone(), None
     return None, "idle"
 
@@ -285,7 +294,8 @@ def tick(config_path):
                 preview_digest = hashlib.sha256((bundle / "preview-compact.md").read_bytes()).hexdigest()
                 directory, plan = publication.plan_publication(
                     bundle, expected_preview_sha256=preview_digest,
-                    output_root=worker._private_directory(root / "plans", create=True), api=_api())
+                    output_root=worker._private_directory(root / "plans", create=True),
+                    review_gate_url=row["review_gate_url"], api=_api())
                 worker._require(plan["repository"] == row["repository"] and plan["pr"] == row["pr"])
                 if plan["status"] != "ready":
                     if _retryable_plan(plan):

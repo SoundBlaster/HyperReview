@@ -516,3 +516,16 @@ to create/update one owned HyperReview comment. It never invokes a model or merg
 a PR. Interrupted writes reuse their exact saved plans; failures have a bounded
 retry budget. Review and install the generated plist to enable scheduling.
 See [standing grants, recovery and retention](SPECS/24-automatic-publication.md).
+
+## Optional automatic review-start threads
+
+Add `--authorize-review-gates --review-gate-repository OWNER/REPO` to an explicitly
+configured private-preview worker to create a v3 configuration. An owned inline
+thread announces the start and ETA before inference; successful completed
+analysis resolves that thread. Failures leave it open with a clear failure
+notice. ETA expiry does not release the gate. Repository rules must require
+conversation resolution for this to block merge.
+
+The ordinary publisher links its review summary back to the start thread.
+This separate grant cannot resolve manual gates or other review discussions.
+See [configuration and recovery](SPECS/25-automatic-review-gates.md).

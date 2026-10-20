@@ -108,6 +108,32 @@ DeliveryRecovery:
   reuse_exact_pending_plan: true
   retained_receipt_limit: 2048
 
+AutomaticGateLifecycle:
+  enabled: false
+  implementation: "hyperreview/automatic_review_gate.py"
+  authority: "operator-repository-grant"
+  owned_automatic_threads_only: true
+
+ReviewStartNotice:
+  before_inference: true
+  started_time_required: true
+  eta_seconds: 600
+  eta_releases_gate: false
+
+GateCompletion:
+  committed_preview_required: true
+  fresh_revision_check_required: true
+  analysis_failure_keeps_open: true
+
+GateRecovery:
+  replay_inference: false
+  duplicate_creation_allowed: false
+  max_reconciliations_per_tick: 1
+
+@review_gate_stage[automatic]:
+  AutomaticGateLifecycle:
+    enabled: true
+
 @publication_stage[automatic_comment]:
   AutomaticCommentDelivery:
     enabled: true

@@ -1,6 +1,8 @@
 # Worker: isolated generation through a private preview
 
 This increment extends the intake worker with an explicit, separate v2 config.
+The optional [v3 automatic review-gate contract](25-automatic-review-gates.md)
+adds separate standing thread authority; the v2 boundary below is unchanged.
 A due tick performs **one** action: collect one request, or consume one retained
 request through isolated Codex, Hypercode compilation and private Markdown.
 It does not publish a comment, create a review gate, deliver MLflow data, or

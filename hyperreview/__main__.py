@@ -26,6 +26,10 @@ def main():
     worker_config.add_argument("--model")
     worker_config.add_argument("--reasoning-effort", choices=("low", "medium", "high"))
     worker_config.add_argument("--preview-timeout-seconds", type=int)
+    worker_config.add_argument("--authorize-review-gates", action="store_true")
+    worker_config.add_argument("--review-gate-repository", action="append")
+    worker_config.add_argument("--review-gate-eta-seconds", type=int)
+    worker_config.add_argument("--review-gate-state-root", type=Path)
     for name in ("worker-tick", "worker-status"):
         command = commands.add_parser(name, help="Run or inspect configured intake/private-preview worker")
         command.add_argument("--config", required=True, type=Path)
@@ -202,9 +206,22 @@ def main():
             import sqlite3
             from .worker import WorkerError, create_config, status, tick
             from .launchd import LaunchdError, write_launchd_plan
+            from .automatic_review_gate import GateError
             try:
                 if args.command == "worker-config":
                     preview = None
+                    review_gate = None
+                    if args.authorize_review_gates:
+                        if not args.private_preview or not args.review_gate_repository:
+                            parser.error("Review gates require private preview and explicit repository grants")
+                        review_gate = {"repositories": args.review_gate_repository,
+                                       "eta_seconds": args.review_gate_eta_seconds if args.review_gate_eta_seconds is not None else 600,
+                                       "state_root": str(args.review_gate_state_root or
+                                                         (Path.home() / ".local/share/hyperreview/automatic-review-gates"))}
+                    elif any(value is not None for value in (args.review_gate_repository,
+                                                             args.review_gate_eta_seconds,
+                                                             args.review_gate_state_root)):
+                        parser.error("Review gate options require --authorize-review-gates")
                     if args.private_preview:
                         if not args.allow_cloud_source or any(value is None for value in (
                                 args.codex_executable, args.codex_sha256, args.compiler, args.compiler_sha256)):
@@ -223,21 +240,22 @@ def main():
                                                      ("preview-worker" if preview is not None else "worker"))
                     destination = create_config(repositories=args.repo, state_root=state_root,
                                                 interval_seconds=args.interval_seconds,
-                                                output_root=args.output_root, preview=preview)
+                                                output_root=args.output_root, preview=preview,
+                                                review_gate=review_gate)
                     print(f"Worker config: {destination / 'config.json'}")
                     return 0
                 if args.command == "worker-launchd-plan":
                     destination = write_launchd_plan(config_path=args.config, python=args.python,
                                                      output_root=args.output_root)
                     print(f"Launchd plan: {destination / 'agent.plist'}")
-                    print("Not installed; authority follows the reviewed worker config; GitHub writes: 0")
+                    print("Not installed; authority follows the reviewed worker config")
                     return 0
                 result = tick(args.config) if args.command == "worker-tick" else status(args.config)
                 print(json.dumps(result, sort_keys=True))
                 return 1 if result["status"] in ("failed", "preview_failed", "preview_capacity_reached") else 0
-            except (WorkerError, LaunchdError, IntakeError, StorageError, ContractError,
+            except (WorkerError, LaunchdError, GateError, IntakeError, StorageError, ContractError,
                     sqlite3.Error, OSError, ValueError, TypeError, KeyError):
-                print("HyperReview: worker operation failed; inspect the private journal; GitHub writes: 0",
+                print("HyperReview: worker operation failed; inspect the private journal; remote outcomes may require reconciliation",
                       file=sys.stderr)
                 return 1
         if args.command == "publish-plan":

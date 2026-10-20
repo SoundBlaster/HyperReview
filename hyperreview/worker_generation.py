@@ -29,6 +29,7 @@ _MAX_COMPILER_BYTES = 128 * 1024 * 1024
 _FINGERPRINT_FILES = (
     "hyperreview/worker_generation.py",
     "hyperreview/worker_preview.py",
+    "hyperreview/automatic_review_gate.py",
     "hyperreview/worker.py",
     "hyperreview/local_provider.py",
     "hyperreview/storage.py",

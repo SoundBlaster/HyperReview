@@ -18,6 +18,7 @@ from .worker_task_eligibility import WorkerTaskContext, WorkerTaskEligibility
 
 CONFIG_SCHEMA = "hyperreview.worker-config.v1"
 PREVIEW_CONFIG_SCHEMA = "hyperreview.worker-config.v2"
+GATED_PREVIEW_CONFIG_SCHEMA = "hyperreview.worker-config.v3"
 TASK_SCHEMA = "hyperreview.intake-task.v1"
 PAGE_SIZE = 30
 MAX_PENDING = 32
@@ -89,8 +90,9 @@ def load_config(path):
     base_keys = {"schema", "repositories", "interval_seconds", "state_root"}
     if config.get("schema") == CONFIG_SCHEMA:
         _require(set(config) == base_keys)
-    elif config.get("schema") == PREVIEW_CONFIG_SCHEMA:
-        _require(set(config) == base_keys | {"preview"})
+    elif config.get("schema") in (PREVIEW_CONFIG_SCHEMA, GATED_PREVIEW_CONFIG_SCHEMA):
+        extra = {"review_gate"} if config["schema"] == GATED_PREVIEW_CONFIG_SCHEMA else set()
+        _require(set(config) == base_keys | {"preview"} | extra)
         from .worker_generation import PreviewJobError, validate_options
         try:
             validate_options(config["preview"])
@@ -102,6 +104,12 @@ def load_config(path):
     _require(type(repositories) is list and 1 <= len(repositories) <= len(intake.ALLOWLIST))
     _require(all(type(repo) is str and repo in intake.ALLOWLIST for repo in repositories))
     _require(len(repositories) == len(set(repositories)))
+    if "review_gate" in config:
+        from .automatic_review_gate import GateError, validate_options
+        try:
+            validate_options(config["review_gate"], repositories)
+        except GateError as error:
+            raise WorkerError("Automatic review gate configuration is invalid") from error
     interval = config["interval_seconds"]
     _require(type(interval) is int and 300 <= interval <= 86400)
     _require(type(config["state_root"]) is str)
@@ -109,7 +117,8 @@ def load_config(path):
     return config
 
 
-def create_config(*, repositories, state_root, output_root, interval_seconds=300, preview=None):
+def create_config(*, repositories, state_root, output_root, interval_seconds=300, preview=None,
+                  review_gate=None):
     config = {"schema": CONFIG_SCHEMA, "repositories": list(repositories),
               "interval_seconds": interval_seconds, "state_root": str(state_root)}
     if preview is not None:
@@ -119,6 +128,11 @@ def create_config(*, repositories, state_root, output_root, interval_seconds=300
         except PreviewJobError as error:
             raise WorkerError("Private preview configuration is invalid") from error
         config.update(schema=PREVIEW_CONFIG_SCHEMA, preview=preview)
+    if review_gate is not None:
+        _require(preview is not None, "Automatic gates require private-preview generation")
+        from .automatic_review_gate import validate_options
+        validate_options(review_gate, repositories)
+        config.update(schema=GATED_PREVIEW_CONFIG_SCHEMA, review_gate=review_gate)
     # Validate before creating any state directory; reuse the file boundary below.
     _require(1 <= len(config["repositories"]) <= len(intake.ALLOWLIST))
     _require(all(type(repo) is str and repo in intake.ALLOWLIST for repo in repositories))
@@ -391,7 +405,7 @@ def tick(config_path, *, api=None):
                          if policy.is_satisfied_by(WorkerTaskContext(
                              row["state"], row["attempts"], row["retry_after"], now))), None)
         result = {"status": "idle", "discovered": discovered, "queue_full": full,
-                  "github_writes": 0, "model_calls": 0}
+                  "github_writes": None if "review_gate" in config else 0, "model_calls": 0}
         if selected is None:
             return result
         candidate = selected["candidate"]
@@ -452,10 +466,16 @@ def status(config_path):
         preview_status = {}
         if "preview" in config:
             from .worker_preview import status as preview_status_for
-            preview_status = preview_status_for(db, Path(config["state_root"]), config["preview"])
-        return {"status": "ok", "delivery_mode": "private_preview" if "preview" in config else "request_only",
+            preview_status = preview_status_for(db, Path(config["state_root"]), config["preview"],
+                                                gate_options=config.get("review_gate"))
+        if "review_gate" in config:
+            from .automatic_review_gate import status as gate_status_for
+            preview_status.update(gate_status_for(db))
+        mode = ("gated_private_preview" if "review_gate" in config else
+                "private_preview" if "preview" in config else "request_only")
+        return {"status": "ok", "delivery_mode": mode,
                 "model_calls": None if "preview" in config else 0, **preview_status,
-                "github_writes": 0, "next_poll": _meta(db, "next_poll"),
+                "github_writes": None if "review_gate" in config else 0, "next_poll": _meta(db, "next_poll"),
                 "handoffs": handoffs,
                 "counts": {row["state"]: row["n"] for row in
                            db.execute("SELECT state,count(*) n FROM tasks GROUP BY state")}}

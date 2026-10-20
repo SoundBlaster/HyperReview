@@ -38,6 +38,10 @@ HyperReview#hyperreview
       DeliveryRecovery
     PublicationGate#publication-gate
     ReviewThreadGate#review-gate
+      AutomaticGateLifecycle
+        ReviewStartNotice
+        GateCompletion
+        GateRecovery
     GitHubPublisher#publisher
   Observability#observability
     ExperimentTracking#tracking

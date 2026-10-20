@@ -92,3 +92,10 @@ the existing comment broker perform delivery. `DeliveryRecovery` persists exact
 plans across uncertain writes. `publication_stage=automatic_comment` illustrates
 the optional stage; it grants no runtime authority or service installation.
 See [the automatic-publication contract](../SPECS/24-automatic-publication.md).
+
+`AutomaticGateLifecycle` maps to `automatic_review_gate.py`: a separate operator
+grant permits review-start threads before inference and completion of only owned,
+journaled automatic gates. `GateRecovery` keeps uncertain writes separate from
+model execution. `review_gate_stage=automatic` illustrates the optional v3 stage;
+it cannot grant permissions or enforce GitHub rules by resolving the model.
+See [the automatic-gate contract](../SPECS/25-automatic-review-gates.md).

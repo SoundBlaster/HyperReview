@@ -71,3 +71,6 @@ nodes. Future tooling integration must preserve their IDs and status.
 
 - [Automatic publication](24-automatic-publication.md): repository-scoped standing
   grants, metadata tracking, immutable private snapshots and comment delivery recovery.
+
+- [Automatic review gates](25-automatic-review-gates.md): explicit thread grants,
+  analysis-start notices, owned-thread completion and fail-closed recovery.

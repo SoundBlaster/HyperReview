@@ -283,19 +283,18 @@ def tick(config_path):
             return {"status": "not_due"}
         worker._set_meta(db, "next_poll", now + config["interval_seconds"])
         _expire(db, root, now)
-        notice = review_summary_link.next_delivery(db, config, source)
-        if notice is not None:
-            result = _notify_link(db, root, config, source, notice)
-            if result != "preview_busy":
-                return {"status": "review_link_" + result, "job": notice["job"],
-                        "repository": notice["repository"], "pr": notice["pr"]}
         row = db.execute("SELECT * FROM deliveries WHERE state IN ('tracking','publishing')"
                          " ORDER BY updated_at LIMIT 1").fetchone()
         if row is None:
-            if db.execute("SELECT count(*) FROM deliveries").fetchone()[0] >= worker.MAX_RECEIPTS:
-                return {"status": "capacity_reached"}
-            row, state = _snapshot_one(db, root, config, source, now)
+            state = "capacity_reached"
+            if db.execute("SELECT count(*) FROM deliveries").fetchone()[0] < worker.MAX_RECEIPTS:
+                row, state = _snapshot_one(db, root, config, source, now)
             if row is None:
+                notice = review_summary_link.next_delivery(db, config, source)
+                if notice is not None:
+                    result = _notify_link(db, root, config, source, notice)
+                    return {"status": "review_link_" + result, "job": notice["job"],
+                            "repository": notice["repository"], "pr": notice["pr"]}
                 return {"status": state}
         job = row["job"]
         base = {"job": job, "repository": row["repository"], "pr": row["pr"]}

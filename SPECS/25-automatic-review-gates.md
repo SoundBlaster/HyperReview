@@ -66,6 +66,8 @@ comment inventory; it is never blindly repeated. A changed summary body blocks
 a new link for that older delivery. Failures leave ordinary publication marked
 successful and never reopen/resolve gates or replay inference. Pending link
 plans remain retained. Legacy v1/v2 sources grant no thread notification writes.
+Ordinary incomplete deliveries and newly available previews take priority over
+old notification backfills, which run only when no ordinary delivery is ready.
 
 Failed and interrupted analyses keep their threads open with an explicit failure
 notice; they are not silently retried or reported as successful reviews. A stale

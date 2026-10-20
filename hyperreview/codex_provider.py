@@ -142,7 +142,7 @@ def _verify_executable(path, expected_sha256, deadline, isolate_process=False):
 
 
 def _codex_schema(request):
-    schema = deepcopy(plan_schema(request))
+    schema = deepcopy(plan_schema(request, include_relations=True))
 
     def visit(value):
         if type(value) is dict:

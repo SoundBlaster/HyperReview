@@ -15,6 +15,7 @@ from urllib.parse import quote
 from uuid import uuid4
 
 from . import __version__
+from . import configuration_evidence
 
 
 ALLOWLIST = frozenset(("0al-spec/SpecGraph", "0al-spec/Hypercode",
@@ -25,7 +26,7 @@ MAX_BYTES = 262144
 DEADLINE_SECONDS = 300
 API_BYTES = 4 * 1024 * 1024
 SCHEMA = "hyperreview.evidence.v2"
-POLICY = "own-pr-intake.v2"
+POLICY = "own-pr-intake.v3"
 EXTENSIONS = frozenset((".py", ".swift", ".rs", ".ts", ".tsx", ".js", ".jsx",
                         ".c", ".h", ".cpp", ".hpp", ".m", ".mm", ".md", ".hc"))
 OPERATOR_FILES = frozenset(("agents.md", "claude.md", "skill.md", "mcp.json"))
@@ -182,6 +183,28 @@ def exclusion(path):
     return None
 
 
+def _source_exclusion(path):
+    reason = exclusion(path)
+    if configuration_evidence.accepts_path(path, reason):
+        return None
+    return reason
+
+
+def _source_priority(item):
+    """Keep connecting configuration and implementation ahead of prose/tests."""
+    path = item["after_path"] or item["before_path"]
+    if configuration_evidence.accepts_path(path, exclusion(path)):
+        rank = 0
+    elif PurePosixPath(path).suffix == ".md":
+        rank = 3
+    elif (any(part.lower() in ("test", "tests", "fixtures") for part in path.split("/"))
+          or PurePosixPath(path).name.startswith("test_")):
+        rank = 2
+    else:
+        rank = 1
+    return rank, path
+
+
 def tree(api, repo, sha):
     response = api.get(f"repos/{repo}/git/trees/{sha}?recursive=1")
     if response.get("truncated") is not False:
@@ -282,7 +305,7 @@ def _collect(repo, number, api=None, *, historical=False):
         inventory.append({"before_path": old_path, "after_path": new_path,
                           "status": "renamed" if old_path and old_path != path else
                           "modified" if old_path and new_path else "added" if new_path else "removed",
-                          "sources": [], "omissions": []})
+                          "sources": [], "omissions": [], "configuration_evidence": []})
     pack = {
         "schema": SCHEMA, "policy": POLICY, "collector_version": __version__,
         "stage": "evidence_collected",
@@ -297,7 +320,7 @@ def _collect(repo, number, api=None, *, historical=False):
         "tracking_status": "not_started", "files": inventory,
         "selector_context": selector_context,
         "scope": {"inventory": "complete_pinned_tree_comparison",
-                  "source": "whole_selected_changed_files_only",
+                  "source": "whole_selected_code_files_and_bounded_configuration_excerpts",
                   "rename_hints": "possibly_incomplete" if len(files) >= 300 else "compare_api",
                   "surrounding_files": "not_collected", "pr_authored_text": "not_collected",
                   "behavior": "not_executed", "secret_detection": "path_filter_only_not_a_content_guarantee",
@@ -309,28 +332,87 @@ def _collect(repo, number, api=None, *, historical=False):
     if len(encoded(pack)) + 128 > MAX_BYTES:
         raise IntakeError("Changed-file inventory exceeds the evidence limit")
     selected = 0
-    for item in inventory:
+    source_records_count = 0
+    configuration_bytes_used = 0
+    for item in sorted(inventory, key=_source_priority):
         paths = [p for p in (item["before_path"], item["after_path"]) if p is not None]
-        reason = next((exclusion(p) for p in paths if exclusion(p)), None)
+        reason = next((_source_exclusion(p) for p in paths if _source_exclusion(p)), None)
         if reason or selected >= MAX_FILES:
             item["omissions"].append({"side": "both", "reason": reason or "source_file_limit"})
             continue
         included = False
-        for side, revision, entries in (("before", merge_base, before_tree),
-                                        ("after", pr["head_sha"], after_tree)):
+        present_sides = [("before", merge_base, before_tree), ("after", pr["head_sha"], after_tree)]
+        for side, revision, entries in present_sides:
             path = item[f"{side}_path"]
             if path is None:
                 continue  # Expected absence for an addition/removal, not a read failure.
+            is_configuration = configuration_evidence.accepts_path(path, exclusion(path))
             budget = MAX_BYTES - len(encoded(pack)) - 1024
+            if is_configuration:
+                budget = min(configuration_evidence.MAX_FILE_BYTES, MAX_BYTES)
             record, reason = source(api, repo, revision, path, entries, max(0, budget))
             if record is not None:
                 record["side"] = side
-                item["sources"].append(record)
-                if len(encoded(pack)) + 1024 > MAX_BYTES:
-                    item["sources"].pop()
-                    reason = "encoded_evidence_byte_limit"
+                if is_configuration:
+                    remaining_total = max(0, configuration_evidence.MAX_TOTAL_BYTES -
+                                          configuration_bytes_used)
+                    source_slots = max(0, configuration_evidence.MAX_SOURCE_RECORDS -
+                                       source_records_count)
+                    sides_present = sum(item[f"{candidate_side}_path"] is not None
+                                        for candidate_side in ("before", "after"))
+                    per_side_limit = source_slots // max(1, sides_present)
+                    excerpts, coverage = configuration_evidence.extract(
+                        path, record, max_total_bytes=remaining_total,
+                        max_excerpts=per_side_limit)
+                    coverage.update(side=side, path=path, revision=revision)
+                    item["configuration_evidence"].append(coverage)
+                    # The full source is deliberately discarded after this
+                    # point; only excerpts and their coverage record enter
+                    # the evidence pack. Check encoded size after adding the
+                    # coverage metadata and after every excerpt.
+                    if len(encoded(pack)) + 1024 > MAX_BYTES:
+                        item["configuration_evidence"].pop()
+                        item["omissions"].append({"side": side,
+                                                  "reason": "encoded_evidence_byte_limit"})
+                        reason = "encoded_evidence_byte_limit"
+                        excerpts = []
+                    accepted_ids = []
+                    for excerpt in excerpts:
+                        item["sources"].append(excerpt)
+                        source_records_count += 1
+                        if len(encoded(pack)) + 1024 > MAX_BYTES:
+                            item["sources"].pop()
+                            source_records_count -= 1
+                            coverage["omissions"].append({
+                                "line_start": excerpt["line_start"],
+                                "line_end": excerpt["line_end"],
+                                "reason": "encoded_evidence_byte_limit",
+                            })
+                            coverage["coverage"] = "partial"
+                            continue
+                        accepted_ids.append(configuration_evidence.source_id(
+                            excerpt["revision"], excerpt["path"], excerpt["content_sha256"]))
+                        configuration_bytes_used += excerpt["content_bytes"]
+                    if coverage in item["configuration_evidence"]:
+                        coverage["excerpt_source_ids"] = accepted_ids
+                    if not accepted_ids:
+                        item["omissions"].append({"side": side,
+                                                  "reason": (coverage.get("omissions") or [{}])[0].get(
+                                                      "reason", "configuration_excerpt_limit")})
+                    included = included or bool(accepted_ids)
                 else:
-                    included = True
+                    if source_records_count >= configuration_evidence.MAX_SOURCE_RECORDS:
+                        reason = "source_file_limit"
+                        item["omissions"].append({"side": side, "reason": reason})
+                        continue
+                    item["sources"].append(record)
+                    source_records_count += 1
+                    if len(encoded(pack)) + 1024 > MAX_BYTES:
+                        item["sources"].pop()
+                        source_records_count -= 1
+                        reason = "encoded_evidence_byte_limit"
+                    else:
+                        included = True
             if reason:
                 item["omissions"].append({"side": side, "reason": reason})
         if included:

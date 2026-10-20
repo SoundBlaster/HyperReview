@@ -71,6 +71,13 @@ profile. See [the Evidently contract](../SPECS/07-evidently.md).
 
 ## Artifact boundary
 
+The inferred `ClaimLedger` also carries bounded explanation relationships from
+`relation_plan.py`: obligations, policy callsites, typed facts and artifact
+transfer. Generated owner properties in companion `.hcs` carry the relationships
+through the compiler's IR. The Markdown consumer displays them separately from `.hc` containment.
+Configuration excerpts are evidence for declarations, never observed job runs.
+See [the structured composition contract](../SPECS/15-structured-composition.md).
+
 For analyzed PRs, HyperReview will emit separate `before.hc`/`after.hc` files,
 identity/evidence records, and IR snapshots. `hypercode diff` compares resolved
 content of those snapshots. Its success establishes a well-formed comparison,

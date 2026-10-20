@@ -5,10 +5,10 @@ import difflib
 import re
 from urllib.parse import quote
 
-from . import intake, model_contract
+from . import intake, model_contract, relation_sheet
 
 
-COMPACT_RENDER_VERSION = "compact-v5"
+COMPACT_RENDER_VERSION = "compact-v7"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -100,6 +100,105 @@ def _address_labels(result):
     return labels
 
 
+def _relation_table(request, result):
+    """Render the bounded explanation extension from canonical inferred claims."""
+    claims = [claim for claim in result["claims"] if claim["id"].startswith("relation-")]
+    if not claims:
+        return []
+    sources = {source["id"]: source for source in request["sources"]}
+    lines = ["\n## Связи и основания\n",
+             "Связи интерпретированы по источникам и не заданы вложенностью `.hc`. "
+             "Конфигурация показывает заявленную передачу данных; её выполнение здесь не наблюдалось.\n",
+             "| Связь | Что видно в источниках | Основания |",
+             "| --- | --- | --- |"]
+    for claim in claims[:6]:
+        links = []
+        for ref in claim["source_refs"]:
+            source = sources[ref]
+            url = (f"https://github.com/{request['repository']}/blob/{source['revision']}/"
+                   f"{quote(source['path'], safe='/')}#L{source['line_start']}-L{source['line_end']}")
+            label = source["path"].rsplit("/", 1)[-1]
+            links.append(f"[{_text(label)}:{source['line_start']}–{source['line_end']}]({url})")
+        # Newlines would split Markdown table rows; escape every model field
+        # through the same text boundary as ordinary explanations.
+        text = _text(" ".join(claim["text"].split()))
+        scope = _text(" ".join(claim["scope"].split()))
+        lines.append(f"| {text} | {scope} | {'; '.join(links)} |")
+    lines.append("")
+    return lines
+
+
+def _companion_view(receipt):
+    sheets = receipt.get("relationship_sheets", {})
+    if not sheets:
+        return []
+    lines = ["\n<details>\n<summary>Связи в Hypercode (.hcs)</summary>\n"]
+    for side in ("before", "after"):
+        if side in sheets:
+            lines.extend([f"### {side}.hcs\n", _fence(sheets[side]["content"], "hcs")])
+    lines.append("</details>\n")
+    return lines
+
+
+def _configuration_coverage(request):
+    lines = []
+    for coverage in request.get("configuration_coverage", []):
+        omissions = coverage["omissions"]
+        ranges = "; ".join(f"L{item['line_start']}–{item['line_end']}: {item['reason']}"
+                           for item in omissions[:8])
+        extra = f"; ещё {len(omissions) - 8} диапазонов" if len(omissions) > 8 else ""
+        lines.append("- Конфигурация: " + _text(coverage["path"]) + "; "
+                     + _text(coverage["side"]) + "; охват " + _text(coverage["coverage"])
+                     + f"; фрагментов {len(coverage['source_ids'])}. "
+                     + _text(ranges + extra) + "\n")
+    return lines
+
+
+def _source_groups(refs, sources):
+    groups = {}
+    for ref in dict.fromkeys(refs):
+        source = sources[ref]
+        groups.setdefault(source["path"], {}).setdefault(source["side"], []).append(source)
+    return groups
+
+
+def _source_url(request, source, *, lines=False):
+    url = (f"https://github.com/{request['repository']}/blob/{source['revision']}/"
+           f"{quote(source['path'], safe='/')}")
+    if lines:
+        url += f"#L{source['line_start']}-L{source['line_end']}"
+    return url
+
+
+def _compact_source_links(request, groups):
+    links = []
+    for path, sides in groups.items():
+        versions = [f"[{'до' if side == 'before' else 'после'}]"
+                    f"({_source_url(request, sides[side][0])})"
+                    for side in ("before", "after") if side in sides]
+        links.append(_text(path) + " — " + " / ".join(versions))
+    return "; ".join(links)
+
+
+def _identity_source_ranges(request, result, sources, labels):
+    """Keep exact per-node evidence ranges available outside the main prose."""
+    lines = ["\n### Точные диапазоны источников по узлам\n"]
+    for identity in result["identity_map"]:
+        lines.append("\n**" + _text(labels[identity["architecture_id"]]) + "**\n")
+        groups = _source_groups(identity["before_refs"] + identity["after_refs"], sources)
+        for path, sides in groups.items():
+            versions = []
+            for side in ("before", "after"):
+                if side not in sides:
+                    continue
+                refs = sorted(sides[side], key=lambda source: (source["line_start"], source["line_end"]))
+                ranges = [f"[L{source['line_start']}–{source['line_end']}]"
+                          f"({_source_url(request, source, lines=True)})" for source in refs]
+                versions.append(("до: " if side == "before" else "после: ") + ", ".join(ranges))
+            lines.append("- " + _text(path) + " — " + "; ".join(versions) + "\n")
+    return lines
+
+
 def render_preview(request, result, receipt, semantic_diff, *, tracking_status="not_started"):
     """Inputs must come from the successful compiler boundary, never raw model output.
 
@@ -108,6 +207,14 @@ def render_preview(request, result, receipt, semantic_diff, *, tracking_status="
     """
     model_contract.validate_request(request)
     model_contract.validate_result(result, request)
+    try:
+        sheets = relation_sheet.build(request, result)
+    except ValueError as error:
+        raise model_contract.ContractError("Rendering relationship sheets are invalid") from error
+    if sheets or receipt.get("relationship_sheets"):
+        if (receipt.get("relationship_sheets") != sheets
+                or receipt.get("relationship_properties_sha256") != relation_sheet.properties_digest(sheets)):
+            raise model_contract.ContractError("Rendering requires bound resolved relationship sheets")
     if tracking_status not in ("not_started", "tracking_pending", "confirmed"):
         raise model_contract.ContractError("Rendering tracking status is invalid")
     tracking_label = {"not_started": "Tracking has not been confirmed.",
@@ -165,6 +272,7 @@ def render_preview(request, result, receipt, semantic_diff, *, tracking_status="
                      f"Before refs: {', '.join(_text(ref) for ref in identity['before_refs']) or 'none'}; "
                      f"after refs: {', '.join(_text(ref) for ref in identity['after_refs']) or 'none'}.\n")
     lines.append("\n## Limitations and omissions\n")
+    lines.extend(_configuration_coverage(request))
     for limitation in [*request["scope"], *request["limitations"], *result["limitations"]]:
         lines.append("- " + _text(limitation) + "\n")
     for omission in request["omissions"]:
@@ -195,24 +303,26 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
              (_fence(change, "diff") if change else
               "Структурных изменений в проекции нет. Текущая проекция:\n"
               + _fence(result["after_hc"]))]
+    lines.extend(_relation_table(request, result))
+    lines.extend(_companion_view(receipt))
     sources = {source["id"]: source for source in request["sources"]}
     address_labels = _address_labels(result)
     for identity in result["identity_map"]:
-        links = []
         refs = list(dict.fromkeys(identity["after_refs"] + identity["before_refs"]))
-        for ref in refs:
-            source = sources[ref]
-            url = (f"https://github.com/{request['repository']}/blob/{source['revision']}/"
-                   f"{quote(source['path'], safe='/')}#L{source['line_start']}-L{source['line_end']}")
-            links.append(f"[{_text(source['path'])}]({url})")
+        links = _compact_source_links(request, _source_groups(refs, sources))
         lines.append(f"- `{address_labels[identity['architecture_id']]}` — {_text(identity['reason'])} "
-                     + "; ".join(links) + "\n")
+                     + links + "\n")
     lines.extend(["\n<details>\n<summary>Границы анализа и основания</summary>\n",
                   f"PR #{request['pr']}: `{request['merge_base_sha']}` → `{request['head_sha']}`.\n",
                   f"Исходников в анализе: {len(request['sources'])}; пропущено: {len(request['omissions'])}.\n",
                   "Компилятор проверил структуру Hypercode и ссылки. Соответствие интерпретации коду "
                   "и поведение программы этим не доказаны.\n"])
+    lines.extend(_configuration_coverage(request))
     for limitation in [*request["scope"], *request["limitations"], *result["limitations"]]:
         lines.append("- " + _text(limitation) + "\n")
+    for omission in request["omissions"]:
+        lines.append("- Пропущено: " + _text(omission.get("path") or "путь скрыт политикой")
+                     + " — " + _text(omission["reason"]) + ".\n")
+    lines.extend(_identity_source_ranges(request, result, sources, address_labels))
     lines.extend(["\n</details>\n", "**Ок или не ок?**\n"])
     return "\n".join(lines).encode("utf-8")

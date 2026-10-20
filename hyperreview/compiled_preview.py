@@ -14,7 +14,7 @@ import tempfile
 import threading
 import time
 
-from . import intake, model_contract
+from . import intake, model_contract, relation_sheet
 
 
 MAX_PROCESS_OUTPUT_BYTES = 1024 * 1024
@@ -428,32 +428,51 @@ def compile_preview(request, result, *, compiler: Path, compiler_sha256: str,
     started = time.monotonic()
     deadline = started + timeout_seconds
     try:
+        relationship_sheets = relation_sheet.build(request, result)
+        selector_context = relation_sheet.effective_selector_context(request, result)
         with tempfile.TemporaryDirectory(prefix="hyperreview-preview-") as temporary_directory:
             workdir = Path(temporary_directory)
             private_compiler = workdir / "hypercode-compiler"
             _copy_verified_compiler(compiler, private_compiler, compiler_sha256, deadline)
             before_hc = workdir / "before.hc"
             after_hc = workdir / "after.hc"
+            before_hcs = workdir / "before.hcs"
+            after_hcs = workdir / "after.hcs"
             before_ir_path = workdir / "before.ir.json"
             after_ir_path = workdir / "after.ir.json"
             diff_path = workdir / "diff.json"
             _write_private(before_hc, result["before_hc"].encode("utf-8"))
             _write_private(after_hc, result["after_hc"].encode("utf-8"))
+            hcs_paths = {}
+            for side, path in (("before", before_hcs), ("after", after_hcs)):
+                if side in relationship_sheets:
+                    _write_private(path, relationship_sheets[side]["content"].encode("utf-8"))
+                    hcs_paths[side] = path
 
             for source_path in (before_hc, after_hc):
                 _run_compiler(private_compiler, ["parse", str(source_path)], workdir=workdir,
                               deadline=deadline, expected_sha256=compiler_sha256)
-                _run_compiler(private_compiler, ["validate", str(source_path)], workdir=workdir,
+                side = "before" if source_path == before_hc else "after"
+                validate_args = ["validate", str(source_path)]
+                if side in hcs_paths:
+                    validate_args.extend(("--hcs", str(hcs_paths[side])))
+                _run_compiler(private_compiler, validate_args, workdir=workdir,
                               deadline=deadline, expected_sha256=compiler_sha256)
 
+            before_emit_args = ["emit", str(before_hc)]
+            after_emit_args = ["emit", str(after_hc)]
+            if "before" in hcs_paths:
+                before_emit_args.extend(("--hcs", str(hcs_paths["before"])))
+            if "after" in hcs_paths:
+                after_emit_args.extend(("--hcs", str(hcs_paths["after"])))
             before_ir, _ = _run_compiler(
                 private_compiler,
-                ["emit", str(before_hc), "--format", "json", "--ir-version", "2"],
+                before_emit_args + ["--format", "json", "--ir-version", "2"],
                 workdir=workdir, deadline=deadline, expected_sha256=compiler_sha256,
             )
             after_ir, _ = _run_compiler(
                 private_compiler,
-                ["emit", str(after_hc), "--format", "json", "--ir-version", "2"],
+                after_emit_args + ["--format", "json", "--ir-version", "2"],
                 workdir=workdir, deadline=deadline, expected_sha256=compiler_sha256,
             )
             _require(len(before_ir) <= MAX_PROCESS_OUTPUT_BYTES
@@ -465,7 +484,10 @@ def compile_preview(request, result, *, compiler: Path, compiler_sha256: str,
             after_document = _strict_json(after_ir, "after IR")
             before_ids = _ir_ids(before_document, "Before")
             after_ids = _ir_ids(after_document, "After")
-            _validate_identity_provenance(result, before_ids, after_ids, request["selector_context"])
+            _validate_identity_provenance(result, before_ids, after_ids, selector_context)
+            for side, document in (("before", before_document), ("after", after_document)):
+                if side in relationship_sheets:
+                    relation_sheet.verify_resolved_values(result, relationship_sheets[side], document, side)
 
             diff_raw, diff_code = _run_compiler(
                 private_compiler,
@@ -500,6 +522,10 @@ def compile_preview(request, result, *, compiler: Path, compiler_sha256: str,
                 "evidence_status": "inferred",
                 "tracking_status": "not_started",
             }
+            if relationship_sheets:
+                receipt["relationship_sheets"] = relationship_sheets
+                receipt["relationship_properties_sha256"] = relation_sheet.properties_digest(
+                    relationship_sheets)
             artifacts = {
                 "before.hc": before_hc.read_bytes(),
                 "after.hc": after_hc.read_bytes(),

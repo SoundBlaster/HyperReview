@@ -39,6 +39,29 @@ The local correlation ID is available for future tracking reconciliation;
 
 ## Evidence boundaries
 
+### Bounded configuration evidence (intake policy v3)
+
+The ordinary source extension allowlist is unchanged. Three additional changed
+path families may supply configuration excerpts: `.github/workflows/*.yml`,
+`specs/nodes/*.yaml`, and `tools/feature_passports/*.json`. Operator-file and
+sensitive-path exclusions take precedence; arbitrary YAML/JSON remains excluded.
+Configuration and application code are selected before tests and prose under
+the existing shared byte cap, so new configuration cannot silently displace the
+adapter implementing the policy. Remaining omissions are still reported.
+These files are read as untrusted text, never executed or used as configuration
+for HyperReview. No repository-controlled import, include or URL is followed.
+
+The collector verifies the complete Git blob before selecting bounded
+line-preserving excerpts. Retained evidence distinguishes the original blob
+hash from each excerpt's content hash and records partial coverage. Workflow
+environment and recognized credential-bearing regions are omitted. Selection
+is a conservative text heuristic, not a YAML parser or proof of job semantics.
+The model receives only excerpt source records and omission information; full
+workflow bodies do not enter the request. File/byte/record caps still apply.
+
+A supplied fragment can support an explanation of a declared relationship.
+It cannot establish absence outside its ranges or successful workflow execution.
+
 The pack includes only selected changed files. Surrounding files, PR-authored
 descriptions/comments, execution behavior, and accepted architectural intent are
 not collected. It includes a complete path inventory within the tree/API limits,

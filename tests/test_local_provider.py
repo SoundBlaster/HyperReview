@@ -333,7 +333,7 @@ class LocalProviderTests(unittest.TestCase):
             callback=lambda _request: (200, {"Content-Type": "application/json"},
                                        self._envelope(self.config,
                                                       result=make_paired_plan(self.request))),
-            context_tokens=16384,
+            context_tokens=32768,
         )
         generate(self.request, self.config)
         messages = json.loads(fixture.requests[0]["body"])["messages"]
@@ -600,12 +600,11 @@ class LocalProviderTests(unittest.TestCase):
 
     def test_repair_context_preflight_fails_before_second_post(self):
         from hyperreview import local_provider
-        from hyperreview.composition_plan import plan_schema
 
         valid = make_plan(self.request)
         invalid = json.loads(intake.encoded(valid))
         invalid["nodes"][0]["after_refs"] = []
-        schema = plan_schema(self.request)
+        schema = local_provider._specialized_schema(self.request)
         content = intake.encoded(self.request).decode()
         initial, _ = local_provider._attempt_payload(self.config or ProviderConfig(
             "lmstudio", "http://127.0.0.1:1234/v1", "fixture-model"), schema, content)

@@ -1,6 +1,6 @@
 # Structured composition generation
 
-Prompt `composition-v8` combines the shared trusted reviewer profile with
+Prompt `composition-v9` combines the shared trusted reviewer profile with
 provider instructions and asks a model for
 `hyperreview.composition-plan.v2`, not raw `.hc` and a separately authored
 identity map. It converts the result to `hyperreview.result.v2`.
@@ -59,9 +59,50 @@ Architecture names, grouping, correspondence, and claims remain model
 interpretations. Structured output removes duplicated representation; it does
 not establish that the interpretation is useful or accurate.
 
-The compact plan has no `claims` field: explanations live in node reasons and
-summary, avoiding a separately named claim graph. Canonical results still retain
-the claims field, set to `[]` by this adapter, for compatibility with other result authors.
+The compact plan has no `claims` field. Live providers request the bounded
+`relations` extension of the v2 plan; node-only v2 plans remain accepted for
+existing callers. `plan_schema(request, include_relations=True)` declares the
+extension as required for generation. The default schema keeps the node-only
+API available. Conversion stores each relation as an ordinary inferred claim
+in the unchanged `hyperreview.result.v2` contract; old node-only plans produce
+an empty claims list.
+
+## Relationships outside the containment tree
+
+At most six rows explain adapter/policy calls, typed facts, policy reuse,
+obligation bindings, or artifact transfer. Endpoints name source-established
+symbols, jobs or obligations, without requiring extra architecture nodes. Each
+row identifies one revision side, an existing owner responsibility, a declaration or source-analysis basis, a
+Russian explanation, and one to eight unique supplied sources on that side.
+Wrong-side, missing and duplicate references are rejected during conversion.
+The adapter gives these relationships a Hypercode representation as properties
+of the owner in a generated companion `.hcs`. Property names come from a fixed
+review vocabulary (`calls`, `uses_facts`, `reuses_policy`, `transfers_artifact`,
+`binds_obligation`). Several relationships of one kind on an owner form a sorted
+string value. Explanations and source refs remain sheet comments and bound claim
+metadata; revision-specific annotations do not enter semantic property values.
+This vocabulary is interpreted by HyperReview, not built-in edge
+semantics in Hypercode. No new tree nodes are needed just for relationships.
+
+The compiler resolves the `.hc`/`.hcs` pair and checks the resulting property
+values before the renderer presents the same bound values in a source-linked
+table. Companion contents are retained in the compiler receipt, separately
+from the inspected repository's configuration. They are an inferred review
+artifact, never accepted intent or a runtime configuration file. The temporary
+sheet contains no imports or operator-controlled context overrides.
+
+A repeated role gains selectors when generated companion sheets are present,
+even if the inspected repository had none. Both sides receive a companion
+(possibly empty) to preserve paired identities when only one has relationships.
+Unique roles stay selector-free.
+
+This validation establishes reference integrity only. Spec bindings declare an
+obligation; inspected callsites may support an interpretation of implementation;
+workflow declarations describe intended job dependencies. None establishes that
+a job ran, a rule has no bypass, or all procedural duplication was removed.
+Omitted configuration is unknown, and source excerpts cannot establish absence
+outside their selected ranges. Name a missing entry point precisely: a missing
+Makefile does not imply an absent `run_tests` implementation in supplied Python.
 
 ## Diagnostics and practical feedback
 
@@ -76,6 +117,11 @@ Compilation produces both `preview.md` (verbose diagnostics) and
 `preview-compact.md` (a concise Russian diff, reasons, and source links). After
 tracking confirmation, `track --bundle` re-renders both files; the verbose view
 shows the confirmed tracking status.
+
+Compact node explanations group citations by file path, with one short
+before/after version link per file. Exact per-node excerpt ranges remain linked
+inside the expanded evidence section. Grouping presentation does not discard
+source references or imply that the whole linked file was supplied to the model.
 
 The practical acceptance is a compiled, compact preview that the operator can
 mark **ok** or **not ok**, optionally identifying an unclear or incorrect node.

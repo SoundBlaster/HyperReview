@@ -29,6 +29,12 @@ for it or absorb its children. The profile does not require a larger diff,
 invented ownership, or a file/type inventory. Unchanged structure remains valid
 when the evidence only supports nonstructural changes. Existing v1 bundles stay
 immutable; a v2 run requires a fresh request prepared from the pinned evidence.
+Profile v3 adds bounded relationships outside the containment tree, requests
+precise file/symbol-level omissions, and distinguishes binding declarations from
+inspected callsites. Workflow/spec/passport excerpts follow the same untrusted
+source boundary; they never supply provider instructions or publication grants.
+The prompt/profile change requires a fresh request. Already sanitized v7/v8
+tracking events remain replayable without accepting their old inference requests.
 Requests also carry per-revision `.hcs` presence derived from each complete pinned
 tree. The model never supplies or infers this selector-policy input.
 

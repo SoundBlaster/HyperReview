@@ -6,7 +6,7 @@ executed; source text remains untrusted data and is only used as references.
 
 import re
 
-from . import intake, model_contract
+from . import intake, model_contract, relation_plan
 
 
 PLAN_SCHEMA = "hyperreview.composition-plan.v2"
@@ -44,7 +44,8 @@ def _canonical_json(value, name):
 
 
 def _validate_plan(plan, request):
-    _require(type(plan) is dict and set(plan) == set(_PLAN_FIELDS),
+    _require(type(plan) is dict and (set(plan) == set(_PLAN_FIELDS)
+                                   or set(plan) == set(_PLAN_FIELDS) | {"relations"}),
              "Plan has missing or unknown top-level fields")
     encoded = _canonical_json(plan, "Plan")
     _require(len(encoded) <= _MAX_WIRE_BYTES, "Encoded composition plan exceeds 1 MiB")
@@ -121,7 +122,14 @@ def _validate_plan(plan, request):
                 _require(parent != node_id, "A node cannot parent itself")
                 children[side][parent].append(node_id)
 
-    selector_context = request["selector_context"]
+    # The inferred projection can now have its own generated companion sheet,
+    # independently of whether the inspected repository contains any .hcs.
+    rows = plan.get("relations", [])
+    rows = rows if type(rows) is list else []
+    selector_context = {
+        f"{side}_hcs_present": (request["selector_context"][f"{side}_hcs_present"] or bool(rows))
+        for side in ("before", "after")
+    }
     role_counts = {
         side: {role: sum(1 for node_id in order if by_id[node_id][f"{side}_type"] == role)
                for role in {by_id[node_id][f"{side}_type"] for node_id in order
@@ -165,7 +173,7 @@ def _validate_plan(plan, request):
     return by_id, order, rendered
 
 
-def plan_schema(request):
+def plan_schema(request, *, include_relations=False):
     """Return a strict provider schema with source references bound to request."""
     try:
         model_contract.validate_request(request)
@@ -206,7 +214,7 @@ def plan_schema(request):
         "type": "object", "additionalProperties": False,
         "required": list(_NODE_FIELDS), "properties": node_properties,
     }
-    return {
+    schema = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": PLAN_SCHEMA, "type": "object", "additionalProperties": False,
         "required": list(_PLAN_FIELDS),
@@ -218,6 +226,12 @@ def plan_schema(request):
             "limitations": {**canonical["limitations"], "description": "Write missing evidence specific to this interpretation in Russian; do not repeat request boilerplate."},
         },
     }
+    # Existing callers and retained node-only plans remain supported. Live
+    # providers explicitly request the source-bound explanation extension.
+    if include_relations:
+        schema["required"].append("relations")
+        schema["properties"]["relations"] = relation_plan.schema(request)
+    return schema
 
 
 def to_result(plan, request):
@@ -241,7 +255,7 @@ def to_result(plan, request):
             "before_hc": rendered["before"],
             "after_hc": rendered["after"],
             "identity_map": identity_map,
-            "claims": [],
+            "claims": relation_plan.to_claims(plan.get("relations", []), request, identity_map),
             "summary": plan["summary"],
             "limitations": plan["limitations"],
         }
@@ -251,5 +265,7 @@ def to_result(plan, request):
         return result
     except CompositionPlanError:
         raise
+    except ValueError as error:
+        raise CompositionPlanError("Invalid source-bound relation plan") from error
     except model_contract.ContractError as error:
         raise CompositionPlanError("Converted result failed the canonical result contract") from error

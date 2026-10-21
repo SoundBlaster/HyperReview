@@ -36,6 +36,17 @@ renames, inferred rescoping or necessary wrappers, and preserves authored owners
 and persisting caller roles when showing delegation. Reuse saved evidence for the
 follow-up and keep earlier model outputs immutable; no new blocking name gate.
 
+### G3 follow-up — supported relationships
+
+A private v9 replay preserved the authored roles/owners but still inferred a
+portable path's dependency on an optional backend without a supporting declared
+edge or inspected integration. Profile v10 / prompt v16 requires evidence for
+each edge's direction and kind, preserves conditions on genuine optional
+dependencies, and distinguishes an actual shared data contract from a capability
+label. Unsupported edges are omitted with a specific knowledge gap. Replay the
+same immutable Hunter/BuildHunter evidence with Luna 6 Medium; keep prior outputs
+and public comments intact. These instructions add no semantic validation gate.
+
 
 ## Review clarity follow-up — SpecGraph #773
 

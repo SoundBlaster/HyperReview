@@ -195,8 +195,8 @@ and is a consumer-profile rule, not a Hypercode language restriction.
 
 ## G1 common relationship contract
 
-Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v15`
-and reviewer profile v9. The relationship vocabulary is `depends_on`, `calls`,
+Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v16`
+and reviewer profile v10. The relationship vocabulary is `depends_on`, `calls`,
 `shared_contract`, `data_flow`, `requires`, `available_when`, and `reuses_rule`.
 The same descriptions apply across stacks: a callee may be a function, service,
 syscall or policy; a common type is a shared contract, not proof of shared
@@ -217,7 +217,7 @@ five original relation kinds, labels and property keys. Node-only conversion
 remains available for direct callers; live providers require the full current
 plan. Saved results are never relabelled or given new inferred relationships.
 
-A fresh generation requires a fresh request bound to profile v9. Old requests
+A fresh generation requires a fresh request bound to profile v10. Old requests
 are not silently upgraded; their original pinned profile/code or retained
 rendered artifacts remain the historical interpretation. Already sanitized
 composition-v10 tracking events remain replayable without accepting old
@@ -257,3 +257,28 @@ schema field or automatic alias substitution. No repository/language vocabulary
 is embedded in the implementation. Saved evidence can prepare a fresh v9 request;
 v8 generation outputs are not relabelled or edited. Already sanitized v14
 tracking events remain replayable alongside earlier legacy versions.
+
+## Ground the connection, not just its endpoints
+
+Profile v10 / prompt v16 strengthens the common relationship guidance after a
+private replay inferred a portable path's dependency on an optional backend
+from documentation that merely described both capabilities. Every selected
+edge must have same-side evidence for its direction and kind. A declaration
+must declare that connection; implementation analysis must identify the relevant
+call, import, wiring, transfer or constraint. The explanation briefly names that
+support and any relevant condition.
+
+Containment, coexistence and availability alone do not establish a dependency.
+An optional dependency is still valid when its direction and condition are
+supported. `shared_contract` needs an actual common interface/result/schema and
+inspected sharing sites, rather than a feature label or a single producer's API.
+Scope exclusions can constrain an interpretation. A disclaimer about missing
+integration evidence does not make an unsupported edge suitable for output:
+omit it and state the specific unknown in the summary or limitations.
+
+The trusted profile and provider-schema descriptions carry the same guidance
+across languages and repositories. Plan v3, request v5, result v2, relationship
+vocabulary, compiler checks and rendering remain unchanged. This is a generation
+instruction, not deterministic semantic validation or a new merge gate. Saved
+outputs retain their original identities; fresh requests bind profile v10.
+Already sanitized v15 tracking events remain replayable.

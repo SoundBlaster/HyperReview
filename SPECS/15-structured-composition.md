@@ -195,8 +195,8 @@ and is a consumer-profile rule, not a Hypercode language restriction.
 
 ## G1 common relationship contract
 
-Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v14`
-and reviewer profile v8. The relationship vocabulary is `depends_on`, `calls`,
+Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v15`
+and reviewer profile v9. The relationship vocabulary is `depends_on`, `calls`,
 `shared_contract`, `data_flow`, `requires`, `available_when`, and `reuses_rule`.
 The same descriptions apply across stacks: a callee may be a function, service,
 syscall or policy; a common type is a shared contract, not proof of shared
@@ -217,7 +217,7 @@ five original relation kinds, labels and property keys. Node-only conversion
 remains available for direct callers; live providers require the full current
 plan. Saved results are never relabelled or given new inferred relationships.
 
-A fresh generation requires a fresh request bound to profile v8. Old requests
+A fresh generation requires a fresh request bound to profile v9. Old requests
 are not silently upgraded; their original pinned profile/code or retained
 rendered artifacts remain the historical interpretation. Already sanitized
 composition-v10 tracking events remain replayable without accepting old
@@ -228,3 +228,32 @@ existing compiler/reference checks, tracking receipt and live revision gate.
 This increment generalizes semantic instructions and output only. The bounded
 input selection changes in G2 and the pinned cross-example replay in G3 remain
 separate work. No Rust parser or repository-specific reviewer is introduced.
+
+## Source-established role names
+
+Profile v9 / prompt v15 strengthens name reuse after the Hunter #22 replay
+renamed the authored root `HunterPrimitives` to `FilesystemAcquisition`. A compact
+projection preserves the spelling of represented roles, including roots and
+shared owners; omitting unrelated children does not justify a new vocabulary.
+Names are chosen from the map appropriate to the reviewed scope. Proposed or
+target maps must not silently rename a current implementation projection.
+
+The represented roles retain their authored containing paths. Omitting unrelated
+branches does not permit grafting a shared capability under its caller. A caller
+role that persists after delegation remains separate from the provider; use
+`.hcs` connections to explain delegation instead of manufacturing a rename/move.
+An interpretation that disagrees with the authored composition must explicitly
+describe the discrepancy and its implementation evidence.
+
+Real source renames retain the corresponding names on each revision. A new
+responsibility, deliberate rescope or necessary wrapper can use an inferred
+name, with an explicit explanation of the scope difference and relevant existing
+roles. Missing or ambiguous correspondence remains a stated limitation. Matching
+names do not establish identity, authority, behavior or semantic equivalence.
+
+The provider schema descriptions repeat this guidance at `before_type`,
+`after_type` and `reason`. This is model guidance, not a new name-validation gate,
+schema field or automatic alias substitution. No repository/language vocabulary
+is embedded in the implementation. Saved evidence can prepare a fresh v9 request;
+v8 generation outputs are not relabelled or edited. Already sanitized v14
+tracking events remain replayable alongside earlier legacy versions.

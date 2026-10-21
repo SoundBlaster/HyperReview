@@ -37,6 +37,24 @@ finding MUST produce a short explanation of that outcome, not an invented
 structural change. A documentation-only PR may legitimately have identical
 before/after projections. A skipped analysis MUST state why it was skipped.
 
+**HR-PROD-007 — Stack-independent understanding.** The reviewer's core MUST
+explain responsibilities, boundaries, decisions, constraints, dependencies and
+data contracts without requiring a particular language, operating system,
+framework, repository name or policy library. Documentation and specifications
+MUST be usable as architecture evidence in their own right. Technology-specific
+names MAY describe the analyzed system; they MUST NOT define the core review
+vocabulary or select a repository-specific explanation template.
+
+**HR-PROD-008 — Existing architecture first.** When Hypercode is present, the
+reviewer SHOULD inspect the relevant `.hc` and `.hcs` together before inventing
+another vocabulary. Discovered architecture remains revision-bound authored
+evidence until its authority is explicitly established. Missing Hypercode MUST
+NOT prevent a useful review based on documentation, specifications and source.
+Disagreement among these sources MUST remain visible.
+
+See [stack-independent review](26-stack-independent-review.md) for the intended
+input, relationship and optional navigation boundaries.
+
 ## Proposed first demonstration
 
 Select a small set of SpecGraph PRs covering responsibility extraction,

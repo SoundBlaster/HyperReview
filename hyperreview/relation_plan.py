@@ -31,11 +31,10 @@ def decode_claim_id(value):
 
 _FIELDS = {"owner_id", "from", "to", "kind", "side", "basis", "explanation", "source_refs"}
 _BASES = ("declaration", "source_analysis")
-_LITERAL_TARGET = re.compile(r"[A-Za-z0-9_./-]+\.[A-Za-z0-9]+::[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*")
 
 
 class BindingEvidenceError(ValueError):
-    """A literal verification address is absent from its cited declaration side."""
+    """An exact verification target is absent from its cited declaration side."""
 
 
 def schema(request):
@@ -59,7 +58,7 @@ def schema(request):
                              "maxLength": 81,
                              "description": "# plus the exact id of a declared node present on this side. Its generated .hcs properties carry this relationship; choose the responsible owner, not a new node just for the edge."},
                 "from": {**label, "description": "Source-established responsibility, caller, producer, contract or rule. For calls: the caller. For reuses_rule: ONE shared rule."},
-                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For reuses_rule: several named sites, marking indirect paths. For verified_by: use the exact literal target(s) from declarations on this side; never copy a newly added target into before."},
+                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For reuses_rule: several named sites, marking indirect paths. For verified_by: ONE exact verbatim target from the cited side, without truncation, concatenation or explanation. Use separate rows for separate targets. Never copy a newly added target into before."},
                 "kind": {"type": "string", "enum": list(KINDS)},
                 "side": {"type": "string", "enum": ["before", "after"]},
                 "basis": {"type": "string", "enum": list(_BASES),
@@ -101,9 +100,13 @@ def to_claims(rows, request, identities, *, legacy=False):
                 or len(refs) != len(set(refs))):
             raise ValueError("Relation requires unique supplied same-side source references")
         if not legacy and row["kind"] == "verified_by" and row["basis"] == "declaration":
-            for target in _LITERAL_TARGET.findall(row["to"]):
-                if not any(target in source_records[ref]["content"] for ref in refs):
-                    raise BindingEvidenceError("Verified binding target absent from cited side")
+            # Literal presence is only a necessary evidence condition. Token
+            # boundaries reject shortened identifiers; a complete test body
+            # or merely a similar name cannot establish a declared binding.
+            target = re.escape(row["to"])
+            pattern = re.compile(r"(?<![\w./:-])" + target + r"(?![\w.:-])")
+            if not any(pattern.search(source_records[ref]["content"]) for ref in refs):
+                raise BindingEvidenceError("Verified binding target absent from cited side")
         side = "До" if row["side"] == "before" else "После"
         basis = "заявлено в источниках" if row["basis"] == "declaration" else "интерпретация исходников"
         kind = ({"calls": "вызов политики", "uses_facts": "типизированные факты",

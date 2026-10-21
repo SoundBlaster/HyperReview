@@ -50,7 +50,7 @@ _ISSUE_HINTS = {
     "invalid_identifier": "Используй допустимые уникальные id из исходной схемы.",
     "schema_or_binding": "Сохрани поля, schema и request_digest из исходной схемы и запроса.",
     "invalid_plan": "Сверь полный план с исходной схемой и правилами обеих сторон.",
-    "verified_binding_target": "В verified_by указан буквальный адрес file.ext::symbol, отсутствующий в цитируемых источниках этой стороны. Исправь цель или ссылки. Новую привязку после изменения нельзя копировать в before; наличие функции в коде не означает, что до изменения на неё ссылалась спецификация.",
+    "verified_binding_target": "В verified_by укажи ОДНУ точную цель дословно из цитируемой стороны. Нельзя обрезать идентификатор, склеивать несколько целей или дописывать объяснение в to. Разным целям нужны отдельные строки. Новую привязку нельзя копировать в before; наличие функции не означает прежнюю привязку спецификации.",
     "generic_responsibility": "Name the executable code task, not the edited comment. When code exists before AND after, set BOTH types and BOTH nonempty refs from the source-ID lists below. Put comment edits in reason/summary.",
 }
 _REPAIR_PROMPT = """Пересоздай полный план по исходному запросу. Ошибка {code}{location}: {hint}

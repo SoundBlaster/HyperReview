@@ -80,12 +80,14 @@ definition present in a larger after-window was incorrectly called newly added.
 Absence of an unchanged marker does not prove a file changed. Full-blob identity
 is about source bytes, not runtime behavior or external dependencies.
 
-For `verified_by` declarations with literal `file.ext::symbol` addresses, each
-target must occur in the cited records on that side. Missing literal evidence
+For `verified_by` declarations, `to` contains one complete verbatim target,
+without concatenation or truncation. The whole target with identifier boundaries
+must occur in the cited records on that side. Missing literal evidence
 raises the safe `verified_binding_target` repair issue. This rejects the #777
 pilot's unsupported before-side target, even though that function already
 existed in implementation. It does not prove the owner-to-target relationship,
-test coverage or execution, and does not interpret arbitrary target syntaxes.
+test coverage or execution; the guard is format/language independent and does
+not interpret target syntax.
 
 An unchanged `.hc` composition can accompany a changed `.hcs`. Compact render
 v11 shows the property diff, excluding source/evidence comments so changed

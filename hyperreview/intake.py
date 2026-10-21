@@ -19,7 +19,8 @@ from . import configuration_evidence
 
 
 ALLOWLIST = frozenset(("0al-spec/SpecGraph", "0al-spec/Hypercode",
-                       "SoundBlaster/SessionMonitor"))
+                       "SoundBlaster/SessionMonitor", "SoundBlaster/Hunter",
+                       "SoundBlaster/BuildHunter"))
 AUTHOR = "SoundBlaster"
 MAX_FILES = 30
 MAX_BYTES = 262144

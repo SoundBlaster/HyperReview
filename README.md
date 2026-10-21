@@ -32,7 +32,8 @@ supplies bounded workflow/spec/passport excerpts, with omissions disclosed.
 These remain interpretations of declarations and source, not runtime observations.
 
 The repository allowlist is `0al-spec/SpecGraph`, `0al-spec/Hypercode`, and
-`SoundBlaster/SessionMonitor`, with PR author `SoundBlaster` and same-repository heads.
+`SoundBlaster/SessionMonitor`, `SoundBlaster/Hunter`, and `SoundBlaster/BuildHunter`,
+with PR author `SoundBlaster` and same-repository heads.
 These are operator-owned settings, never instructions loaded from a PR.
 
 ## Specifications and architecture

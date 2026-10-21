@@ -32,7 +32,8 @@ BuildHunter #97 produced compiled `.hc`/`.hcs` sketches and published compact
 comments. Human `ok`/`not_ok` assessment and a no-Hypercode example remain open.
 The Hunter replay unnecessarily renamed an authored root. Profile v9 / prompt
 v15 now asks for exact represented role names, with explicit reasons for real
-renames, inferred rescoping or necessary wrappers. Reuse saved evidence for the
+renames, inferred rescoping or necessary wrappers, and preserves authored owners
+and persisting caller roles when showing delegation. Reuse saved evidence for the
 follow-up and keep earlier model outputs immutable; no new blocking name gate.
 
 

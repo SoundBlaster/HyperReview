@@ -238,6 +238,13 @@ shared owners; omitting unrelated children does not justify a new vocabulary.
 Names are chosen from the map appropriate to the reviewed scope. Proposed or
 target maps must not silently rename a current implementation projection.
 
+The represented roles retain their authored containing paths. Omitting unrelated
+branches does not permit grafting a shared capability under its caller. A caller
+role that persists after delegation remains separate from the provider; use
+`.hcs` connections to explain delegation instead of manufacturing a rename/move.
+An interpretation that disagrees with the authored composition must explicitly
+describe the discrepancy and its implementation evidence.
+
 Real source renames retain the corresponding names on each revision. A new
 responsibility, deliberate rescope or necessary wrapper can use an inferred
 name, with an explicit explanation of the scope difference and relevant existing

@@ -270,8 +270,12 @@ support and any relevant condition.
 
 Containment, coexistence and availability alone do not establish a dependency.
 An optional dependency is still valid when its direction and condition are
-supported. `shared_contract` needs an actual common interface/result/schema and
-inspected sharing sites, rather than a feature label or a single producer's API.
+supported. `available_when` runs from the gated capability to its actual
+predicate, with relevant platform/feature conditions. A configuration where A
+enables B does not establish that A is available when B is independently enabled.
+`shared_contract` needs an actual common interface/result/schema and inspected
+sharing sites (a producer and consumer suffice), rather than a feature label or
+a single producer's API.
 Scope exclusions can constrain an interpretation. A disclaimer about missing
 integration evidence does not make an unsupported edge suitable for output:
 omit it and state the specific unknown in the summary or limitations.

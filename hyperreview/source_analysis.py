@@ -1,4 +1,4 @@
-"""Small, bounded AST helpers for source-grounded HyperReview hints.
+"""Bounded syntax and literal-declaration navigation for HyperReview hints.
 
 These helpers report syntax-level references only. They do not establish that a
 rule is semantically equivalent across call sites, or that a call executes.
@@ -312,11 +312,11 @@ def _declaration_spans(source, text):
 
 
 def citation_spans(source, text):
-    """Return up to four AST-anchored spans for identifiers named in ``text``.
+    """Return up to four syntax/literal spans for identifiers named in ``text``.
 
-    Only bounded, parseable Python source records are considered. Locations are
-    absolute source lines and remain within the supplied record. These spans
-    identify syntax; they do not resolve dynamic dispatch or prove execution.
+    Python uses parsed AST locations; declarative formats use exact literal
+    anchors. Absolute lines remain within the supplied record. Neither method
+    establishes semantic binding, dynamic dispatch or execution.
     """
     if not isinstance(text, str):
         return []

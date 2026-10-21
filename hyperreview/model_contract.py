@@ -209,7 +209,8 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
     omissions = []
     candidates = []
     configuration_coverage = []
-    if pack.get("scope", {}).get("context_inventory_limited") is True:
+    if (type(pack.get("scope")) is dict
+            and pack["scope"].get("context_inventory_limited") is True):
         omissions.append({"id": None, "path": None, "side": "both",
                           "reason": "context_inventory_limit"})
 

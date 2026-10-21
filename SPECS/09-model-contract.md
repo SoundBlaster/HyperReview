@@ -13,7 +13,7 @@ fresh GitHub authorization. Intake metadata must still be rechecked by a future
 publisher.
 
 Only explicitly selected metadata and source fields enter
-`hyperreview.request.v4`. Extra pack properties, CI logs, PR descriptions,
+`hyperreview.request.v5`. Extra pack properties, CI logs, PR descriptions,
 credentials, endpoint settings, and delivery controls do not enter the request.
 Reference IDs identify source records by revision, path, and content digest.
 Requests carry an origin evidence digest, prompt/profile versions, omissions,

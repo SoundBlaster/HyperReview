@@ -27,7 +27,7 @@ METADATA = {"repository", "pr", "merge_base_sha", "head_sha", "evidence_digest",
             "request_digest", "result_digest", "abstraction_profile", "prompt_version",
             "provider", "model_identity_sha256", "compiler_sha256", "compiler_resolver_name",
             "compiler_resolver_version", "delivery_mode"}
-_LEGACY_PROMPT_VERSIONS = frozenset(("composition-v7", "composition-v8", "composition-v9", "composition-v10"))
+_LEGACY_PROMPT_VERSIONS = frozenset(("composition-v7", "composition-v8", "composition-v9", "composition-v10", "composition-v11", "composition-v12", "composition-v13"))
 _UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\Z")
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _HEX40 = re.compile(r"[0-9a-f]{40}\Z")

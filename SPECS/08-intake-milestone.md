@@ -39,7 +39,11 @@ The local correlation ID is available for future tracking reconciliation;
 
 ## Evidence boundaries
 
-### Bounded configuration evidence (intake policy v3)
+### Bounded configuration evidence (historical intake policy v3)
+
+Policy v4 supersedes the changed-file-only selection below with
+[bounded architecture context](27-bounded-architecture-context.md). The original
+P1 scope and v3 behavior are retained here as delivery history.
 
 The ordinary source extension allowlist is unchanged. Three additional changed
 path families may supply configuration excerpts: `.github/workflows/*.yml`,

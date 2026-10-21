@@ -1,4 +1,4 @@
-"""Small, bounded AST helpers for source-grounded HyperReview hints.
+"""Bounded syntax and literal-declaration navigation for HyperReview hints.
 
 These helpers report syntax-level references only. They do not establish that a
 rule is semantically equivalent across call sites, or that a call executes.
@@ -6,6 +6,7 @@ rule is semantically equivalent across call sites, or that a call executes.
 
 import ast
 import re
+from pathlib import PurePosixPath
 
 
 MAX_SOURCE_BYTES = 256 * 1024
@@ -259,18 +260,77 @@ def _call_for_reference(node, parents):
     return None
 
 
-def citation_spans(source, text):
-    """Return up to four AST-anchored spans for identifiers named in ``text``.
+def _declaration_spans(source, text):
+    """Locate literal named declarations, without interpreting their semantics."""
+    if (not isinstance(source, dict) or not isinstance(text, str)
+            or not isinstance(source.get("path"), str)
+            or PurePosixPath(source["path"]).suffix not in
+            (".md", ".hc", ".hcs", ".yaml", ".yml", ".json", ".toml")):
+        return []
+    content = source.get("content")
+    start, end = source.get("line_start"), source.get("line_end")
+    if not isinstance(content, str) or type(start) is not int or type(end) is not int:
+        return []
+    try:
+        if len(content.encode("utf-8")) > MAX_SOURCE_BYTES:
+            return []
+    except UnicodeError:
+        return []
+    lines = content.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    if start < 1 or len(lines) != end - start + 1:
+        return []
+    names = set(re.findall(r"\b[A-Za-z][A-Za-z0-9_-]{2,}\b", text))
+    names = {name for name in names if "_" in name or "-" in name
+             or re.search(r"[a-z][A-Z]", name) or name.isupper()}
+    candidates = []
+    seen = set()
+    for index, line in enumerate(lines):
+        matches = sorted(name for name in names if re.search(
+            r"(?<![A-Za-z0-9_-])" + re.escape(name) + r"(?![A-Za-z0-9_-])", line))
+        if not matches:
+            continue
+        lower, upper = max(0, index - 1), min(len(lines), index + 3)
+        declaration = re.match(r"^(\s*)-\s+id:\s*['\"]?([A-Za-z][A-Za-z0-9_-]+)", line)
+        is_declaration = declaration and declaration.group(2) in matches
+        if is_declaration:
+            lower, upper = index, index + 1
+            indent = len(declaration.group(1))
+            while upper < min(len(lines), index + 24):
+                following = lines[upper]
+                if following.strip() and len(following) - len(following.lstrip()) <= indent:
+                    break
+                upper += 1
+        span = (lower + start, upper + start - 1)
+        if span in seen:
+            continue
+        seen.add(span)
+        priority = (2 if is_declaration else 0) + int(any(len(name) >= 24 for name in matches))
+        candidates.append((priority, {"label": ", ".join(matches), "line_start": span[0], "line_end": span[1]}))
+    result = []
+    for _priority, item in sorted(candidates, key=lambda pair: (-pair[0], pair[1]["line_start"])):
+        if any(value["line_start"] <= item["line_start"] and value["line_end"] >= item["line_end"]
+               for value in result):
+            continue
+        result.append(item)
+        if len(result) == MAX_RESULTS:
+            break
+    return sorted(result, key=lambda value: value["line_start"])
 
-    Only bounded, parseable Python source records are considered. Locations are
-    absolute source lines and remain within the supplied record. These spans
-    identify syntax; they do not resolve dynamic dispatch or prove execution.
+
+def citation_spans(source, text):
+    """Return up to four syntax/literal spans for identifiers named in ``text``.
+
+    Python uses parsed AST locations; declarative formats use exact literal
+    anchors. Absolute lines remain within the supplied record. Neither method
+    establishes semantic binding, dynamic dispatch or execution.
     """
     if not isinstance(text, str):
         return []
     parsed = _source_tree(source)
     if parsed is None:
-        return []
+        return _declaration_spans(source, text)
     tree, _content, start, end = parsed
     mentioned = set(_IDENTIFIER.findall(text))
     if not mentioned:

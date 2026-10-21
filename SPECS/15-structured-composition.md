@@ -96,6 +96,16 @@ even if the inspected repository had none. Both sides receive a companion
 (possibly empty) to preserve paired identities when only one has relationships.
 Unique roles stay selector-free.
 
+Relationship rows are bounded selections, not exhaustive inventories. The compact
+view presents the selected `.hcs` properties per side without subtraction; a
+missing row does not mean its relationship was removed. Identical selections
+can share one display. The exact compiled sheets remain available with their
+evidence comments; the renderer never copies a claim onto an uncited side.
+The first screen uses Hypercode as the explanation: a composition/diff and
+nonempty relation selections. Prose summaries, tables, source links and
+qualifications share one collapsed disclosure, including full empty sheets.
+The visible sketch/revision labels retain the inferred and pinned scope.
+
 This validation establishes reference integrity only. Spec bindings declare an
 obligation; inspected callsites may support an interpretation of implementation;
 workflow declarations describe intended job dependencies. None establishes that
@@ -185,8 +195,8 @@ and is a consumer-profile rule, not a Hypercode language restriction.
 
 ## G1 common relationship contract
 
-Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v11`
-and reviewer profile v5. The relationship vocabulary is `depends_on`, `calls`,
+Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v14`
+and reviewer profile v8. The relationship vocabulary is `depends_on`, `calls`,
 `shared_contract`, `data_flow`, `requires`, `available_when`, and `reuses_rule`.
 The same descriptions apply across stacks: a callee may be a function, service,
 syscall or policy; a common type is a shared contract, not proof of shared
@@ -207,7 +217,7 @@ five original relation kinds, labels and property keys. Node-only conversion
 remains available for direct callers; live providers require the full current
 plan. Saved results are never relabelled or given new inferred relationships.
 
-A fresh generation requires a fresh request bound to profile v5. Old requests
+A fresh generation requires a fresh request bound to profile v8. Old requests
 are not silently upgraded; their original pinned profile/code or retained
 rendered artifacts remain the historical interpretation. Already sanitized
 composition-v10 tracking events remain replayable without accepting old

@@ -78,3 +78,7 @@ nodes. Future tooling integration must preserve their IDs and status.
 - [Stack-independent review](26-stack-independent-review.md): common architecture
   understanding, existing Hypercode and documentation evidence, bounded generic
   selection and optional language helpers; intended contract and staged plan.
+
+- [Bounded architecture context](27-bounded-architecture-context.md): reviewed
+  declarative families, unchanged Hypercode/reference context, selected relationship views
+  and concise source-grounded public explanations.

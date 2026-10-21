@@ -11,11 +11,11 @@ import re
 MAX_RELATIONS = 6
 EMPTY_PREFIX = "Связи не сформированы: "
 LEGACY_KINDS = ("calls", "uses_facts", "reuses_policy", "transfers_artifact", "binds_obligation")
-KINDS = ("depends_on", "calls", "shared_contract", "data_flow", "requires", "available_when", "reuses_rule")
+KINDS = ("depends_on", "calls", "shared_contract", "data_flow", "requires", "available_when", "reuses_rule", "verified_by")
 _LABELS = {"depends_on": "зависимость", "calls": "вызов операции",
            "shared_contract": "общий контракт данных", "data_flow": "передача данных",
            "requires": "обязательство границы", "available_when": "условие доступности",
-           "reuses_rule": "переиспользование правила"}
+           "reuses_rule": "переиспользование правила", "verified_by": "заявленная привязка проверки"}
 
 
 def decode_claim_id(value):
@@ -33,6 +33,10 @@ _FIELDS = {"owner_id", "from", "to", "kind", "side", "basis", "explanation", "so
 _BASES = ("declaration", "source_analysis")
 
 
+class BindingEvidenceError(ValueError):
+    """An exact verification target is absent from its cited declaration side."""
+
+
 def schema(request):
     refs = sorted(source["id"] for source in request["sources"])
     label = {"type": "string", "minLength": 1, "maxLength": 160}
@@ -41,6 +45,8 @@ def schema(request):
         "description": (
             "Up to six important source-supported relationships, separate from the .hc tree. "
             "Explain dependencies, operation calls, shared data contracts, data flow, boundary obligations and availability conditions across any stack. Use reuses_rule only for one actual rule with multiple application sites, not a shared type. "
+            "Use verified_by for a declared obligation-to-check binding, never proof the check passed. "
+            "On an attribute-only change keep the same .hc composition and describe before/after properties. "
             "Endpoints can name an obligation or source-established symbol without adding tree nodes. "
             "Use [] if no relationship has evidence; never invent execution or claim runtime observation."
         ),
@@ -52,7 +58,7 @@ def schema(request):
                              "maxLength": 81,
                              "description": "# plus the exact id of a declared node present on this side. Its generated .hcs properties carry this relationship; choose the responsible owner, not a new node just for the edge."},
                 "from": {**label, "description": "Source-established responsibility, caller, producer, contract or rule. For calls: the caller. For reuses_rule: ONE shared rule."},
-                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For reuses_rule: several named sites, marking indirect paths."},
+                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For reuses_rule: several named sites, marking indirect paths. For verified_by: ONE exact verbatim target from the cited side, without truncation, concatenation or explanation. Use separate rows for separate targets. Never copy a newly added target into before."},
                 "kind": {"type": "string", "enum": list(KINDS)},
                 "side": {"type": "string", "enum": ["before", "after"]},
                 "basis": {"type": "string", "enum": list(_BASES),
@@ -72,7 +78,8 @@ def to_claims(rows, request, identities, *, legacy=False):
     """Convert bounded rows to the existing provider-neutral inferred claims."""
     if type(rows) is not list or len(rows) > MAX_RELATIONS:
         raise ValueError("Relations must be a list of at most six rows")
-    sources = {source["id"]: source["side"] for source in request["sources"]}
+    source_records = {source["id"]: source for source in request["sources"]}
+    sources = {key: source["side"] for key, source in source_records.items()}
     owners = {entry["architecture_id"]: entry for entry in identities}
     claims = []
     for index, row in enumerate(rows):
@@ -92,6 +99,14 @@ def to_claims(rows, request, identities, *, legacy=False):
                 or any(type(ref) is not str or sources.get(ref) != row["side"] for ref in refs)
                 or len(refs) != len(set(refs))):
             raise ValueError("Relation requires unique supplied same-side source references")
+        if not legacy and row["kind"] == "verified_by" and row["basis"] == "declaration":
+            # Literal presence is only a necessary evidence condition. Token
+            # boundaries reject shortened identifiers; a complete test body
+            # or merely a similar name cannot establish a declared binding.
+            target = re.escape(row["to"])
+            pattern = re.compile(r"(?<![\w./:-])" + target + r"(?![\w.:-])")
+            if not any(pattern.search(source_records[ref]["content"]) for ref in refs):
+                raise BindingEvidenceError("Verified binding target absent from cited side")
         side = "До" if row["side"] == "before" else "После"
         basis = "заявлено в источниках" if row["basis"] == "declaration" else "интерпретация исходников"
         kind = ({"calls": "вызов политики", "uses_facts": "типизированные факты",

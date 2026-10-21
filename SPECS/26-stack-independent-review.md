@@ -3,8 +3,9 @@
 ## Status and product direction
 
 This is an intended contract and implementation plan. G1 generalizes the semantic
-contract and reviewer profile; source-family filtering (G2) and matched replay
-(G3) remain planned. Python reference hints are still optional navigation.
+contract and reviewer profile; G2 adds bounded generic evidence/context selection
+and clearer relationship views. Matched replay (G3) remains planned. Python reference
+hints are still optional navigation. See [G2 details](27-bounded-architecture-context.md).
 Hunter #22 exposed these gaps; Hunter and SpecGraph are examples, not semantic
 profiles the core must recognize by repository name.
 
@@ -76,7 +77,7 @@ This plan does not expand any live access or publication grant.
 | Stage | Change | Reviewable outcome |
 | --- | --- | --- |
 | G1 — Common contract (implemented in this increment) | Generalize the reviewer profile and relationship semantics; document compatibility and explicit empty-relation outcomes | One vocabulary supports responsibilities and relationships without requiring policy-library concepts |
-| G2 — Evidence selection | Prefer relevant existing Hypercode, architecture documents/specifications and connecting configuration under a finite, configurable format policy | Hunter's missed inputs illustrate a generic selection rule; no repository-specific path branch is added |
+| G2 — Evidence selection (implemented in this increment) | Prefer existing Hypercode, architecture documents/specifications and connecting declarations under reviewed finite format families, byte caps and a one-hop context bound | Hunter and SpecGraph illustrate generic selection rules; no repository-specific branch is added |
 | G3 — Bounded replay | Replay pinned examples with the same core profile, source limits and provider settings; inspect omissions and useful explanations | The operator can say `ok` or `not_ok` and inspect source support; optional parser hints can improve navigation later |
 
 Use Hunter #22 and SpecGraph #773 as initial worked examples, with a

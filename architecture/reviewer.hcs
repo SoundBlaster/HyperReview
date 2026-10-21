@@ -4,6 +4,9 @@ HyperReview:
 
 '#scheduler':
   poll_interval_seconds: 300
+  poll_scope: "PR discovery"
+  queue_wake_seconds: 30
+  entrypoint: "hyperreview.worker.run"
   install_enabled: false
   implemented_stage: "intake-only"
   inference_enabled: false
@@ -91,6 +94,9 @@ AutomaticCommentDelivery:
   enabled: false
   implementation: "hyperreview/publication_worker.py"
   max_jobs_per_tick: 1
+  wake_seconds: 30
+  first_delivery: "on ready preview"
+  retry_interval_seconds: 300
   model_calls: 0
   publication_mode: "comment"
 
@@ -312,6 +318,8 @@ PrivatePreviewJobs:
   enabled: false
   implementation: "hyperreview/worker_preview.py"
   max_jobs_per_tick: 1
+  max_jobs_per_run: 1
+  intake_continuation: "same invocation"
   replay_failed: false
   output: "private-preview"
 

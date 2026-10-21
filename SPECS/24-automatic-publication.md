@@ -78,7 +78,13 @@ exhaustion. Logs rotate at the existing 64-KiB limit. Attempts, fixed failures,
 digests and comment IDs are journaled; source and model prose stay in private
 artifacts, never the journal or process logs.
 
-The interval is 300–86400 seconds. One shared process lock serializes publisher
+The configured interval is 300–86400 seconds and limits retries/reconciliation,
+not first delivery of a newly ready local preview. Generated LaunchAgents wake
+every 30 seconds. A failed/interrupted delivery waits at least the configured
+interval from its last attempt before retry; other ready previews can proceed.
+Completion-link recovery retains the reconciliation interval. Expiry runs on
+reconciliation ticks. Existing installed plists need replacement/reload to change
+their wake schedule. One shared process lock serializes publisher
 ticks; a concurrent tick reports `busy`. Tracking has its existing 120-second
 bound, each GitHub read client has a fresh 60-second deadline, and comment writes
 retain the broker's 60-second bound. These are component budgets, not a promise

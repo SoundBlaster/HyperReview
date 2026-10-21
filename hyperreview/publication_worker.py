@@ -90,7 +90,7 @@ def write_launchd_plan(*, config_path, python, output_root):
     plist = {"Label": "com.hyperreview.publish",
              "ProgramArguments": [str(python), "-B", "-m", "hyperreview",
                                   "publication-worker-tick", "--config", str(config_path)],
-             "StartInterval": config["interval_seconds"], "RunAtLoad": False,
+             "StartInterval": worker.WAKE_SECONDS, "RunAtLoad": False,
              "ProcessType": "Background", "Nice": 10, "LowPriorityIO": True,
              "Umask": 63, "ExitTimeOut": 10, "WorkingDirectory": str(root),
              "StandardOutPath": str(logs / "worker.stdout.log"),
@@ -279,23 +279,25 @@ def tick(config_path):
             return {"status": "busy"}
         _setup(db, config)
         worker._rotate_logs(root)
-        if now < worker._meta(db, "next_poll"):
-            return {"status": "not_due"}
-        worker._set_meta(db, "next_poll", now + config["interval_seconds"])
-        _expire(db, root, now)
+        reconciliation_due = now >= worker._meta(db, "next_poll")
+        if reconciliation_due:
+            worker._set_meta(db, "next_poll", now + config["interval_seconds"])
+            _expire(db, root, now)
         row = db.execute("SELECT * FROM deliveries WHERE state IN ('tracking','publishing')"
-                         " ORDER BY updated_at LIMIT 1").fetchone()
+                         " AND (attempts=0 OR updated_at<=?) ORDER BY updated_at LIMIT 1",
+                         (now - config["interval_seconds"],)).fetchone()
         if row is None:
             state = "capacity_reached"
             if db.execute("SELECT count(*) FROM deliveries").fetchone()[0] < worker.MAX_RECEIPTS:
                 row, state = _snapshot_one(db, root, config, source, now)
             if row is None:
-                notice = review_summary_link.next_delivery(db, config, source)
+                notice = (review_summary_link.next_delivery(db, config, source)
+                          if reconciliation_due else None)
                 if notice is not None:
                     result = _notify_link(db, root, config, source, notice)
                     return {"status": "review_link_" + result, "job": notice["job"],
                             "repository": notice["repository"], "pr": notice["pr"]}
-                return {"status": state}
+                return {"status": "not_due" if state == "idle" and not reconciliation_due else state}
         job = row["job"]
         base = {"job": job, "repository": row["repository"], "pr": row["pr"]}
         try:

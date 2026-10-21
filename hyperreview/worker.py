@@ -24,6 +24,7 @@ PAGE_SIZE = 30
 MAX_PENDING = 32
 MAX_RECEIPTS = 2048
 RETENTION_SECONDS = 7 * 86400
+WAKE_SECONDS = 30
 _ARTIFACT_FILES = frozenset(("evidence.json", "request.json", "metadata.json"))
 _LOG_FILES = ("worker.stdout.log", "worker.stderr.log")
 _STATES = frozenset(("queued", "collecting", "request_prepared", "failed", "stale"))
@@ -377,7 +378,7 @@ def _gate_observation_api():
     return client
 
 
-def tick(config_path, *, api=None):
+def tick(config_path, *, api=None, collect_request=True):
     """Perform at most one intake or explicitly configured private-preview job."""
     config = load_config(config_path)
     root = _private_directory(config["state_root"], create=True)
@@ -386,12 +387,15 @@ def tick(config_path, *, api=None):
         if db is None:
             return {"status": "busy", "github_writes": 0, "model_calls": 0}
         _rotate_logs(root)
-        if now < _meta(db, "next_poll"):
-            return {"status": "not_due", "github_writes": 0, "model_calls": 0}
-        _set_meta(db, "next_poll", now + config["interval_seconds"])
-        _expire_artifacts(db, root, now)
-        for row in db.execute("SELECT candidate FROM tasks WHERE state='collecting'").fetchall():
+        discovery_due = now >= _meta(db, "next_poll")
+        if discovery_due:
+            _set_meta(db, "next_poll", now + config["interval_seconds"])
+            _expire_artifacts(db, root, now)
+        for row in db.execute("SELECT candidate,updated_at FROM tasks WHERE state='collecting'").fetchall():
             _transition(db, row[0], "failed", now, "interrupted")
+            with db:
+                db.execute("UPDATE tasks SET retry_after=? WHERE candidate=?",
+                           (row["updated_at"] + config["interval_seconds"], row["candidate"]))
         pipeline = _pipeline()
         for row in db.execute("SELECT candidate,repository,pipeline FROM tasks"
                               " WHERE state!='stale'").fetchall():
@@ -399,7 +403,7 @@ def tick(config_path, *, api=None):
                 _transition(db, row["candidate"], "stale", now, "policy_changed")
         injected_api = api is not None
         api = api or intake.GitHub()
-        discovered, full = _discover(db, config, api, pipeline, now)
+        discovered, full = _discover(db, config, api, pipeline, now) if discovery_due else (0, False)
         if "preview" in config:
             from .worker_preview import process_one
             completed_preview = process_one(
@@ -412,9 +416,10 @@ def tick(config_path, *, api=None):
         selected = next((row for row in db.execute("SELECT * FROM tasks ORDER BY updated_at,candidate")
                          if policy.is_satisfied_by(WorkerTaskContext(
                              row["state"], row["attempts"], row["retry_after"], now))), None)
-        result = {"status": "idle", "discovered": discovered, "queue_full": full,
+        result = {"status": "idle" if discovery_due else "not_due",
+                  "discovered": discovered, "queue_full": full,
                   "github_writes": None if "review_gate" in config else 0, "model_calls": 0}
-        if selected is None:
+        if selected is None or not collect_request:
             return result
         candidate = selected["candidate"]
         with db:
@@ -452,6 +457,21 @@ def tick(config_path, *, api=None):
                 db.execute("UPDATE tasks SET retry_after=? WHERE candidate=?",
                            (int(time.time()) + config["interval_seconds"], candidate))
             return {**result, "status": "failed", "candidate": candidate}
+
+
+def run(config_path, *, api=None):
+    """Collect once, then consume a prepared preview without a scheduler pause.
+
+    Each phase retains the existing process lock and budgets. At most one
+    collection and one generation job run; no loop retries failed inference.
+    """
+    first = tick(config_path, api=api)
+    if first["status"] != "request_prepared" or "preview" not in load_config(config_path):
+        return first
+    second = tick(config_path, api=api, collect_request=False)
+    return {**second, "intake_candidate": first["candidate"],
+            "discovered": first.get("discovered", 0) + second.get("discovered", 0),
+            "queue_full": first.get("queue_full", False) or second.get("queue_full", False)}
 
 
 def status(config_path):

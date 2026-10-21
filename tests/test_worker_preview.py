@@ -39,14 +39,17 @@ class WorkerPreviewTests(unittest.TestCase):
     def completed(self):
         return {"artifacts": dict(self.artifacts), "provider_attempts": 1}
 
-    def test_one_intake_then_one_private_preview_then_no_replay(self):
+    def test_run_prepares_and_generates_without_waiting_then_never_replays(self):
         with patch("hyperreview.worker_generation.run", return_value=self.completed()) as run:
-            self.assertEqual(self.tick()["status"], "request_prepared")
-            run.assert_not_called()
-            self.assertEqual(self.tick(10001)["status"], "not_due")
-            result = self.tick(10300)
+            api = WorkerGitHub()
+            with patch("hyperreview.worker.time.time", return_value=10000):
+                result = worker.run(self.config, api=api)
             self.assertEqual(result["status"], "preview_ready")
+            self.assertEqual(sum("/pulls?" in endpoint for endpoint in api.calls), 1)
             self.assertEqual(result["github_writes"], 0)
+            early = WorkerGitHub()
+            self.assertEqual(self.tick(10001, early)["status"], "not_due")
+            self.assertEqual(early.calls, [])
             self.assertEqual(self.tick(10600)["status"], "idle")
             self.assertEqual(run.call_count, 1)
         bundle = Path(result["bundle"])

@@ -82,7 +82,7 @@ def write_launchd_plan(*, config_path: Path, python: Path, output_root: Path) ->
 
     # Keep this import lazy: worker intake remains independently usable without
     # loading a configuration until the operator asks for a launchd plan.
-    from .worker import WorkerError, _prepare_logs, load_config
+    from .worker import WAKE_SECONDS, WorkerError, _prepare_logs, load_config
 
     try:
         loaded = load_config(config)
@@ -105,10 +105,10 @@ def write_launchd_plan(*, config_path: Path, python: Path, output_root: Path) ->
     plist = {
         "Label": "com.hyperreview.preview" if "preview" in loaded else _LABEL,
         "ProgramArguments": [
-            str(interpreter), "-B", "-m", "hyperreview", "worker-tick",
+            str(interpreter), "-B", "-m", "hyperreview", "worker-run",
             "--config", str(config),
         ],
-        "StartInterval": interval,
+        "StartInterval": WAKE_SECONDS,
         "RunAtLoad": False,
         "ProcessType": "Background",
         "LowPriorityIO": True,
@@ -188,4 +188,5 @@ To re-enable it later, review the plist again, run `launchctl enable
             b"Failures keep the thread open; deadlines do not release it. It does not publish ordinary comments,\n"
             b"track or merge PRs.")
         instructions += b"\nThe review-gate repository grant and ETA are in the v3 worker config.\n"
+    instructions += b"\nThe service wakes every 30 seconds. The configured interval limits PR discovery, not ready queue work. One run collects at most one request and may immediately generate one preview under the existing grants and budgets.\n"
     return instructions

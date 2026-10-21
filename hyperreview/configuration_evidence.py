@@ -1,4 +1,4 @@
-"""Bounded, non-executing excerpts for a narrow set of configuration files.
+"""Bounded, non-executing excerpts for reviewed declarative evidence families.
 
 This module intentionally does not parse or execute YAML, JSON, or workflow
 expressions. It keeps original line numbers while selecting small source
@@ -18,9 +18,15 @@ MAX_SOURCE_RECORDS = 60
 MAX_OMISSIONS = 256
 
 _PATH_PATTERNS = (
-    re.compile(r"\.github/workflows/[^/]+\.yml\Z"),
-    re.compile(r"specs/nodes/[^/]+\.yaml\Z"),
+    re.compile(r"\.github/workflows/[^/]+\.ya?ml\Z"),
+    re.compile(r"(?:[^/]+/)*(?:specs|specifications)/.+\.ya?ml\Z"),
     re.compile(r"tools/feature_passports/[^/]+\.json\Z"),
+    re.compile(r"(?:[^/]+/)*[^/]+\.spec\.ya?ml\Z"),
+    re.compile(r"(?:[^/]+/)*specpm\.ya?ml\Z"),
+    re.compile(r"(?:[^/]+/)*[a-zA-Z0-9_-]*decisions?[a-zA-Z0-9_-]*/[^/]+\.json\Z"),
+    re.compile(r"(?:[^/]+/)*(?:Cargo\.toml|pyproject\.toml|package\.json)\Z"),
+    re.compile(r"(?:[^/]+/)*(?:bindings|[^/]+\.bindings)\.(?:json|ya?ml)\Z"),
+    re.compile(r"(?:[^/]+/)*[^/]+\.hcs\Z"),
 )
 _WORKFLOW = _PATH_PATTERNS[0]
 _SECRET_KEY = re.compile(
@@ -52,13 +58,18 @@ _CONFIG_FOCUS = re.compile(
 
 
 def accepts_path(path, generic_exclusion):
-    """Admit only the three configuration families when generic intake rejects format."""
+    """Admit reviewed semantic families, never bypassing path/operator exclusions."""
     return (type(path) is str and generic_exclusion == "unsupported_format"
             and any(pattern.fullmatch(path) is not None for pattern in _PATH_PATTERNS))
 
 
 def _line_secret(line):
     return any(pattern.search(line) for pattern in _SECRET_VALUE)
+
+
+def contains_sensitive_content(content):
+    """Check the full verified blob before selecting ordinary context windows."""
+    return _line_secret(content)
 
 
 def _workflow_safe_lines(lines):

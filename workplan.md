@@ -9,13 +9,14 @@ The governing contract is [stack-independent review](SPECS/26-stack-independent-
 
 Next delivery follows G1 → G2 → G3:
 
-1. **G1 (implemented in the current increment):** composition-plan v3 and
+1. **G1 (PR #42):** composition-plan v3 and
    profile v5 use common relationships, preserve frozen legacy relation semantics
    and require an explanation for an empty relationship result. CI/review and
    integration remain the delivery gates for this branch.
-2. **G2:** select architecture, specification and connecting configuration evidence
-   through bounded format/semantic-family policies. Replace the proposed
-   Hunter-specific file admission patch with these common rules.
+2. **G2 (implemented in this increment):** select architecture, specifications,
+   decision records, manifests and bounded unchanged context with common rules.
+   Render property changes in `.hcs` and keep operational instructions out of
+   public prose. [Contract](SPECS/27-bounded-architecture-context.md).
 3. **G3:** replay pinned examples through that same core profile and inspect the
    result with ordinary `ok`/`not_ok` feedback. Language-specific navigation is
    optional and can follow demonstrated need.

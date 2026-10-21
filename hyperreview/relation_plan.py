@@ -11,11 +11,11 @@ import re
 MAX_RELATIONS = 6
 EMPTY_PREFIX = "Связи не сформированы: "
 LEGACY_KINDS = ("calls", "uses_facts", "reuses_policy", "transfers_artifact", "binds_obligation")
-KINDS = ("depends_on", "calls", "shared_contract", "data_flow", "requires", "available_when", "reuses_rule")
+KINDS = ("depends_on", "calls", "shared_contract", "data_flow", "requires", "available_when", "reuses_rule", "verified_by")
 _LABELS = {"depends_on": "зависимость", "calls": "вызов операции",
            "shared_contract": "общий контракт данных", "data_flow": "передача данных",
            "requires": "обязательство границы", "available_when": "условие доступности",
-           "reuses_rule": "переиспользование правила"}
+           "reuses_rule": "переиспользование правила", "verified_by": "заявленная привязка проверки"}
 
 
 def decode_claim_id(value):
@@ -41,6 +41,8 @@ def schema(request):
         "description": (
             "Up to six important source-supported relationships, separate from the .hc tree. "
             "Explain dependencies, operation calls, shared data contracts, data flow, boundary obligations and availability conditions across any stack. Use reuses_rule only for one actual rule with multiple application sites, not a shared type. "
+            "Use verified_by for a declared obligation-to-check binding, never proof the check passed. "
+            "On an attribute-only change keep the same .hc composition and describe before/after properties. "
             "Endpoints can name an obligation or source-established symbol without adding tree nodes. "
             "Use [] if no relationship has evidence; never invent execution or claim runtime observation."
         ),

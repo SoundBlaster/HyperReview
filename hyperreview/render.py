@@ -8,7 +8,7 @@ from urllib.parse import quote
 from . import intake, model_contract, relation_sheet, source_analysis, relation_plan
 
 
-COMPACT_RENDER_VERSION = "compact-v9"
+COMPACT_RENDER_VERSION = "compact-v10"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -141,7 +141,16 @@ def _companion_view(receipt):
     sheets = receipt.get("relationship_sheets", {})
     if not sheets:
         return []
-    lines = ["\n<details>\n<summary>Связи в Hypercode (.hcs)</summary>\n"]
+    semantic = {side: [line for line in sheets.get(side, {}).get("content", "").splitlines()
+                       if line.strip() and not line.lstrip().startswith("#")]
+                for side in ("before", "after")}
+    change = "\n".join(difflib.unified_diff(
+        semantic["before"], semantic["after"], fromfile="before.hcs", tofile="after.hcs",
+        lineterm="", n=3))
+    lines = (["\n### Изменение связей и ограничений (.hcs)\n",
+              "Сравнение свойств интерпретации; комментарии с основаниями исключены из diff.\n",
+              _fence(change, "diff")] if change else [])
+    lines.append("\n<details>\n<summary>Связи в Hypercode (.hcs)</summary>\n")
     for side in ("before", "after"):
         if side in sheets:
             lines.extend([f"### {side}.hcs\n", _fence(sheets[side]["content"], "hcs")])
@@ -201,8 +210,13 @@ def _identity_source_ranges(request, result, sources, labels):
                 if side not in sides:
                     continue
                 refs = sorted(sides[side], key=lambda source: (source["line_start"], source["line_end"]))
-                ranges = [f"[L{source['line_start']}–{source['line_end']}]"
-                          f"({_source_url(request, source, lines=True)})" for source in refs]
+                ranges = []
+                for source in refs:
+                    spans = source_analysis.citation_spans(source, identity["reason"]) or [source]
+                    for span in spans:
+                        narrowed = {**source, "line_start": span["line_start"], "line_end": span["line_end"]}
+                        ranges.append(f"[L{span['line_start']}–{span['line_end']}]"
+                                      f"({_source_url(request, narrowed, lines=True)})")
                 versions.append(("до: " if side == "before" else "после: ") + ", ".join(ranges))
             lines.append("- " + _text(path) + " — " + "; ".join(versions) + "\n")
     return lines
@@ -325,12 +339,11 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
                   f"PR #{request['pr']}: `{request['merge_base_sha']}` → `{request['head_sha']}`.\n",
                   f"Исходников в анализе: {len(request['sources'])}; пропущено: {len(request['omissions'])}.\n",
                   "Компилятор проверил структуру Hypercode и ссылки. Соответствие интерпретации коду "
-                  "и поведение программы этим не доказаны. Конфигурация описывает заявленную передачу "
-                  "данных; её выполнение здесь не наблюдалось. Ссылки на функции и места обращения "
-                  "уточнены синтаксически по полученному Python-коду; одинаковое имя само по себе "
-                  "не доказывает общее связывание символа или достижимость вызова.\n"])
+                  "и поведение программы этим не доказаны. Анализ ограничен предоставленными "
+                  "исходниками и фрагментами контекста; выполнение программы не наблюдалось.\n"])
     lines.extend(_configuration_coverage(request))
-    for limitation in [*request["scope"], *request["limitations"], *result["limitations"]]:
+    # Operational instructions remain in the full local ledger, not public prose.
+    for limitation in dict.fromkeys(result["limitations"]):
         lines.append("- " + _text(limitation) + "\n")
     for omission in request["omissions"]:
         lines.append("- Пропущено: " + _text(omission.get("path") or "путь скрыт политикой")

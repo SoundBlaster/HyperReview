@@ -48,6 +48,8 @@ def schema(request):
             "Use verified_by for a declared obligation-to-check binding, never proof the check passed. "
             "On an attribute-only change keep the same .hc composition and describe before/after properties. "
             "Endpoints can name an obligation or source-established symbol without adding tree nodes. "
+            "Ground each edge's direction and kind, not just its endpoints. Coexistence, containment or optional availability does not establish a dependency or integration. "
+            "For shared_contract identify an actual common interface/result/schema and its inspected sharing sites. Omit an unsupported edge instead of excusing it with a disclaimer. "
             "Use [] if no relationship has evidence; never invent execution or claim runtime observation."
         ),
         "items": {
@@ -57,17 +59,17 @@ def schema(request):
                 "owner_id": {"type": "string", "pattern": r"^#[A-Za-z][A-Za-z0-9_]{0,79}$",
                              "maxLength": 81,
                              "description": "# plus the exact id of a declared node present on this side. Its generated .hcs properties carry this relationship; choose the responsible owner, not a new node just for the edge."},
-                "from": {**label, "description": "Source-established responsibility, caller, producer, contract or rule. For calls: the caller. For reuses_rule: ONE shared rule."},
-                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For reuses_rule: several named sites, marking indirect paths. For verified_by: ONE exact verbatim target from the cited side, without truncation, concatenation or explanation. Use separate rows for separate targets. Never copy a newly added target into before."},
+                "from": {**label, "description": "Source-established responsibility, caller, producer, contract or rule. For calls: the caller; for depends_on: the actual dependent, not an unrelated portable alternative. For available_when: the gated capability/operation. For reuses_rule: ONE shared rule."},
+                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For depends_on identify what the from endpoint actually depends on, retaining relevant conditions in explanation; optional availability alone is insufficient. For available_when name the actual availability predicate including relevant platform/feature conditions; A enabling B does not imply A is available when B is independently enabled. For shared_contract name an actual common interface/result/schema with inspected sharing sites; a shown producer and consumer suffice. For reuses_rule: several named sites, marking indirect paths. For verified_by: ONE exact verbatim target from the cited side, without truncation, concatenation or explanation. Use separate rows for separate targets. Never copy a newly added target into before."},
                 "kind": {"type": "string", "enum": list(KINDS)},
                 "side": {"type": "string", "enum": ["before", "after"]},
                 "basis": {"type": "string", "enum": list(_BASES),
-                          "description": "declaration for authored architecture/documentation/specification; source_analysis for inspected implementation/configuration. Neither proves runtime behavior."},
+                          "description": "declaration only when authored architecture/documentation/specification actually declares this connection, not merely both endpoints. source_analysis for a connection supported by inspected implementation/configuration. Neither proves runtime behavior."},
                 "explanation": {"type": "string", "minLength": 1, "maxLength": 1000,
-                                "description": "Russian: the architectural consequence, named endpoints, what changed and specific gaps. Distinguish declarations from source-established calls; a shared type is not proof of shared behavior."},
+                                "description": "Russian: the architectural consequence, named endpoints, what changed and specific gaps. Briefly identify the declaration or inspected call/import/wiring/transfer/constraint supporting this edge's direction and kind, with relevant conditions. Distinguish declarations from source-established calls; a shared type is not proof of shared behavior. If the edge lacks support, omit the row; a caveat cannot establish it."},
                 "source_refs": {"type": "array", "minItems": 1, "maxItems": 8,
                                 "uniqueItems": True,
-                                "description": "All sources needed to support BOTH endpoints and this relationship, on the declared side only.",
+                                "description": "All sources needed to support BOTH endpoints AND this specific edge's direction and kind, on the declared side only. Check scope exclusions and conditions; source names alone do not establish a relationship.",
                                 "items": {"type": "string", "enum": refs}},
             },
         },

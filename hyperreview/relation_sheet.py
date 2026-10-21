@@ -4,8 +4,9 @@ import hashlib
 import json
 import re
 
+from .relation_plan import decode_claim_id
 
-_RELATION_ID = re.compile(r"relation-(calls|uses_facts|reuses_policy|transfers_artifact|binds_obligation)-([1-9][0-9]*)\Z")
+
 _ROLE = re.compile(r"[A-Za-z][A-Za-z0-9_-]*\Z")
 _IDENTITY = re.compile(r"#[A-Za-z][A-Za-z0-9_.-]*\Z")
 
@@ -39,11 +40,7 @@ def build(request, result):
         claim_id = claim.get("id") if type(claim) is dict else None
         if not isinstance(claim_id, str) or not claim_id.startswith("relation-"):
             continue
-        match = _RELATION_ID.fullmatch(claim_id)
-        if match is None:
-            raise ValueError("relationship claim identity is invalid")
-        kind = match.group(1)
-        number = int(match.group(2))
+        kind, number = decode_claim_id(claim_id)
         if number > 6 or len(seen) >= 6:
             raise ValueError("relationship sheet exceeds six bounded rows")
         if claim_id in seen:

@@ -18,7 +18,7 @@ from typing import Optional
 
 from . import intake, model_contract
 from .codex_isolation import IsolationError
-from .composition_plan import CompositionPlanError, plan_schema, to_result
+from .composition_plan import CompositionPlanError, plan_schema, to_result, require_current_provider_plan
 from .local_provider import (
     MAX_REQUEST_BYTES,
     MAX_RESPONSE_BYTES,
@@ -512,6 +512,7 @@ def generate(request, config):
                         executable, executable_sha256, config, schema, prompt, workdir, deadline, image_feature, isolation)
                     candidate_digest = intake.digest(candidate)
                     try:
+                        require_current_provider_plan(candidate)
                         result = to_result(candidate, request)
                     except (CompositionPlanError, model_contract.ContractError) as error:
                         _require(time.monotonic() < deadline, "Codex CLI timed out")

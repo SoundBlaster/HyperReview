@@ -182,3 +182,39 @@ for the task of the executable code, including unchanged code; comment edits
 belong in its explanation. More specific names such as `DocumentationGeneration`
 are allowed. This small naming filter does not validate architectural meaning,
 and is a consumer-profile rule, not a Hypercode language restriction.
+
+## G1 common relationship contract
+
+Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v11`
+and reviewer profile v5. The relationship vocabulary is `depends_on`, `calls`,
+`shared_contract`, `data_flow`, `requires`, `available_when`, and `reuses_rule`.
+The same descriptions apply across stacks: a callee may be a function, service,
+syscall or policy; a common type is a shared contract, not proof of shared
+behavior. Endpoints need source references, not additional `.hc` nodes.
+
+Live plans always contain `relations` and a nonempty bounded `relation_summary`.
+The trusted provider boundary rejects a missing current envelope even if a
+backend does not enforce its JSON Schema. When `relations` is empty, the adapter
+copies its explanation into canonical result limitations with the fixed prefix
+`Связи не сформированы: `. The compact renderer shows that explanation next to
+the projection. It remains an inferred explanation, not a formal completeness
+assessment. The existing result.v2 shape is unchanged.
+
+Common relation claims use `relation-v2-<kind>-<ordinal>` identities. Companion
+sheets decode this vocabulary separately from frozen legacy
+`relation-<kind>-<ordinal>` identities. The v2-plan conversion path preserves the
+five original relation kinds, labels and property keys. Node-only conversion
+remains available for direct callers; live providers require the full current
+plan. Saved results are never relabelled or given new inferred relationships.
+
+A fresh generation requires a fresh request bound to profile v5. Old requests
+are not silently upgraded; their original pinned profile/code or retained
+rendered artifacts remain the historical interpretation. Already sanitized
+composition-v10 tracking events remain replayable without accepting old
+inference requests as current. Generation fingerprints change through the
+existing composition/profile/render pins. Publication still requires the
+existing compiler/reference checks, tracking receipt and live revision gate.
+
+This increment generalizes semantic instructions and output only. The bounded
+input selection changes in G2 and the pinned cross-example replay in G3 remain
+separate work. No Rust parser or repository-specific reviewer is introduced.

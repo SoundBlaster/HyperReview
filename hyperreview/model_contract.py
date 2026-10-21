@@ -42,7 +42,7 @@ _OMISSION_REASONS = frozenset({
     "source_file_limit", "encoded_evidence_byte_limit", "evidence_byte_limit",
     "revision_mismatch", "operator_slice", "secret_pattern", "source_byte_limit",
     "incomplete_pair", "unknown_intake_omission",
-    "context_byte_limit", "context_excerpted",
+    "context_byte_limit", "context_excerpted", "context_inventory_limit",
     "configuration_file_limit", "configuration_excerpt_limit", "configuration_environment_redacted",
     "configuration_secret_block", "configuration_secret_line", "configuration_secret_file",
     "configuration_context_omitted", "configuration_indentation_unsupported",
@@ -209,6 +209,9 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
     omissions = []
     candidates = []
     configuration_coverage = []
+    if pack.get("scope", {}).get("context_inventory_limited") is True:
+        omissions.append({"id": None, "path": None, "side": "both",
+                          "reason": "context_inventory_limit"})
 
     for file_record in pack["files"]:
         _require(type(file_record) is dict, "Evidence file entry must be an object")

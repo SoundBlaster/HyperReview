@@ -262,7 +262,7 @@ def _architecture_context(inventory, before_tree, after_tree):
 
 
 _SOURCE_PATH = re.compile(
-    r"(?<![A-Za-z0-9_./-])([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+"
+    r"(?<![A-Za-z0-9_./-])([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*"
     r"\.(?:py|swift|rs|ts|tsx|js|jsx|c|h|cpp|hpp|m|mm|md|hc|hcs|toml|json|yaml|yml))"
     r"(?=$|[^A-Za-z0-9_./-])"
 )
@@ -330,6 +330,20 @@ def _context_excerpt(record, inventory, budget):
     return {**record, "content": content, "content_bytes": len(content.encode("utf-8")),
             "content_sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
             "line_start": lower + 1, "line_end": upper}, "context_excerpted"
+
+
+def _admit_context(pack, candidates):
+    """Optional metadata must not turn an otherwise usable pack into failure."""
+    admitted = []
+    for item in candidates:
+        pack["files"].append(item)
+        if len(encoded(pack)) + 1024 > MAX_BYTES:
+            pack["files"].pop()
+            # This flag is preallocated; False -> True cannot grow the pack.
+            pack["scope"]["context_inventory_limited"] = True
+        else:
+            admitted.append(item)
+    return admitted
 
 
 def tree(api, repo, sha):
@@ -433,7 +447,6 @@ def _collect(repo, number, api=None, *, historical=False):
                           "status": "renamed" if old_path and old_path != path else
                           "modified" if old_path and new_path else "added" if new_path else "removed",
                           "sources": [], "omissions": [], "configuration_evidence": []})
-    inventory.extend(_architecture_context(inventory, before_tree, after_tree))
     pack = {
         "schema": SCHEMA, "policy": POLICY, "collector_version": __version__,
         "stage": "evidence_collected",
@@ -451,6 +464,7 @@ def _collect(repo, number, api=None, *, historical=False):
                   "source": "whole_selected_code_files_and_bounded_configuration_excerpts",
                   "rename_hints": "possibly_incomplete" if len(files) >= 300 else "compare_api",
                   "surrounding_files": "bounded_hypercode_and_one_hop_literal_references",
+                  "context_inventory_limited": False,
                   "pr_authored_text": "not_collected",
                   "behavior": "not_executed", "secret_detection": "known_patterns_and_path_filters_not_a_content_guarantee",
                   "commit_status_contexts": "not_collected"},
@@ -461,6 +475,7 @@ def _collect(repo, number, api=None, *, historical=False):
     }
     if len(encoded(pack)) + 128 > MAX_BYTES:
         raise IntakeError("Changed-file inventory exceeds the evidence limit")
+    _admit_context(pack, _architecture_context(inventory, before_tree, after_tree))
     selected = 0
     source_records_count = 0
     configuration_bytes_used = 0
@@ -579,10 +594,7 @@ def _collect(repo, number, api=None, *, historical=False):
                 selected += 1
 
     collect_items(inventory)
-    context = _referenced_context(inventory, before_tree, after_tree)
-    inventory.extend(context)
-    if len(encoded(pack)) + 1024 > MAX_BYTES:
-        raise IntakeError("Bounded context inventory exceeds the evidence limit")
+    context = _admit_context(pack, _referenced_context(inventory, before_tree, after_tree))
     collect_items(context)
     try:
         checks = api.get(f"repos/{repo}/commits/{pr['head_sha']}/check-runs?per_page=100",

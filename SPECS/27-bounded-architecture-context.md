@@ -35,12 +35,17 @@ The complete pinned trees also permit a bounded context selection:
    and common generated directories are excluded from automatic map discovery.
    This heuristic chooses a candidate, not the repository's authoritative map.
 2. From retained changed Markdown/Hypercode/declarative sources, follow one hop
-   of literal repository-relative paths that exist in that side's pinned tree.
+   of literal repository-relative paths (including root-level files) that exist
+   in that side's pinned tree.
    Do not follow URLs, imports, includes, commands or recursive references.
 3. Share at most eight context files and 65536 content bytes across both sides
    within the ordinary total caps. Existing Hypercode counts toward this limit.
    Additional candidate paths are outside this bounded selection, not proof of
    absence. Every selected read/excerpt failure remains an omission.
+
+Optional context inventory is admitted incrementally within the encoded cap.
+Insufficient metadata room records `context_inventory_limit`; it cannot abort
+an otherwise valid changed-source collection.
 
 Context records are marked `status=context` with their selection reason in the
 evidence pack. Their presence does not imply a source change. They receive the

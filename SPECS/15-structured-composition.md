@@ -101,6 +101,10 @@ view presents the selected `.hcs` properties per side without subtraction; a
 missing row does not mean its relationship was removed. Identical selections
 can share one display. The exact compiled sheets remain available with their
 evidence comments; the renderer never copies a claim onto an uncited side.
+The first screen uses Hypercode as the explanation: a composition/diff and
+nonempty relation selections. Prose summaries, tables, source links and
+qualifications share one collapsed disclosure, including full empty sheets.
+The visible sketch/revision labels retain the inferred and pinned scope.
 
 This validation establishes reference integrity only. Spec bindings declare an
 obligation; inspected callsites may support an interpretation of implementation;

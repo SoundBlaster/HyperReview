@@ -90,9 +90,10 @@ test coverage or execution; the guard is format/language independent and does
 not interpret target syntax.
 
 An unchanged `.hc` composition can accompany different selected `.hcs` properties.
-Compact render v12 shows comment-free selected properties separately for each
-revision, or once when both selections are identical. An empty selection is
-labelled as unselected, not as an absence of relationships. Full compiler-bound
+Compact render v13 shows comment-free selected properties separately for each
+revision, or once when both selections are identical. Empty selections have no
+visible code block; their full sheets and unselected meaning remain in the
+disclosure, never a claim that relationships are absent. Full compiler-bound
 companion sheets remain available with evidence comments.
 
 These bounded selections are not complete relationship inventories: the #778
@@ -104,10 +105,20 @@ paired comparison contract with evidence for presence/absence and analysis
 coverage. Valid same-side targets alone cannot establish addition or removal.
 The `.hc` containment diff retains its existing presentation semantics.
 
-The compact public comment contains a shared scope caveat and specific model
-limitations. Operational/security prompt instructions remain in the full local
-ledger. Literal declaration and Python syntax anchors can narrow citations;
-these are navigation aids with whole-record fallback, not semantic verification.
+The first screen contains a short inferred-sketch label, the pinned head prefix,
+the `.hc` composition/diff and selected `.hcs` properties. The Hypercode is the
+primary explanation; do not truncate targets or manufacture a shorter summary.
+One collapsed `details` section contains the full model summary, relationship
+table, per-responsibility prose, citations, complete companion sheets, diff
+legend, coverage and limitations. Identical selections are displayed once;
+evidence and safety qualifications remain available without dominating the first
+screen. The historical read-only/publication-disabled notice stays visible.
+This is a presentation change; generation results and compiler receipts remain
+bound and existing bundles are not silently rewritten.
+
+Operational/security prompt instructions remain in the full local ledger.
+Literal declaration and Python syntax anchors can narrow citations; these are
+navigation aids with whole-record fallback, not semantic verification.
 
 ## Delivery and remaining work
 

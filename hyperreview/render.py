@@ -8,7 +8,7 @@ from urllib.parse import quote
 from . import intake, model_contract, relation_sheet, source_analysis, relation_plan
 
 
-COMPACT_RENDER_VERSION = "compact-v12"
+COMPACT_RENDER_VERSION = "compact-v13"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -153,21 +153,28 @@ def _companion_view(receipt):
         content = sheets.get(side, {}).get("content", "")
         semantic[side] = "\n".join(line for line in content.splitlines()
                                    if line.strip() and not line.lstrip().startswith("#"))
-    lines = ["\n### Выбранные связи (.hcs)\n",
-             "Это неполные выборки связей из каждой версии. Отсутствие связи в одной "
-             "из выборок не устанавливает её добавление или удаление.\n"]
+    lines = []
     if semantic["before"] and semantic["before"] == semantic["after"]:
-        lines.extend(["**Выбрано в обеих версиях**\n", _fence(semantic["after"], "hcs")])
+        lines.extend(["**Выбранные связи · обе версии**\n", _fence(semantic["after"], "hcs")])
     else:
-        for side, label in (("before", "Выбрано до"), ("after", "Выбрано после")):
-            lines.append(f"**{label}**\n")
-            lines.append(_fence(semantic[side], "hcs") if semantic[side] else
-                         "Связи для этой версии не выбраны.\n")
-    lines.append("\n<details>\n<summary>Связи в Hypercode (.hcs)</summary>\n")
+        for side, label in (("before", "до"), ("after", "после")):
+            if semantic[side]:
+                lines.extend([f"**Выбранные связи · {label}**\n", _fence(semantic[side], "hcs")])
+    return lines
+
+
+def _companion_details(receipt):
+    """Keep full compiler-bound sheets and selection limits in the disclosure."""
+    sheets = receipt.get("relationship_sheets", {})
+    if not sheets:
+        return []
+    lines = ["\n## Связи в Hypercode (.hcs)\n",
+             "Это неполные выборки связей из каждой версии. Отсутствие связи в одной "
+             "из выборок не устанавливает её добавление или удаление. "
+             "Пустой лист означает, что связи для этой версии не выбраны.\n"]
     for side in ("before", "after"):
         if side in sheets:
             lines.extend([f"### {side}.hcs\n", _fence(sheets[side]["content"], "hcs")])
-    lines.append("</details>\n")
     return lines
 
 
@@ -328,27 +335,32 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
     line_count = max(len(before), len(after))
     context = line_count if line_count <= _SMALL_PROJECTION_LINES else 3
     change = _composition_diff(before, after, context)
-    lines = ["# HyperReview — архитектурный эскиз изменения\n",
+    lines = ["## HyperReview\n",
              ("**Исторический разбор, только локально; публикация отключена.**\n\n"
               if request["intake_mode"] == "historical_read_only" else ""),
-             _text(result["summary"]) + "\n",
-             "Интерпретация выбранных исходников; порядок узлов не означает порядок выполнения.\n",
-             ("`−` и `+` показывают удаление и добавление в соответствующей ветке; "
-              "смена родителя тоже выделена, даже если строка узла не изменилась.\n"
-              if change else ""),
+             f"Эскиз по исходникам · `{request['head_sha'][:8]}`\n",
+             ("**Состав · изменения в проекции**\n" if change else
+              "**Состав · без изменений в проекции**\n"),
              (_fence(change, "diff") if change else
-              "Структурных изменений в проекции нет. Текущая проекция:\n"
-              + _fence(result["after_hc"]))]
-    lines.extend(_relation_table(request, result))
+              _fence(result["after_hc"]))]
     lines.extend(_companion_view(receipt))
+    lines.extend(["\n<details>\n<summary>Пояснения, источники и ограничения</summary>\n",
+                  "## Суть изменения\n", _text(result["summary"]) + "\n",
+                  "Интерпретация выбранных исходников; порядок узлов не означает порядок выполнения.\n",
+                  ("`−` и `+` показывают удаление и добавление в соответствующей ветке проекции; "
+                   "смена родителя тоже выделена, даже если строка узла не изменилась.\n"
+                   if change else "")])
+    lines.extend(_relation_table(request, result))
+    lines.extend(_companion_details(receipt))
     sources = {source["id"]: source for source in request["sources"]}
     address_labels = _address_labels(result)
+    lines.append("\n## Ответственности и источники\n")
     for identity in result["identity_map"]:
         refs = list(dict.fromkeys(identity["after_refs"] + identity["before_refs"]))
         links = _compact_source_links(request, _source_groups(refs, sources))
         lines.append(f"- `{address_labels[identity['architecture_id']]}` — {_text(identity['reason'])} "
                      + links + "\n")
-    lines.extend(["\n<details>\n<summary>Границы анализа и основания</summary>\n",
+    lines.extend(["\n## Границы анализа\n",
                   f"PR #{request['pr']}: `{request['merge_base_sha']}` → `{request['head_sha']}`.\n",
                   f"Исходников в анализе: {len(request['sources'])}; пропущено: {len(request['omissions'])}.\n",
                   "Компилятор проверил структуру Hypercode и ссылки. Соответствие интерпретации коду "

@@ -31,6 +31,11 @@ def decode_claim_id(value):
 
 _FIELDS = {"owner_id", "from", "to", "kind", "side", "basis", "explanation", "source_refs"}
 _BASES = ("declaration", "source_analysis")
+_LITERAL_TARGET = re.compile(r"[A-Za-z0-9_./-]+\.[A-Za-z0-9]+::[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*")
+
+
+class BindingEvidenceError(ValueError):
+    """A literal verification address is absent from its cited declaration side."""
 
 
 def schema(request):
@@ -54,7 +59,7 @@ def schema(request):
                              "maxLength": 81,
                              "description": "# plus the exact id of a declared node present on this side. Its generated .hcs properties carry this relationship; choose the responsible owner, not a new node just for the edge."},
                 "from": {**label, "description": "Source-established responsibility, caller, producer, contract or rule. For calls: the caller. For reuses_rule: ONE shared rule."},
-                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For reuses_rule: several named sites, marking indirect paths."},
+                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For reuses_rule: several named sites, marking indirect paths. For verified_by: use the exact literal target(s) from declarations on this side; never copy a newly added target into before."},
                 "kind": {"type": "string", "enum": list(KINDS)},
                 "side": {"type": "string", "enum": ["before", "after"]},
                 "basis": {"type": "string", "enum": list(_BASES),
@@ -74,7 +79,8 @@ def to_claims(rows, request, identities, *, legacy=False):
     """Convert bounded rows to the existing provider-neutral inferred claims."""
     if type(rows) is not list or len(rows) > MAX_RELATIONS:
         raise ValueError("Relations must be a list of at most six rows")
-    sources = {source["id"]: source["side"] for source in request["sources"]}
+    source_records = {source["id"]: source for source in request["sources"]}
+    sources = {key: source["side"] for key, source in source_records.items()}
     owners = {entry["architecture_id"]: entry for entry in identities}
     claims = []
     for index, row in enumerate(rows):
@@ -94,6 +100,10 @@ def to_claims(rows, request, identities, *, legacy=False):
                 or any(type(ref) is not str or sources.get(ref) != row["side"] for ref in refs)
                 or len(refs) != len(set(refs))):
             raise ValueError("Relation requires unique supplied same-side source references")
+        if not legacy and row["kind"] == "verified_by" and row["basis"] == "declaration":
+            for target in _LITERAL_TARGET.findall(row["to"]):
+                if not any(target in source_records[ref]["content"] for ref in refs):
+                    raise BindingEvidenceError("Verified binding target absent from cited side")
         side = "До" if row["side"] == "before" else "После"
         basis = "заявлено в источниках" if row["basis"] == "declaration" else "интерпретация исходников"
         kind = ({"calls": "вызов политики", "uses_facts": "типизированные факты",

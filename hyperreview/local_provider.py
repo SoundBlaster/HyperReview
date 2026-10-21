@@ -35,6 +35,7 @@ _ISSUE_CODES = frozenset({
     "duplicate_refs", "absent_side", "unknown_wrongside_ref", "missing_refs",
     "both_sides_absent", "parent_missing", "parent_absent", "root_count",
     "graph_cycle", "invalid_identifier", "schema_or_binding", "invalid_plan", "generic_responsibility",
+    "verified_binding_target",
 })
 _ISSUE_HINTS = {
     "duplicate_refs": "В каждом refs-массиве ID уникальны.",
@@ -49,6 +50,7 @@ _ISSUE_HINTS = {
     "invalid_identifier": "Используй допустимые уникальные id из исходной схемы.",
     "schema_or_binding": "Сохрани поля, schema и request_digest из исходной схемы и запроса.",
     "invalid_plan": "Сверь полный план с исходной схемой и правилами обеих сторон.",
+    "verified_binding_target": "В verified_by указан буквальный адрес file.ext::symbol, отсутствующий в цитируемых источниках этой стороны. Исправь цель или ссылки. Новую привязку после изменения нельзя копировать в before; наличие функции в коде не означает, что до изменения на неё ссылалась спецификация.",
     "generic_responsibility": "Name the executable code task, not the edited comment. When code exists before AND after, set BOTH types and BOTH nonempty refs from the source-ID lists below. Put comment edits in reason/summary.",
 }
 _REPAIR_PROMPT = """Пересоздай полный план по исходному запросу. Ошибка {code}{location}: {hint}
@@ -184,7 +186,9 @@ def _issue_for_error(error):
     match = re.search(r"nodes\[(\d{1,3})\]\.(before|after)_(type|parent|refs)", message)
     if match:
         location = f" at nodes[{int(match.group(1))}].{match.group(2)}_{match.group(3)}"
-    if "generic container" in message:
+    if "Verified binding target absent" in message:
+        code = "verified_binding_target"
+    elif "generic container" in message:
         code = "generic_responsibility"
     elif "duplicate values" in message:
         code = "duplicate_refs"

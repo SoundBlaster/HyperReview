@@ -66,7 +66,7 @@ Budget exhaustion and oversized files are explicit omissions. No PR code runs.
 
 ## Explanation contract
 
-Profile v7 / prompt `composition-v13` distinguishes a changed obligation,
+Profile v8 / prompt `composition-v14` distinguishes a changed obligation,
 constraint or test binding from a changed implementation. `verified_by` is an
 additive common relation kind for declared obligation-to-check links. It does
 not imply execution, passing results or exhaustive coverage. Existing relation
@@ -79,6 +79,13 @@ The paired #777 replay exposed this failure before any publication; a test
 definition present in a larger after-window was incorrectly called newly added.
 Absence of an unchanged marker does not prove a file changed. Full-blob identity
 is about source bytes, not runtime behavior or external dependencies.
+
+For `verified_by` declarations with literal `file.ext::symbol` addresses, each
+target must occur in the cited records on that side. Missing literal evidence
+raises the safe `verified_binding_target` repair issue. This rejects the #777
+pilot's unsupported before-side target, even though that function already
+existed in implementation. It does not prove the owner-to-target relationship,
+test coverage or execution, and does not interpret arbitrary target syntaxes.
 
 An unchanged `.hc` composition can accompany a changed `.hcs`. Compact render
 v11 shows the property diff, excluding source/evidence comments so changed
@@ -95,7 +102,7 @@ these are navigation aids with whole-record fallback, not semantic verification.
 
 This layer follows #41 -> #42. It does not activate runtime code, change service
 grants, rerun inference or rewrite published comments. Existing bundles remain
-immutable; sanitized prompt-v11/v12 tracking events remain replayable. Old requests
+immutable; sanitized prompt-v11/v12/v13 tracking events remain replayable. Old requests
 are not silently upgraded to the new profile.
 
 G3 prepares fresh pinned examples, including SpecGraph #777/#778, to inspect

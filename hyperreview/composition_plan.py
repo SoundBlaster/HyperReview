@@ -290,6 +290,8 @@ def to_result(plan, request):
         return result
     except CompositionPlanError:
         raise
+    except relation_plan.BindingEvidenceError as error:
+        raise CompositionPlanError("Verified binding target absent from cited side") from error
     except ValueError as error:
         raise CompositionPlanError("Invalid source-bound relation plan") from error
     except model_contract.ContractError as error:

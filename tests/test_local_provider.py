@@ -103,6 +103,8 @@ def make_plan(request):
     source_id = request["sources"][0]["id"]
     return {
         "schema": PLAN_SCHEMA,
+        "relations": [],
+        "relation_summary": "В выбранном срезе дополнительные связи не установлены.",
         "request_digest": request["request_digest"],
         "nodes": [{"id": "assessment", "before_type": None, "after_type": "Assessment",
                    "before_parent": None, "after_parent": None, "before_refs": [],
@@ -117,6 +119,8 @@ def make_paired_plan(request):
             for side in ("before", "after")}
     return {
         "schema": PLAN_SCHEMA,
+        "relations": [],
+        "relation_summary": "В выбранном срезе дополнительные связи не установлены.",
         "request_digest": request["request_digest"],
         "nodes": [{"id": "assessment", "before_type": "Assessment", "after_type": "Assessment",
                    "before_parent": None, "after_parent": None,

@@ -9,7 +9,8 @@ import re
 from . import intake, model_contract, relation_plan
 
 
-PLAN_SCHEMA = "hyperreview.composition-plan.v2"
+PLAN_SCHEMA = "hyperreview.composition-plan.v3"
+LEGACY_PLAN_SCHEMA = "hyperreview.composition-plan.v2"
 _BARE_ID = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,79}\Z")
 _GENERIC_TYPES = frozenset({"file", "pythonfile", "function", "module", "documentation", "comment"})
 _MAX_WIRE_BYTES = 1024 * 1024
@@ -45,7 +46,8 @@ def _canonical_json(value, name):
 
 def _validate_plan(plan, request):
     _require(type(plan) is dict and (set(plan) == set(_PLAN_FIELDS)
-                                   or set(plan) == set(_PLAN_FIELDS) | {"relations"}),
+                                   or set(plan) == set(_PLAN_FIELDS) | {"relations"}
+                                   or set(plan) == set(_PLAN_FIELDS) | {"relations", "relation_summary"}),
              "Plan has missing or unknown top-level fields")
     encoded = _canonical_json(plan, "Plan")
     _require(len(encoded) <= _MAX_WIRE_BYTES, "Encoded composition plan exceeds 1 MiB")
@@ -54,7 +56,12 @@ def _validate_plan(plan, request):
         model_contract.validate_request(request)
     except model_contract.ContractError as error:
         raise CompositionPlanError("Request failed the model contract") from error
-    _require(plan["schema"] == PLAN_SCHEMA, "Unsupported composition plan schema")
+    _require(plan["schema"] in (PLAN_SCHEMA, LEGACY_PLAN_SCHEMA), "Unsupported composition plan schema")
+    if "relations" in plan and plan["schema"] == PLAN_SCHEMA:
+        _require(type(plan.get("relation_summary")) is str and 1 <= len(plan["relation_summary"].strip()) <= 1000,
+                 "Common relation plan requires a bounded relation_summary")
+    else:
+        _require("relation_summary" not in plan, "Relation summary requires common relation semantics")
     _require(type(plan["request_digest"]) is str
              and plan["request_digest"] == request["request_digest"],
              "Plan is not bound to this request")
@@ -173,6 +180,14 @@ def _validate_plan(plan, request):
     return by_id, order, rendered
 
 
+
+def require_current_provider_plan(plan):
+    """Live providers must supply current relation coverage, including empty rows."""
+    _require(type(plan) is dict and set(plan) == set(_PLAN_FIELDS) | {"relations", "relation_summary"},
+             "Provider plan has missing or unknown fields")
+    _require(plan["schema"] == PLAN_SCHEMA, "Unsupported composition plan schema")
+
+
 def plan_schema(request, *, include_relations=False):
     """Return a strict provider schema with source references bound to request."""
     try:
@@ -231,6 +246,11 @@ def plan_schema(request, *, include_relations=False):
     if include_relations:
         schema["required"].append("relations")
         schema["properties"]["relations"] = relation_plan.schema(request)
+        schema["required"].append("relation_summary")
+        schema["properties"]["relation_summary"] = {
+            "type": "string", "minLength": 1, "maxLength": 1000,
+            "description": "Russian: summarize the selected consequential connections. If relations=[], explain why no useful supported connection was found or which evidence is missing. Empty does not mean no relationships exist. Do not invent a link to fill a quota."}
+        schema["properties"]["limitations"]["maxItems"] = 99
     return schema
 
 
@@ -249,15 +269,20 @@ def to_result(plan, request):
                 "after_refs": list(node["after_refs"]),
                 "reason": node["reason"],
             })
+        _require(type(plan["limitations"]) is list, "Plan limitations must be a list")
+        limitations = list(plan["limitations"])
+        if plan.get("relations") == [] and plan["schema"] == PLAN_SCHEMA:
+            limitations.append(relation_plan.EMPTY_PREFIX + plan["relation_summary"].strip())
         result = {
             "schema": model_contract.RESULT_SCHEMA,
             "request_digest": request["request_digest"],
             "before_hc": rendered["before"],
             "after_hc": rendered["after"],
             "identity_map": identity_map,
-            "claims": relation_plan.to_claims(plan.get("relations", []), request, identity_map),
+            "claims": relation_plan.to_claims(plan.get("relations", []), request, identity_map,
+                                              legacy=plan["schema"] == LEGACY_PLAN_SCHEMA),
             "summary": plan["summary"],
-            "limitations": plan["limitations"],
+            "limitations": limitations,
         }
         result_bytes = _canonical_json(result, "Canonical result")
         _require(len(result_bytes) <= _MAX_WIRE_BYTES, "Encoded canonical result exceeds 1 MiB")

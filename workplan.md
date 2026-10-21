@@ -9,8 +9,10 @@ The governing contract is [stack-independent review](SPECS/26-stack-independent-
 
 Next delivery follows G1 → G2 → G3:
 
-1. **G1:** generalize core relationship semantics and the trusted reviewer profile;
-   preserve versioned compatibility and explain unsupported/empty relationships.
+1. **G1 (implemented in the current increment):** composition-plan v3 and
+   profile v5 use common relationships, preserve frozen legacy relation semantics
+   and require an explanation for an empty relationship result. CI/review and
+   integration remain the delivery gates for this branch.
 2. **G2:** select architecture, specification and connecting configuration evidence
    through bounded format/semantic-family policies. Replace the proposed
    Hunter-specific file admission patch with these common rules.

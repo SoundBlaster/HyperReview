@@ -52,6 +52,8 @@ def make_plan(request, *, valid=True, bound=True):
     after = [source["id"] for source in request["sources"] if source["side"] == "after"]
     return {
         "schema": PLAN_SCHEMA,
+        "relations": [],
+        "relation_summary": "В выбранном срезе дополнительные связи не установлены.",
         "request_digest": request["request_digest"] if bound else "0" * 64,
         "nodes": [{"id": "assessment", "before_type": "Assessment" if before else None,
                    "after_type": "Assessment", "before_parent": None, "after_parent": None,

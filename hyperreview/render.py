@@ -5,10 +5,10 @@ import difflib
 import re
 from urllib.parse import quote
 
-from . import intake, model_contract, relation_sheet, source_analysis
+from . import intake, model_contract, relation_sheet, source_analysis, relation_plan
 
 
-COMPACT_RENDER_VERSION = "compact-v8"
+COMPACT_RENDER_VERSION = "compact-v9"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -104,7 +104,8 @@ def _relation_table(request, result):
     """Render the bounded explanation extension from canonical inferred claims."""
     claims = [claim for claim in result["claims"] if claim["id"].startswith("relation-")]
     if not claims:
-        return []
+        explanations = [value for value in result["limitations"] if value.startswith(relation_plan.EMPTY_PREFIX)]
+        return ["\n## Связи и основания\n", *(_text(value) + "\n" for value in explanations)] if explanations else []
     sources = {source["id"]: source for source in request["sources"]}
     lines = ["\n## Связи и основания\n",
              "Связи описаны отдельно от вложенности `.hc`; основания — в правой колонке.\n",

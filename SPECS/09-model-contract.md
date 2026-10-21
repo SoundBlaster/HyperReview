@@ -41,6 +41,11 @@ in an optional untrusted provider message; they do not modify canonical source
 records or establish symbol binding. The renderer uses AST spans for more
 precise source navigation when possible. See the change-focused projection
 specification for scope and fallback behavior.
+Profile v5 uses a common stack-independent semantic vocabulary and treats
+architecture documentation/specifications as first-class declaration evidence.
+Composition-plan v3 requires relation coverage explanations; versioned relation
+identities preserve legacy meaning without changing canonical result.v2 fields.
+See the structured-composition contract for migration and retained-artifact scope.
 Requests also carry per-revision `.hcs` presence derived from each complete pinned
 tree. The model never supplies or infers this selector-policy input.
 

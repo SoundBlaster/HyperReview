@@ -4,7 +4,7 @@
 
 This is an intended contract and implementation plan. G1 generalizes the semantic
 contract and reviewer profile; G2 adds bounded generic evidence/context selection
-and clearer property diffs. Matched replay (G3) remains planned. Python reference
+and clearer relationship views. Matched replay (G3) remains planned. Python reference
 hints are still optional navigation. See [G2 details](27-bounded-architecture-context.md).
 Hunter #22 exposed these gaps; Hunter and SpecGraph are examples, not semantic
 profiles the core must recognize by repository name.

@@ -89,11 +89,20 @@ existed in implementation. It does not prove the owner-to-target relationship,
 test coverage or execution; the guard is format/language independent and does
 not interpret target syntax.
 
-An unchanged `.hc` composition can accompany a changed `.hcs`. Compact render
-v11 shows the property diff, excluding source/evidence comments so changed
-revision labels do not masquerade as semantic changes. Full companion sheets
-remain available. An added after-side relation without a before-side relation
-means newly recorded by this review, not independently proven newly implemented.
+An unchanged `.hc` composition can accompany different selected `.hcs` properties.
+Compact render v12 shows comment-free selected properties separately for each
+revision, or once when both selections are identical. An empty selection is
+labelled as unselected, not as an absence of relationships. Full compiler-bound
+companion sheets remain available with evidence comments.
+
+These bounded selections are not complete relationship inventories: the #778
+replay selected two preserved bindings before and only the additional binding
+after. Subtracting the selections incorrectly rendered the preserved bindings as
+removed. The renderer therefore does not produce a `.hcs` unified diff or copy
+missing claims between revisions. A source-change view would require a separate
+paired comparison contract with evidence for presence/absence and analysis
+coverage. Valid same-side targets alone cannot establish addition or removal.
+The `.hc` containment diff retains its existing presentation semantics.
 
 The compact public comment contains a shared scope caveat and specific model
 limitations. Operational/security prompt instructions remain in the full local

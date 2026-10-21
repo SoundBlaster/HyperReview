@@ -96,6 +96,12 @@ even if the inspected repository had none. Both sides receive a companion
 (possibly empty) to preserve paired identities when only one has relationships.
 Unique roles stay selector-free.
 
+Relationship rows are bounded selections, not exhaustive inventories. The compact
+view presents the selected `.hcs` properties per side without subtraction; a
+missing row does not mean its relationship was removed. Identical selections
+can share one display. The exact compiled sheets remain available with their
+evidence comments; the renderer never copies a claim onto an uncited side.
+
 This validation establishes reference integrity only. Spec bindings declare an
 obligation; inspected callsites may support an interpretation of implementation;
 workflow declarations describe intended job dependencies. None establishes that

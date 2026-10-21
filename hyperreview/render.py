@@ -8,7 +8,7 @@ from urllib.parse import quote
 from . import intake, model_contract, relation_sheet, source_analysis, relation_plan
 
 
-COMPACT_RENDER_VERSION = "compact-v11"
+COMPACT_RENDER_VERSION = "compact-v12"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -138,19 +138,31 @@ def _relation_table(request, result):
 
 
 def _companion_view(receipt):
+    """Show selected relation evidence without treating omission as deletion.
+
+    Each side contains at most six selected claims, not a complete relationship
+    inventory. A set difference between those samples cannot establish a source
+    change, even when every individual claim has valid same-side references.
+    Keep the compiled sheets exact; do not fill missing rows from the other side.
+    """
     sheets = receipt.get("relationship_sheets", {})
     if not sheets:
         return []
-    semantic = {side: [line for line in sheets.get(side, {}).get("content", "").splitlines()
-                       if line.strip() and not line.lstrip().startswith("#")]
-                for side in ("before", "after")}
-    change = "\n".join(difflib.unified_diff(
-        semantic["before"], semantic["after"], fromfile="before.hcs", tofile="after.hcs",
-        lineterm="", n=3))
-    lines = (["\n### Изменение связей и ограничений (.hcs)\n",
-              "Сравнение свойств интерпретации; комментарии с основаниями исключены из diff. "
-              "`+` означает добавленное описание связи, которая могла существовать в коде раньше.\n",
-              _fence(change, "diff")] if change else [])
+    semantic = {}
+    for side in ("before", "after"):
+        content = sheets.get(side, {}).get("content", "")
+        semantic[side] = "\n".join(line for line in content.splitlines()
+                                   if line.strip() and not line.lstrip().startswith("#"))
+    lines = ["\n### Выбранные связи (.hcs)\n",
+             "Это неполные выборки связей из каждой версии. Отсутствие связи в одной "
+             "из выборок не устанавливает её добавление или удаление.\n"]
+    if semantic["before"] and semantic["before"] == semantic["after"]:
+        lines.extend(["**Выбрано в обеих версиях**\n", _fence(semantic["after"], "hcs")])
+    else:
+        for side, label in (("before", "Выбрано до"), ("after", "Выбрано после")):
+            lines.append(f"**{label}**\n")
+            lines.append(_fence(semantic[side], "hcs") if semantic[side] else
+                         "Связи для этой версии не выбраны.\n")
     lines.append("\n<details>\n<summary>Связи в Hypercode (.hcs)</summary>\n")
     for side in ("before", "after"):
         if side in sheets:

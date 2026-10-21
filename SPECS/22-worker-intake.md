@@ -18,8 +18,9 @@ same-repository/open/non-draft checks remain the existing intake policy; PR data
 cannot supply configuration, prompts, executable paths, or output paths.
 
 The interval defaults to 300 seconds, with a supported range of 300–86400.
-`worker-tick` also enforces a persisted next-poll time, so invoking it repeatedly
-cannot bypass the interval. `worker-status` reads only local state. Both commands
+`worker-tick` enforces a persisted next-discovery time, so repeated calls
+cannot bypass the PR-list polling interval. Already queued work is eligible
+between discoveries; retries retain their per-task interval. `worker-status` reads only local state. Both commands
 return small JSON summaries; raw source and GitHub response bodies are absent.
 Status includes at most 32 recent request handoffs and their private bundle paths.
 
@@ -28,7 +29,8 @@ Status includes at most 32 recent request handoffs and their private bundle path
 A nonblocking owner-private process lock covers discovery, collection, journal
 transitions, artifact expiry and log rotation. A second process returns `busy`.
 The lock is released by the OS when a process exits; it is not a timestamp lease.
-An interrupted `collecting` task becomes `failed` on the next due tick.
+An interrupted `collecting` task becomes `failed` on the next tick, with retry
+eligibility no earlier than one interval after the interrupted attempt started.
 
 The SQLite journal is separate from MLflow. Tasks store revisions, fingerprints,
 state, attempts, digests and a locally generated artifact UUID; transitions store
@@ -39,7 +41,7 @@ task receipts. Reaching a bound stops further discovery without advancing that
 page. Receipts are not silently evicted: removing them explicitly permits fresh
 collection and must be an operator action.
 
-Each tick reads one page of at most 30 open PR metadata records per selected
+Each due discovery reads one page of at most 30 open PR metadata records per selected
 repository. A persisted cursor advances through pages and wraps after a short
 page, rather than assuming the first page is the complete inventory. GitHub's
 live pagination can shift during pushes/closures; subsequent cycles reconcile
@@ -99,8 +101,8 @@ expiry. This stage never cleans pre-existing manual preview/tracking directories
 `worker-launchd-plan` writes `agent.plist` and installation/unload instructions
 in a private bundle. It does not execute `launchctl` or install a service.
 The plist invokes an explicit Python interpreter with `-B -m hyperreview
-worker-tick --config ABS`. Its working directory and logs use the private worker
-state root. It uses `StartInterval`, background priority, a private umask and
+worker-run --config ABS`. Its working directory and logs use the private worker
+state root. It wakes every 30 seconds using `StartInterval`, background priority, a private umask and
 `RunAtLoad=false`, with no secret values embedded. Use an interpreter where
 HyperReview and its pinned policy dependency are installed; a venv's final
 interpreter symlink is supported without replacing its venv path.
@@ -118,12 +120,13 @@ into standing authority. No alternative backend is selected automatically.
 ```sh
 python -m hyperreview worker-config --repo 0al-spec/SpecGraph
 python -m hyperreview worker-tick --config ABS_CONFIG_JSON
+python -m hyperreview worker-run --config ABS_CONFIG_JSON
 python -m hyperreview worker-status --config ABS_CONFIG_JSON
 python -m hyperreview worker-launchd-plan \
   --config ABS_CONFIG_JSON --python ABS_VENV_PYTHON
 ```
 
-The first two commands read live GitHub only in `worker-tick`. A `failed` tick
+Both `worker-tick` and `worker-run` can read live GitHub. A `failed` tick
 returns exit 1; `idle`, `busy`, `not_due`, `stale` and `request_prepared` return 0.
 Configuration/storage/transport errors return 1 with a fixed sanitized message.
 
@@ -140,3 +143,17 @@ The optional [v2 private-preview stage](23-worker-private-preview.md) extends
 `worker-tick` only when explicitly configured. This document's intake-only
 statements describe the v1 schema and installed intake plan; v1 does not inherit
 cloud/source authority from a manual invocation or a v2 config elsewhere.
+
+## Discovery and queue cadence
+
+`worker-tick` remains one phase. `worker-run` performs at most one collection
+and, for an explicitly configured preview worker, immediately follows a prepared
+request with one preview phase without sleeping. The second phase cannot collect
+another request. Each phase keeps its process lock, fresh eligibility checks,
+execution counts and component deadlines. A busy second phase leaves the handoff
+available for a later wake. Failed model jobs are not replayed. More frequent
+local wakes do not increase PR-list discovery frequency; targeted live reads for
+queued work and authorized review gates still occur when needed.
+
+Existing installed plists retain their old schedule/command until replaced and
+reloaded. Generating a new plan does not activate the change.

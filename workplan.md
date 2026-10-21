@@ -278,3 +278,14 @@ require review-thread resolution; HyperReview does not change those rules.
 
 Next: integrate and activate the explicit v3 timer config, then observe a real
 start → analysis → completion cycle. Automatic PR merging is outside this stage.
+
+## Queue latency follow-up
+
+SpecGraph #784 exposed an unintended five-minute wait between every queue phase.
+The persisted discovery time now gates PR-list polling only. Generated agents
+wake every 30 seconds; `worker-run` can collect once then immediately process one
+preview. Publisher first delivery follows ready local output without waiting for
+the retry/reconciliation interval. Intake/publisher retry delays, one-generation
+limits, fresh revision checks, standing grants and no-replay journals remain.
+Installed services require a separate reviewed update; no journal reset or grant
+change is part of this correction.

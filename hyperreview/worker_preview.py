@@ -135,8 +135,9 @@ def process_one(db, config, root, api, now, *, observation_factory=None, gate_fa
         elif row["state"] != "stale" and (row["settings"] != settings
                                           or row["task_state"] != "request_prepared"):
             _transition(db, row["job"], "stale", now, "candidate_or_settings_changed")
-    if gated:
+    if gated and now >= worker._meta(db, "next_gate_reconciliation"):
         from .automatic_review_gate import GateError, reconcile
+        worker._set_meta(db, "next_gate_reconciliation", now + config["interval_seconds"])
         try:
             reconcile(db, root, config, gate_factory)
         except GateError:

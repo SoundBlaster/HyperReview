@@ -73,7 +73,7 @@ installed executable alone does not establish a safe unattended setup.
 ## Manual evidence preview
 
 For periodic intake, see [local worker intake](SPECS/22-worker-intake.md).
-`worker-config`, `worker-tick`, `worker-status` and `worker-launchd-plan` prepare
+`worker-config`, `worker-tick`, `worker-run`, `worker-status` and `worker-launchd-plan` prepare
 the trusted configuration, private queue, requests and reviewable LaunchAgent.
 The generator does not install a service. Automatic inference and publishing
 remain disabled at this stage.

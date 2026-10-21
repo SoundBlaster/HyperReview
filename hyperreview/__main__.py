@@ -30,7 +30,7 @@ def main():
     worker_config.add_argument("--review-gate-repository", action="append")
     worker_config.add_argument("--review-gate-eta-seconds", type=int)
     worker_config.add_argument("--review-gate-state-root", type=Path)
-    for name in ("worker-tick", "worker-status"):
+    for name in ("worker-tick", "worker-run", "worker-status"):
         command = commands.add_parser(name, help="Run or inspect configured intake/private-preview worker")
         command.add_argument("--config", required=True, type=Path)
     launchd = commands.add_parser("worker-launchd-plan", help="Prepare a launchd plist without installing it")
@@ -204,7 +204,7 @@ def main():
         if args.command.startswith("worker-"):
             import json
             import sqlite3
-            from .worker import WorkerError, create_config, status, tick
+            from .worker import WorkerError, create_config, run, status, tick
             from .launchd import LaunchdError, write_launchd_plan
             from .automatic_review_gate import GateError
             try:
@@ -250,7 +250,8 @@ def main():
                     print(f"Launchd plan: {destination / 'agent.plist'}")
                     print("Not installed; authority follows the reviewed worker config")
                     return 0
-                result = tick(args.config) if args.command == "worker-tick" else status(args.config)
+                result = (run(args.config) if args.command == "worker-run" else
+                          tick(args.config) if args.command == "worker-tick" else status(args.config))
                 print(json.dumps(result, sort_keys=True))
                 return 1 if result["status"] in ("failed", "preview_failed", "preview_capacity_reached") else 0
             except (WorkerError, LaunchdError, GateError, IntakeError, StorageError, ContractError,

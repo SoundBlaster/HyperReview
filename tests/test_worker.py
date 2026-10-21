@@ -220,8 +220,8 @@ class WorkerTests(unittest.TestCase):
                                  output_root=self.root / "plans")
         data = plistlib.loads((plan / "agent.plist").read_bytes())
         self.assertEqual(data["ProgramArguments"], [sys.executable, "-B", "-m", "hyperreview",
-                                                    "worker-tick", "--config", str(self.config)])
-        self.assertEqual(data["StartInterval"], 300)
+                                                    "worker-run", "--config", str(self.config)])
+        self.assertEqual(data["StartInterval"], worker.WAKE_SECONDS)
         self.assertFalse(data["RunAtLoad"])
         self.assertNotIn("KeepAlive", data)
         self.assertNotIn("GH_TOKEN", data["EnvironmentVariables"])

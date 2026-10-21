@@ -3,7 +3,7 @@
 This increment extends the intake worker with an explicit, separate v2 config.
 The optional [v3 automatic review-gate contract](25-automatic-review-gates.md)
 adds separate standing thread authority; the v2 boundary below is unchanged.
-A due tick performs **one** action: collect one request, or consume one retained
+A tick performs **one** action: collect one request, or consume one retained
 request through isolated Codex, Hypercode compilation and private Markdown.
 It does not publish a comment, create a review gate, deliver MLflow data, or
 approve/merge a PR. `preview_ready` means structurally validated private output;
@@ -41,9 +41,14 @@ the same persisted poll time.
 
 The existing owner-private process lock covers discovery, intake, generation,
 compilation, journaling, artifact writes and expiry. A second tick returns `busy`.
-Polling still cannot bypass the configured interval. Prepared requests have
+PR-list discovery still cannot bypass the configured interval. Prepared requests have
 priority over further collection, so a continuous intake queue cannot starve
-preview work. A newly collected request is processed on a later due tick.
+preview work. Queue phases do not wait for the next discovery. `worker-run`, used
+by newly generated LaunchAgents with 30-second wakes, can collect one request and
+immediately consume a prepared preview in the same invocation. At most one
+generation job runs per invocation; existing attempt/deadline bounds remain.
+Periodic reconciliation of old review gates retains the configured interval;
+creating/completing the gate for the selected job is immediate.
 
 A preview job key binds the intake candidate, request/handoff digests, trusted
 settings, native Codex/compiler pins, model/effort and pipeline/profile code.
@@ -57,7 +62,7 @@ execution count is zero. A missing retained request makes it terminal without
 contacting the model. Before entering the
 pipeline, `analyzing` and its consumed execution are committed durably. Ordinary
 failure becomes terminal `failed`; an interrupted `analyzing` job becomes
-`failed/interrupted_no_replay` on the next due tick. The same job key is never
+`failed/interrupted_no_replay` on the next tick. The same job key is never
 automatically retried, even if its bundle is missing or expires. Codex may still
 perform its existing one bounded local-validation regeneration (1–2 provider
 attempts within one deadline). An uncertain cloud failure is not evidence that

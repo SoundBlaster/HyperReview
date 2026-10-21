@@ -1,6 +1,7 @@
 """Read-only GitHub intake. Source remains data, never executable instructions."""
 
 import base64
+import difflib
 import hashlib
 import html
 import json
@@ -298,28 +299,48 @@ def _context_excerpt(record, inventory, budget):
     """
     if record["content_bytes"] <= budget:
         return record, None
-    names = set()
+    names = []
+    hint_texts = []
+    fallback_texts = []
     path_pattern = re.compile(re.escape(record["path"]) + r"(?:::([A-Za-z_]\w*))?")
     for item in inventory:
         if item["status"] == "context":
             continue
+        before = "\n".join(value["content"] for value in item["sources"] if value["side"] == "before")
+        after = "\n".join(value["content"] for value in item["sources"] if value["side"] == "after")
+        delta = difflib.unified_diff(before.splitlines(), after.splitlines(), n=0)
+        hint_texts.append("\n".join(line[1:] for line in delta
+                                    if line.startswith("+") and not line.startswith("+++")))
         for source_record in item["sources"]:
-            if source_record["side"] != record["side"]:
-                continue
-            content = source_record["content"]
-            for match in path_pattern.finditer(content):
-                if match.group(1):
-                    names.add(match.group(1))
-                tail = content[match.end():match.end() + 240].split("}", 1)[0]
-                symbol = re.search(r'"symbol"\s*:\s*"([A-Za-z_][A-Za-z0-9_.]*)"', tail)
-                if symbol:
-                    names.add(symbol.group(1).split(".")[-1])
+            if source_record["side"] == record["side"]:
+                fallback_texts.append(source_record["content"])
+    # Added declarations select navigation targets on both source sides; their
+    # presence in a before blob is still checked independently by reading it.
+    for content in hint_texts + fallback_texts:
+        for match in path_pattern.finditer(content):
+            if match.group(1) and match.group(1) not in names:
+                names.append(match.group(1))
+            tail = content[match.end():match.end() + 240].split("}", 1)[0]
+            symbol = re.search(r'"symbol"\s*:\s*"([A-Za-z_][A-Za-z0-9_.]*)"', tail)
+            if symbol and symbol.group(1).split(".")[-1] not in names:
+                names.append(symbol.group(1).split(".")[-1])
     parts = record["content"].split("\n")
     lines = [part + "\n" for part in parts[:-1]]
     if parts[-1]:
         lines.append(parts[-1])
-    hits = [index for index, line in enumerate(lines) if any(
-        re.search(r"\b" + re.escape(name) + r"\b", line) for name in names)]
+    hits = []
+    for name in names:
+        definitions = [index for index, line in enumerate(lines) if re.search(
+            r"\b(?:def|class|fn|func|function)\s+" + re.escape(name) + r"\b", line)]
+        if definitions:
+            hits = definitions
+            break
+    if not hits:
+        for name in names:
+            hits = [index for index, line in enumerate(lines) if re.search(
+                r"\b" + re.escape(name) + r"\b", line)]
+            if hits:
+                break
     center = hits[0] if hits else 0
     lower, upper = max(0, center - 4), min(len(lines), center + 60)
     while upper > center and len("".join(lines[lower:upper]).encode("utf-8")) > budget:
@@ -485,7 +506,8 @@ def _collect(repo, number, api=None, *, historical=False):
     def collect_items(items):
         nonlocal selected, source_records_count, configuration_bytes_used
         nonlocal context_bytes_used, prose_bytes_used
-        for item in sorted(items, key=_source_priority):
+        ordered = sorted(items, key=_source_priority)
+        for index, item in enumerate(ordered):
             paths = [p for p in (item["before_path"], item["after_path"]) if p is not None]
             reason = next((_source_exclusion(p) for p in paths if _source_exclusion(p)), None)
             if reason or selected >= MAX_FILES:
@@ -510,7 +532,9 @@ def _collect(repo, number, api=None, *, historical=False):
                     record["side"] = side
                     remaining_sides = sum(item[f"{value}_path"] is not None
                                           for value in (("before", "after") if side == "before" else ("after",)))
-                    context_budget = max(0, MAX_CONTEXT_BYTES - context_bytes_used) // max(1, remaining_sides)
+                    remaining_files = sum(value["status"] == "context" for value in ordered[index:])
+                    context_budget = (max(0, MAX_CONTEXT_BYTES - context_bytes_used)
+                                      // max(1, remaining_files) // max(1, remaining_sides))
                     if item["status"] == "context" and not is_configuration:
                         if configuration_evidence.contains_sensitive_content(record["content"]):
                             item["omissions"].append({"side": side, "reason": "secret_pattern"})

@@ -53,9 +53,13 @@ same regular-blob, path and digest checks as changed sources. Ordinary context
 blobs are checked for recognized secret patterns before windowing. Configuration
 retains its full-blob filtering and original-blob/excerpt coverage ledger.
 
-An ordinary context file is read only up to 65536 bytes. When it cannot fit its
-side's context allocation, retain one original-line window around the first
-literal referenced symbol (or the file start), at most 64 lines. Record
+An ordinary context file is read only up to 65536 bytes. Remaining context bytes
+are shared across remaining context files and their sides, preventing an early
+large implementation file from starving later verification targets. When a file
+cannot fit its allocation, retain one original-line window of at most 64 lines.
+Prefer a literal symbol from added declarations, then other same-side references;
+locate its textual definition when possible, otherwise its first occurrence or
+the file start. These hints do not establish semantic binding. Record
 `context_excerpted`; a missing definition or another use outside the window is
 unknown. The window does not establish complete function or call-graph coverage.
 Budget exhaustion and oversized files are explicit omissions. No PR code runs.

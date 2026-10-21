@@ -284,7 +284,7 @@ def _declaration_spans(source, text):
     names = set(re.findall(r"\b[A-Za-z][A-Za-z0-9_-]{2,}\b", text))
     names = {name for name in names if "_" in name or "-" in name
              or re.search(r"[a-z][A-Z]", name) or name.isupper()}
-    result = []
+    candidates = []
     seen = set()
     for index, line in enumerate(lines):
         matches = sorted(name for name in names if re.search(
@@ -293,7 +293,8 @@ def _declaration_spans(source, text):
             continue
         lower, upper = max(0, index - 1), min(len(lines), index + 3)
         declaration = re.match(r"^(\s*)-\s+id:\s*['\"]?([A-Za-z][A-Za-z0-9_-]+)", line)
-        if declaration and declaration.group(2) in matches:
+        is_declaration = declaration and declaration.group(2) in matches
+        if is_declaration:
             lower, upper = index, index + 1
             indent = len(declaration.group(1))
             while upper < min(len(lines), index + 24):
@@ -305,10 +306,17 @@ def _declaration_spans(source, text):
         if span in seen:
             continue
         seen.add(span)
-        result.append({"label": ", ".join(matches), "line_start": span[0], "line_end": span[1]})
+        priority = (2 if is_declaration else 0) + int(any(len(name) >= 24 for name in matches))
+        candidates.append((priority, {"label": ", ".join(matches), "line_start": span[0], "line_end": span[1]}))
+    result = []
+    for _priority, item in sorted(candidates, key=lambda pair: (-pair[0], pair[1]["line_start"])):
+        if any(value["line_start"] <= item["line_start"] and value["line_end"] >= item["line_end"]
+               for value in result):
+            continue
+        result.append(item)
         if len(result) == MAX_RESULTS:
             break
-    return result
+    return sorted(result, key=lambda value: value["line_start"])
 
 
 def citation_spans(source, text):

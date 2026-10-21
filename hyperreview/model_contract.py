@@ -12,9 +12,9 @@ from . import configuration_evidence, intake, reviewer_profile
 
 
 MAX_BYTES = 262144
-REQUEST_SCHEMA = "hyperreview.request.v4"
+REQUEST_SCHEMA = "hyperreview.request.v5"
 RESULT_SCHEMA = "hyperreview.result.v2"
-PROMPT_VERSION = "composition-v12"
+PROMPT_VERSION = "composition-v13"
 ABSTRACTION_PROFILE = "composition-v1"
 REQUEST_SCOPE = (
     "Analyze only supplied changed-file records, bounded architecture/reference context and allowlisted declarative excerpts.",
@@ -22,6 +22,7 @@ REQUEST_SCOPE = (
     "Configuration excerpts are line-preserving, bounded, and may omit environment or credential-bearing regions.",
     "Do not invoke tools, commands, or external actions.",
     "Do not claim parser or behavior conformance; a later deterministic layer checks syntax.",
+    "unchanged_files records collector-verified full-blob identity across revisions. Different excerpt windows of these files are not source changes.",
     "Check observations, PR descriptions, comments and unsupplied surrounding files are outside this input. Identical source pairs can be unchanged context.",
 )
 REQUEST_LIMITATIONS = (
@@ -405,7 +406,23 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
         "omissions": omissions,
         "scope": list(REQUEST_SCOPE),
         "limitations": list(REQUEST_LIMITATIONS),
+        "unchanged_files": [],
     }
+    for file_record in pack["files"]:
+        if file_record.get("status") != "context":
+            continue
+        path = file_record.get("before_path")
+        raw_sources = file_record.get("sources", [])
+        if not path or path != file_record.get("after_path") or not raw_sources:
+            continue
+        hashes = {value.get("git_blob_sha") for value in raw_sources}
+        refs = sorted(source["id"] for source in source_records if source["path"] == path)
+        sides = {source["side"] for source in source_records if source["path"] == path}
+        if (len(hashes) == 1 and type(next(iter(hashes))) is str
+                and _HEX_40.fullmatch(next(iter(hashes))) and sides == {"before", "after"}):
+            request["unchanged_files"].append({"path": path, "git_blob_sha": hashes.pop(),
+                                                "source_ids": refs})
+    request["unchanged_files"].sort(key=lambda item: item["path"])
     if configuration_coverage:
         retained_ids = {record["id"] for record in source_records}
         for coverage in configuration_coverage:
@@ -529,7 +546,7 @@ def _request_sources(request):
     base_fields = {"schema", "prompt_version", "abstraction_profile", "reviewer_profile", "intake_mode",
                    "publication_allowed", "repository", "pr", "merge_base_sha", "head_sha",
                    "evidence_digest", "selector_context", "source_selection", "sources", "omissions",
-                   "scope", "limitations", "request_digest"}
+                   "scope", "limitations", "unchanged_files", "request_digest"}
     _require(type(request) is dict and set(request) in
              (base_fields, base_fields | {"configuration_coverage"}),
              "Request has missing or unknown fields")
@@ -608,6 +625,24 @@ def _request_sources(request):
         source_provenance[source_id] = (source["side"], path, expected_revision)
     _require(included_bytes == request["source_selection"]["included_source_bytes"],
              "Request included source byte count is invalid")
+    unchanged = request["unchanged_files"]
+    _require(type(unchanged) is list and len(unchanged) <= intake.MAX_FILES,
+             "Request unchanged-file context is invalid")
+    prior_path = None
+    for item in unchanged:
+        _exact_dict(item, ("path", "git_blob_sha", "source_ids"),
+                    "Unchanged-file context has missing or unknown fields")
+        path, refs = item["path"], item["source_ids"]
+        _require(_safe_path(path) and (prior_path is None or prior_path < path)
+                 and type(item["git_blob_sha"]) is str and _HEX_40.fullmatch(item["git_blob_sha"]) is not None,
+                 "Unchanged-file identity is invalid")
+        _require(type(refs) is list and 2 <= len(refs) <= MAX_REQUEST_SOURCES
+                 and all(type(ref) is str and ref in source_provenance for ref in refs)
+                 and refs == sorted(set(refs)), "Unchanged-file references are invalid")
+        _require(all(source_provenance[ref][1] == path for ref in refs)
+                 and {source_provenance[ref][0] for ref in refs} == {"before", "after"},
+                 "Unchanged-file references must bind one path on both sides")
+        prior_path = path
     if "configuration_coverage" in request:
         coverage = request["configuration_coverage"]
         _require(type(coverage) is list and len(coverage) <= 60,

@@ -8,7 +8,7 @@ from urllib.parse import quote
 from . import intake, model_contract, relation_sheet, source_analysis, relation_plan
 
 
-COMPACT_RENDER_VERSION = "compact-v10"
+COMPACT_RENDER_VERSION = "compact-v11"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -148,7 +148,8 @@ def _companion_view(receipt):
         semantic["before"], semantic["after"], fromfile="before.hcs", tofile="after.hcs",
         lineterm="", n=3))
     lines = (["\n### Изменение связей и ограничений (.hcs)\n",
-              "Сравнение свойств интерпретации; комментарии с основаниями исключены из diff.\n",
+              "Сравнение свойств интерпретации; комментарии с основаниями исключены из diff. "
+              "`+` означает добавленное описание связи, которая могла существовать в коде раньше.\n",
               _fence(change, "diff")] if change else [])
     lines.append("\n<details>\n<summary>Связи в Hypercode (.hcs)</summary>\n")
     for side in ("before", "after"):
@@ -342,6 +343,8 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
                   "и поведение программы этим не доказаны. Анализ ограничен предоставленными "
                   "исходниками и фрагментами контекста; выполнение программы не наблюдалось.\n"])
     lines.extend(_configuration_coverage(request))
+    lines.append(f"Неизменённых файлов контекста по Git blob: {len(request['unchanged_files'])}. "
+                 "Их фрагменты до и после могут различаться охватом.\n")
     # Operational instructions remain in the full local ledger, not public prose.
     for limitation in dict.fromkeys(result["limitations"]):
         lines.append("- " + _text(limitation) + "\n")

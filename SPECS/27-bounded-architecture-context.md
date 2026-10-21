@@ -66,14 +66,22 @@ Budget exhaustion and oversized files are explicit omissions. No PR code runs.
 
 ## Explanation contract
 
-Profile v6 / prompt `composition-v12` distinguishes a changed obligation,
+Profile v7 / prompt `composition-v13` distinguishes a changed obligation,
 constraint or test binding from a changed implementation. `verified_by` is an
 additive common relation kind for declared obligation-to-check links. It does
 not imply execution, passing results or exhaustive coverage. Existing relation
 IDs and meanings remain unchanged.
 
+Request v5 carries an `unchanged_files` ledger derived from equal collector-verified
+full Git blob identities, bound to the retained source IDs on both sides.
+Different excerpt windows must not be described as new/changed implementation.
+The paired #777 replay exposed this failure before any publication; a test
+definition present in a larger after-window was incorrectly called newly added.
+Absence of an unchanged marker does not prove a file changed. Full-blob identity
+is about source bytes, not runtime behavior or external dependencies.
+
 An unchanged `.hc` composition can accompany a changed `.hcs`. Compact render
-v10 shows the property diff, excluding source/evidence comments so changed
+v11 shows the property diff, excluding source/evidence comments so changed
 revision labels do not masquerade as semantic changes. Full companion sheets
 remain available. An added after-side relation without a before-side relation
 means newly recorded by this review, not independently proven newly implemented.
@@ -87,7 +95,7 @@ these are navigation aids with whole-record fallback, not semantic verification.
 
 This layer follows #41 -> #42. It does not activate runtime code, change service
 grants, rerun inference or rewrite published comments. Existing bundles remain
-immutable; sanitized prompt-v11 tracking events remain replayable. Old requests
+immutable; sanitized prompt-v11/v12 tracking events remain replayable. Old requests
 are not silently upgraded to the new profile.
 
 G3 prepares fresh pinned examples, including SpecGraph #777/#778, to inspect

@@ -74,3 +74,7 @@ nodes. Future tooling integration must preserve their IDs and status.
 
 - [Automatic review gates](25-automatic-review-gates.md): explicit thread grants,
   analysis-start notices, owned-thread completion and fail-closed recovery.
+
+- [Stack-independent review](26-stack-independent-review.md): common architecture
+  understanding, existing Hypercode and documentation evidence, bounded generic
+  selection and optional language helpers; intended contract and staged plan.

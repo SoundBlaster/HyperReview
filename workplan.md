@@ -1,5 +1,28 @@
 # HyperReview implementation workplan
 
+## Active direction — stack-independent architecture understanding
+
+The reviewer must understand architecture and documentation across languages,
+platforms, frameworks and repositories. Existing Hypercode is a preferred
+architecture input when present; it is optional, revision-bound authored evidence.
+The governing contract is [stack-independent review](SPECS/26-stack-independent-review.md).
+
+Next delivery follows G1 → G2 → G3:
+
+1. **G1:** generalize core relationship semantics and the trusted reviewer profile;
+   preserve versioned compatibility and explain unsupported/empty relationships.
+2. **G2:** select architecture, specification and connecting configuration evidence
+   through bounded format/semantic-family policies. Replace the proposed
+   Hunter-specific file admission patch with these common rules.
+3. **G3:** replay pinned examples through that same core profile and inspect the
+   result with ordinary `ok`/`not_ok` feedback. Language-specific navigation is
+   optional and can follow demonstrated need.
+
+Repository access, own-PR eligibility, source filtering, budgets and publication
+checks remain trusted operational policy. Current service grants are unchanged.
+The older phase snapshots below document delivery history, not new exit gates.
+
+
 ## Review clarity follow-up — SpecGraph #773
 
 Author feedback on [the published sketch](https://github.com/0al-spec/SpecGraph/pull/773#issuecomment-6272175746)
@@ -15,13 +38,13 @@ at `6bddebd00e159ba222173c6003671a2d3c24b8db` identifies three concrete gaps:
 
 The implementation updates the trusted review profile and generation identity;
 existing generated bundles remain historical artifacts, never silently rewritten.
-Next delivery: integrate this increment, prepare a fresh #773 preview on its
-current pinned head, and inspect whether the relations answer the author's
-questions before automatic delivery. No new repository blocking checks.
+Delivered through PRs #38 and #39, with the #773 comment updated through the
+existing publication gate. The Hunter follow-up now informs the common G1–G3
+direction above. No new repository blocking checks.
 
 ---
 
-**Current delivery:** specifications, a parsable desired-system Hypercode model,
+**Earlier delivery snapshot:** specifications, a parsable desired-system Hypercode model,
 and a manual Python pipeline through filtered requests, Codex inference,
 and compiled paired projections with local Markdown output and metadata-only
 MLflow delivery. Six controlled pilot cases and local Evidently reports are

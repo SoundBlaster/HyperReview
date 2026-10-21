@@ -71,6 +71,15 @@ change whether resolved values satisfy those same contracts. Any boolean
 policy invariant or enum semantics not expressible by current property
 contracts MUST be enforced by HyperReview's trusted policy validator.
 
+**HR-ARCH-005 — Common semantic core.** Evidence selection, paired architecture
+projection and claim explanation MUST share one stack-independent contract.
+Optional language/format helpers MAY supply bounded source locations and
+structured facts, but MUST NOT be prerequisites for understanding a supported
+text input. Repository access, account checks and publication grants belong to
+trusted operator/integration policy; repository names MUST NOT be embedded in
+the semantic review rules. The intended separation and staged implementation
+are specified in [stack-independent review](26-stack-independent-review.md).
+
 ## Implemented policy and developer measurements
 
 `#eligibility` uses the commit-pinned Python SpecificationCore package for the

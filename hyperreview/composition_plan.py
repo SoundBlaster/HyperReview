@@ -200,12 +200,12 @@ def plan_schema(request, *, include_relations=False):
     identifier = {"type": "string", "pattern": r"^[A-Za-z][A-Za-z0-9_]{0,79}$", "maxLength": 80}
     node_properties = {
         "reason": {"type": "string", "minLength": 1, "maxLength": 2000,
-                   "description": "Write in Russian: the concrete task and what changed/remained. Explain comment changes separately from code behavior. Never merely unchanged or file changed."},
+                   "description": "Write in Russian: the concrete task and what changed/remained. Explain comment changes separately from code behavior. For an inferred rescope/new wrapper, name the relevant existing .hc roles and explain why their scope does not fit; distinguish this from an actual source rename. Never merely unchanged or file changed."},
         "id": {**identifier, "description": "Stable internal identity for this responsibility role; a #selector is rendered only when this side has .hcs and the role repeats."},
         "before_type": {"anyOf": [identifier, {"type": "null"}],
-                        "description": "Domain responsibility in English CamelCase, not PythonFile, Function or Module. Include before_type when the responsibility existed inside an old feature implementation, even if its extracted file is new. Null means the responsibility was absent, not that the new file was absent."},
+                        "description": "Domain responsibility, not PythonFile, Function or Module. Copy the exact established before-side .hc role, including the root, when representing that responsibility; omitting unrelated children does not justify a synonym. Infer a name only when no suitable role exists, explaining the scope in reason. Include before_type for old inline responsibilities even if their extracted file is new. Null means responsibility absent, not new file absent."},
         "after_type": {"anyOf": [identifier, {"type": "null"}],
-                       "description": "Domain responsibility in English CamelCase; preserve before_type when the responsibility is unchanged."},
+                       "description": "Copy the exact established after-side .hc role for the represented responsibility, including roots/shared owners. Preserve before_type when the source role and responsibility are unchanged. Preserve a real source rename on its respective side; explain inferred new scopes/wrappers separately in reason instead of silently replacing existing names with synonyms."},
         "before_parent": {"anyOf": [identifier, {"type": "null"}],
                           "description": "Exact id of another node declared in nodes and present before, never a type/role name. Null for the root or an absent node. Declare every containing owner, including the root."},
         "after_parent": {"anyOf": [identifier, {"type": "null"}],

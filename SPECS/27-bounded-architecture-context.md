@@ -66,7 +66,7 @@ Budget exhaustion and oversized files are explicit omissions. No PR code runs.
 
 ## Explanation contract
 
-Profile v8 / prompt `composition-v14` distinguishes a changed obligation,
+Profile v9 / prompt `composition-v15` distinguishes a changed obligation,
 constraint or test binding from a changed implementation. `verified_by` is an
 additive common relation kind for declared obligation-to-check links. It does
 not imply execution, passing results or exhaustive coverage. Existing relation

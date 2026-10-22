@@ -195,8 +195,8 @@ and is a consumer-profile rule, not a Hypercode language restriction.
 
 ## G1 common relationship contract
 
-Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v17`
-and reviewer profile v11. The relationship vocabulary is `depends_on`, `calls`,
+Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v18`
+and reviewer profile v12. The relationship vocabulary is `depends_on`, `calls`,
 `shared_contract`, `data_flow`, `requires`, `available_when`, and `reuses_rule`.
 The same descriptions apply across stacks: a callee may be a function, service,
 syscall or policy; a common type is a shared contract, not proof of shared
@@ -217,7 +217,7 @@ five original relation kinds, labels and property keys. Node-only conversion
 remains available for direct callers; live providers require the full current
 plan. Saved results are never relabelled or given new inferred relationships.
 
-A fresh generation requires a fresh request bound to profile v11. Old requests
+A fresh generation requires a fresh request bound to profile v12. Old requests
 are not silently upgraded; their original pinned profile/code or retained
 rendered artifacts remain the historical interpretation. Already sanitized
 composition-v10 tracking events remain replayable without accepting old

@@ -85,6 +85,8 @@ IDs and meanings remain unchanged.
 Request v5 carries an `unchanged_files` ledger derived from equal collector-verified
 full Git blob identities, bound to the retained source IDs on both sides.
 Different excerpt windows must not be described as new/changed implementation.
+Optional provider diff hints omit unchanged full blobs and offset windows;
+navigation selection must not manufacture a source delta for the model.
 The paired #777 replay exposed this failure before any publication; a test
 definition present in a larger after-window was incorrectly called newly added.
 Absence of an unchanged marker does not prove a file changed. Full-blob identity

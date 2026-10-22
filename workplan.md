@@ -384,3 +384,11 @@ allocation is now 65536, matching the existing paired-comparison fixture.
 Production defaults and preflight/repair reserve enforcement are unchanged;
 small-context rejection and computed-boundary cases retain their original
 settings. No new tests were added and no local unit suite was run.
+
+Review identified that enlarging fixture allocations masked the local-default
+regression. The profile is now compacted to 14015 bytes, below the previous
+15384-byte production profile, while preserving delta/map scope, direct-call,
+optional-feature, literal-binding and omission rules. All seven fixture context
+allocations are restored to 32768; production defaults/reserve enforcement and
+small/computed boundary checks remain unchanged. Replay the same evidence with
+a fresh compact-profile digest before recording the final outcome.

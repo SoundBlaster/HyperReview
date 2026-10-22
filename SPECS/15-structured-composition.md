@@ -312,6 +312,13 @@ An omission ID is not supplied content. Distinguish partial source, missing
 comparison and unobserved execution. Do not claim that an entire category is
 missing when relevant files were supplied.
 
+The Codex prompt repeats a compact supplied-source inventory after the complete
+request, retaining source IDs, sides, paths and line ranges. It is derived only
+from validated request records, carries untrusted data labels, and adds no
+source collection, symbol inference or execution claims. The complete original
+request remains unchanged; existing prompt byte limits still apply. Other
+providers retain the shared profile guidance without this Codex prompt envelope.
+
 These are shared generation/schema-description instructions, independent of
 repository, language or framework. Plan v3, request v5, result v2, relationship
 vocabulary and rendering are unchanged. Compiler/reference checks still do not

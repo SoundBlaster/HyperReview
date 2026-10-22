@@ -306,7 +306,9 @@ This is conditional guidance, not a required pipeline-shaped tree or call graph.
 
 Limitations compare the supplied path/content inventory and omission ledger.
 Supplied tool tests and unavailable referenced target tests are different facts.
-Name the latter's actual paths/symbols; distinguish partial source, missing
+Name the latter's actual paths/symbols and inspect each target independently;
+a supplied implementation must not be bundled with missing bound tests/policies.
+An omission ID is not supplied content. Distinguish partial source, missing
 comparison and unobserved execution. Do not claim that an entire category is
 missing when relevant files were supplied.
 

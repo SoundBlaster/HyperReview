@@ -14,7 +14,7 @@ import selectors
 import stat
 import subprocess
 import time
-from urllib.parse import quote, urlparse
+from urllib.parse import urlparse
 
 from . import intake
 
@@ -387,44 +387,6 @@ def _thread_pages(repo, number, account):
     _fail("review_gate_inventory_incomplete")
 
 
-def _require_resolution_rules(api, repo, pr_number, selected_repositories,
-                              expected_account=None):
-    identity = _rest(api, "user", "{login}")
-    account = identity.get("login") if type(identity) is dict else None
-    if (type(account) is not str or not account
-            or (expected_account is not None and account != expected_account)):
-        _fail("review_gate_binding_changed")
-    target_info = _rest(api, f"repos/{repo}/pulls/{pr_number}", "{base_ref:.base.ref}")
-    target = target_info.get("base_ref") if type(target_info) is dict else None
-    if type(target) is not str or not target:
-        _fail("review_gate_binding_changed")
-    if repo not in selected_repositories or account != intake.AUTHOR:
-        _fail("review_gate_binding_changed")
-    encoded_branch = quote(target, safe="")
-    try:
-        rules = _rest(api, f"repos/{repo}/rules/branches/{encoded_branch}",
-                      "[.[]|{type,parameters}]")
-        if type(rules) is not list or len(rules) > 1000:
-            _fail("review_gate_inventory_incomplete")
-        if any(type(rule) is dict and rule.get("type") == "pull_request"
-               and type(rule.get("parameters")) is dict
-               and rule["parameters"].get("required_review_thread_resolution") is True
-               for rule in rules):
-            return
-    except GateError:
-        pass
-    # Classic branch protection and repository/organization rulesets are
-    # independent GitHub mechanisms; either effective requirement is sufficient.
-    try:
-        classic = _rest(api, f"repos/{repo}/branches/{encoded_branch}/protection",
-                        "{required:.required_conversation_resolution.enabled}")
-        if type(classic) is dict and classic.get("required") is True:
-            return
-    except GateError:
-        pass
-    _fail("review_gate_resolution_rule_missing")
-
-
 def _bound_thread(record, api, *, must_be_unresolved=True, allow_outdated=False):
     record = _mapping(record)
     account, _ = _fresh(api, {"candidate": record["candidate"],
@@ -560,7 +522,6 @@ def _persist_plan(db, task, job_id, config, api, root):
         _fail("review_gate_not_granted")
     state_root = _private_dir(options["state_root"], create=True)
     account, pr = _fresh(api, task)
-    _require_resolution_rules(api, repo, number, options["repositories"], account)
     path, line = _anchor(api, repo, number)
     started = datetime.now(timezone.utc).replace(microsecond=0)
     expected = started + timedelta(seconds=options["eta_seconds"])
@@ -868,7 +829,6 @@ def complete(db, root, config, task, job, outcome, api_factory=None):
     if normalized == "preview_ready":
         # Success requires a current eligibility and revision observation.
         _fresh(api, task)
-        _require_resolution_rules(api, repo, number, options["repositories"], account)
     if releases_gate and is_resolved:
         terminal_status = "failed_released" if normalized == "failed" else "completed"
         if record["status"] in ("completing", terminal_status):

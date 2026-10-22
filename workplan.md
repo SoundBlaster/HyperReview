@@ -342,3 +342,24 @@ Fresh historical collection of merged head `a5cb835b` succeeds with 262110
 encoded evidence bytes and a valid 32-source request. Its
 `historical_read_only` / `publication_allowed=false` boundary remains intact;
 no model calls or GitHub writes occurred.
+
+## Delta-first evidence and matching map scope — BuildHunter #100
+
+The published #100 review interpreted unchanged measurement context as a new
+extraction and reused a CI-validation root for application measurement. The PR
+only reconciles documentation/evidence after earlier implementation merges.
+
+Prioritize changed records over optional context in intake, normalization and
+final eviction. Admit new prose before large paired historical documents and
+skip Markdown pairs together when their content cannot fit the remaining cap.
+Automatically select maps only from enclosing directories or literal references
+(and bounded companions); directory proximity alone cannot select a sibling
+validation snapshot. Profile v12 / composition-v18 / request v6 exposes the
+changed-path inventory separately from unchanged full-blob context and requires
+the explanation to describe this PR's delta within the map's actual scope.
+
+Fresh historical intake at head `5abb07df` includes the new audit and produces
+a valid 20-source, 219559-byte request, with the runtime context explicitly
+unchanged. Publication is disabled. Replay on isolated Codex Luna 6 Medium,
+compile projections and assess claims separately; retain original outputs.
+No production activation or public comment correction is included in this PR.

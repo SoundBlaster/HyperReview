@@ -13,7 +13,7 @@ fresh GitHub authorization. Intake metadata must still be rechecked by a future
 publisher.
 
 Only explicitly selected metadata and source fields enter
-`hyperreview.request.v5`. Extra pack properties, CI logs, PR descriptions,
+`hyperreview.request.v6`. Extra pack properties, CI logs, PR descriptions,
 credentials, endpoint settings, and delivery controls do not enter the request.
 Reference IDs identify source records by revision, path, and content digest.
 Requests carry an origin evidence digest, prompt/profile versions, omissions,
@@ -48,6 +48,19 @@ identities preserve legacy meaning without changing canonical result.v2 fields.
 See the structured-composition contract for migration and retained-artifact scope.
 Requests also carry per-revision `.hcs` presence derived from each complete pinned
 tree. The model never supplies or infers this selector-policy input.
+
+Request v6 / profile v12 / prompt `composition-v18` also carries
+`change_inventory`: sorted before/after paths and statuses for changed files,
+including files whose content was omitted. `complete` is true only for the
+collector's complete pinned-tree inventory with known change statuses. Old or
+partial packs cannot establish a complete scope. Policy-excluded paths become
+null, retaining the change entry; null does not mean no change occurred. No
+excluded content is admitted. The separate `unchanged_files` ledger still binds
+full-blob identity to retained before/after sources. Neither inventory proves
+runtime behavior. The provider repeats these boundaries after the source index
+to prevent historical context from replacing the actual PR delta. Fresh requests
+are required; retained old requests/bundles are not rewritten. Sanitized v17
+tracking events remain replayable without accepting old inference requests.
 
 Operator-selected paths and a source-byte budget may narrow the input. Records
 are omitted whole and omissions are disclosed; no source text is silently

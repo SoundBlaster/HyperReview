@@ -199,10 +199,15 @@ def _source_exclusion(path):
     return reason
 
 
-def _source_priority(item):
+def file_priority(item):
     """Apply the same bounded selection order during intake and normalization."""
     path = item["after_path"] or item["before_path"]
-    return source_priority(path)
+    rank, path = source_priority(path)
+    # Changed evidence must survive before optional, unchanged context. New
+    # prose is often the actual decision/audit; large historical documents
+    # should not exhaust the prose cap before that new material is read.
+    new_prose = path.endswith(".md") and item.get("before_path") is None
+    return item.get("status") == "context", rank, not new_prose, path
 
 
 def source_priority(path):
@@ -228,7 +233,7 @@ def _context_record(path, before_tree, after_tree, reason):
 
 
 def _architecture_context(inventory, before_tree, after_tree):
-    """Find companions or one nearby map using only the pinned tree inventory."""
+    """Find companions or one map in an enclosing directory, never a sibling snapshot."""
     paths = {path for item in inventory for path in
              (item["before_path"], item["after_path"]) if path}
     if not paths:
@@ -253,6 +258,8 @@ def _architecture_context(inventory, before_tree, after_tree):
 
         existing = [path for path in available if path.endswith(".hc")
                     and _source_exclusion(path) is None
+                    and any(other[:len(PurePosixPath(path).parent.parts)] ==
+                            PurePosixPath(path).parent.parts for other in parents)
                     and not set(part.lower() for part in path.split("/")) &
                     {"tests", "fixtures", "examples", "vendor", "node_modules", "target", ".build"}]
         if existing:
@@ -291,6 +298,15 @@ def _referenced_context(inventory, before_tree, after_tree):
                               if value in entries and value not in known
                               and _source_exclusion(value) is None)
     remaining = MAX_CONTEXT_FILES - sum(item["status"] == "context" for item in inventory)
+    # A literal reference to a map also permits its same-basename companion;
+    # this is not a recursive walk over the map's own declarations.
+    for path in tuple(candidates):
+        if path.endswith((".hc", ".hcs")):
+            companion = str(PurePosixPath(path).with_suffix(
+                ".hcs" if path.endswith(".hc") else ".hc"))
+            if companion in (before_tree.keys() | after_tree.keys()) and companion not in known:
+                if _source_exclusion(companion) is None:
+                    candidates.add(companion)
     return [_context_record(path, before_tree, after_tree, "explicit_source_reference")
             for path in sorted(candidates, key=source_priority)[:max(0, remaining)]]
 
@@ -429,7 +445,7 @@ def _bound_evidence(pack):
         original_pair = item["before_path"] is not None and item["after_path"] is not None
         sides = {record["side"] for record in item["sources"]}
         incomplete_pair = original_pair and sides != {"before", "after"}
-        return incomplete_pair, _source_priority(item)
+        return incomplete_pair, file_priority(item)
 
     groups = sorted((item for item in pack["files"] if item["sources"]),
                     key=removal_priority, reverse=True)
@@ -549,13 +565,24 @@ def _collect(repo, number, api=None, *, historical=False):
     def collect_items(items):
         nonlocal selected, source_records_count, configuration_bytes_used
         nonlocal context_bytes_used, prose_bytes_used
-        ordered = sorted(items, key=_source_priority)
+        ordered = sorted(items, key=file_priority)
         for index, item in enumerate(ordered):
             paths = [p for p in (item["before_path"], item["after_path"]) if p is not None]
             reason = next((_source_exclusion(p) for p in paths if _source_exclusion(p)), None)
             if reason or selected >= MAX_FILES:
                 item["omissions"].append({"side": "both", "reason": reason or "source_file_limit"})
                 continue
+            if item.get("status") != "context" and len(paths) == 2 and all(
+                    path.endswith(".md") for path in paths):
+                pair_sizes = [entries.get(item[f"{side}_path"], {}).get("size")
+                              for side, entries in (("before", before_tree), ("after", after_tree))]
+                if all(type(size) is int and size >= 0 for size in pair_sizes) and sum(
+                        pair_sizes) > min(MAX_PROSE_BYTES - prose_bytes_used,
+                                          max(0, MAX_BYTES - len(encoded(pack)) - 1024)):
+                    # Avoid spending the remaining budget on a before-only
+                    # document that normalization cannot use as a comparison.
+                    item["omissions"].append({"side": "both", "reason": "input_byte_limit"})
+                    continue
             included = False
             present_sides = [("before", merge_base, before_tree), ("after", pr["head_sha"], after_tree)]
             for side, revision, entries in present_sides:

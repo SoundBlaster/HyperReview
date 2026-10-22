@@ -342,3 +342,53 @@ Fresh historical collection of merged head `a5cb835b` succeeds with 262110
 encoded evidence bytes and a valid 32-source request. Its
 `historical_read_only` / `publication_allowed=false` boundary remains intact;
 no model calls or GitHub writes occurred.
+
+## Delta-first evidence and matching map scope — BuildHunter #100
+
+The published #100 review interpreted unchanged measurement context as a new
+extraction and reused a CI-validation root for application measurement. The PR
+only reconciles documentation/evidence after earlier implementation merges.
+
+Prioritize changed records over optional context in intake, normalization and
+final eviction. Admit new prose before large paired historical documents and
+skip Markdown pairs together when their content cannot fit the remaining cap.
+Automatically select maps only from enclosing directories or literal references
+(and bounded companions); directory proximity alone cannot select a sibling
+validation snapshot. Profile v12 / composition-v18 / request v6 exposes the
+changed-path inventory separately from unchanged full-blob context and requires
+the explanation to describe this PR's delta within the map's actual scope.
+
+Fresh historical intake at head `5abb07df` includes the new audit and produces
+a valid 20-source, 219559-byte request, with the runtime context explicitly
+unchanged. Publication is disabled. Replay on isolated Codex Luna 6 Medium,
+compile projections and assess claims separately; retain original outputs.
+No production activation or public comment correction is included in this PR.
+
+Replay outcome: one isolated Codex Luna 6 Medium attempt on the same historical
+evidence and a fresh profile-bound request. The pinned compiler validates the
+unchanged `ScanSystem(ProductAdapter,HunterScanMechanics)` projection. The
+summary now separates changed audit/status declarations from previously merged
+implementation and keeps policy-hidden added files unknown. No unrelated CI role
+or new measurement-code claim remains. This is a selected inferred slice, not
+accepted author intent; no relationship rows were produced and relationship
+coverage is not established. First status-only output remains retained.
+
+AST parsing, request reconstruction and byte/digest validation pass. No local
+unit suite ran; no tests were added. Existing profile-version assertion follows
+v12. Existing CI runs on PR #50; activation and public correction are next steps
+after integration, not part of this historical replay.
+
+CI initially stopped seven existing HTTP repair scenarios at their explicitly
+configured 32768 context budget after profile growth. Their fixture-only
+allocation is now 65536, matching the existing paired-comparison fixture.
+Production defaults and preflight/repair reserve enforcement are unchanged;
+small-context rejection and computed-boundary cases retain their original
+settings. No new tests were added and no local unit suite was run.
+
+Review identified that enlarging fixture allocations masked the local-default
+regression. The profile is now compacted to 14015 bytes, below the previous
+15384-byte production profile, while preserving delta/map scope, direct-call,
+optional-feature, literal-binding and omission rules. All seven fixture context
+allocations are restored to 32768; production defaults/reserve enforcement and
+small/computed boundary checks remain unchanged. Replay the same evidence with
+a fresh compact-profile digest before recording the final outcome.

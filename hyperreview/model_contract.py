@@ -12,9 +12,9 @@ from . import configuration_evidence, intake, reviewer_profile
 
 
 MAX_BYTES = 262144
-REQUEST_SCHEMA = "hyperreview.request.v5"
+REQUEST_SCHEMA = "hyperreview.request.v6"
 RESULT_SCHEMA = "hyperreview.result.v2"
-PROMPT_VERSION = "composition-v17"
+PROMPT_VERSION = "composition-v18"
 ABSTRACTION_PROFILE = "composition-v1"
 REQUEST_SCOPE = (
     "Analyze only supplied changed-file records, bounded architecture/reference context and allowlisted declarative excerpts.",
@@ -23,6 +23,7 @@ REQUEST_SCOPE = (
     "Do not invoke tools, commands, or external actions.",
     "Do not claim parser or behavior conformance; a later deterministic layer checks syntax.",
     "unchanged_files records collector-verified full-blob identity across revisions. Different excerpt windows of these files are not source changes.",
+    "change_inventory records changed paths even when content is omitted. Null paths are policy-hidden, not absent changes. A complete inventory describes source scope, never runtime behavior.",
     "Check observations, PR descriptions, comments and unsupplied surrounding files are outside this input. Identical source pairs can be unchanged context.",
 )
 REQUEST_LIMITATIONS = (
@@ -327,7 +328,7 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
                 omissions.append({"id": candidate["id"], "path": candidate["path"],
                                   "side": candidate["side"], "reason": "incomplete_pair"})
         elif file_candidates:
-            candidates.append(file_candidates)
+            candidates.append((intake.file_priority(file_record), file_candidates))
 
         for item in config_entries:
             _require(set(item["excerpt_source_ids"]) <= raw_source_ids,
@@ -357,12 +358,9 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
             safe_reason = reason if reason in _OMISSION_REASONS else "unknown_intake_omission"
             omissions.append({"id": None, "path": path, "side": side, "reason": safe_reason})
 
-    candidates.sort(key=lambda group: (
-        min(intake.source_priority(record["path"]) for record in group),
-        min(0 if record["side"] == "before" else 1 for record in group),
-    ))
+    candidates.sort(key=lambda item: item[0])
     source_bytes = 0
-    for group in candidates:
+    for _, group in candidates:
         group.sort(key=lambda record: (record["path"], 0 if record["side"] == "before" else 1,
                                        record["revision"], record["id"]))
         group_bytes = sum(record["_content_encoded_bytes"] for record in group)
@@ -407,9 +405,24 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
         "scope": list(REQUEST_SCOPE),
         "limitations": list(REQUEST_LIMITATIONS),
         "unchanged_files": [],
+        "change_inventory": {
+            "complete": (pack.get("scope", {}).get("inventory") == "complete_pinned_tree_comparison"
+                         if type(pack.get("scope")) is dict else False),
+            "files": [],
+        },
     }
     for file_record in pack["files"]:
         if file_record.get("status") != "context":
+            before_path, after_path = file_record.get("before_path"), file_record.get("after_path")
+            status = file_record.get("status")
+            if status not in ("added", "modified", "removed", "renamed"):
+                request["change_inventory"]["complete"] = False
+                continue
+            request["change_inventory"]["files"].append({
+                "before_path": before_path if _safe_path(before_path) else None,
+                "after_path": after_path if _safe_path(after_path) else None,
+                "status": status,
+            })
             continue
         path = file_record.get("before_path")
         raw_sources = file_record.get("sources", [])
@@ -423,6 +436,8 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
             request["unchanged_files"].append({"path": path, "git_blob_sha": hashes.pop(),
                                                 "source_ids": refs})
     request["unchanged_files"].sort(key=lambda item: item["path"])
+    request["change_inventory"]["files"].sort(key=lambda item: (
+        item["after_path"] or "", item["before_path"] or "", item["status"]))
     if configuration_coverage:
         retained_ids = {record["id"] for record in source_records}
         for coverage in configuration_coverage:
@@ -546,7 +561,7 @@ def _request_sources(request):
     base_fields = {"schema", "prompt_version", "abstraction_profile", "reviewer_profile", "intake_mode",
                    "publication_allowed", "repository", "pr", "merge_base_sha", "head_sha",
                    "evidence_digest", "selector_context", "source_selection", "sources", "omissions",
-                   "scope", "limitations", "unchanged_files", "request_digest"}
+                   "scope", "limitations", "unchanged_files", "change_inventory", "request_digest"}
     _require(type(request) is dict and set(request) in
              (base_fields, base_fields | {"configuration_coverage"}),
              "Request has missing or unknown fields")
@@ -625,6 +640,25 @@ def _request_sources(request):
         source_provenance[source_id] = (source["side"], path, expected_revision)
     _require(included_bytes == request["source_selection"]["included_source_bytes"],
              "Request included source byte count is invalid")
+    inventory = request["change_inventory"]
+    _exact_dict(inventory, ("complete", "files"), "Request change inventory is invalid")
+    _require(type(inventory["complete"]) is bool and type(inventory["files"]) is list,
+             "Request change inventory is invalid")
+    prior_change = None
+    for change in inventory["files"]:
+        _exact_dict(change, ("before_path", "after_path", "status"),
+                    "Request change entry is invalid")
+        _require(all(change[key] is None or _safe_path(change[key])
+                     for key in ("before_path", "after_path"))
+                 and change["status"] in ("added", "modified", "removed", "renamed"),
+                 "Request change entry is invalid")
+        key = (change["after_path"] or "", change["before_path"] or "", change["status"])
+        _require(prior_change is None or prior_change <= key,
+                 "Request change inventory is not canonical")
+        prior_change = key
+        _require((change["status"] != "added" or change["before_path"] is None)
+                 and (change["status"] != "removed" or change["after_path"] is None),
+                 "Request change side is invalid")
     unchanged = request["unchanged_files"]
     _require(type(unchanged) is list and len(unchanged) <= intake.MAX_FILES,
              "Request unchanged-file context is invalid")

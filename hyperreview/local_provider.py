@@ -222,6 +222,7 @@ def _issue_for_error(error):
 
 def _comparison_content(request):
     """Optional bounded diffs and AST reference hints, all in an untrusted role."""
+    unchanged = {item["path"] for item in request["unchanged_files"]}
     sides = {side: {} for side in ("before", "after")}
     ambiguous = {side: set() for side in sides}
     for source in request["sources"]:
@@ -232,6 +233,10 @@ def _comparison_content(request):
     comparisons = []
     for path in sorted(sides["before"].keys() & sides["after"].keys()):
         before, after = sides["before"][path], sides["after"][path]
+        # Navigation windows from an identical blob are not code changes.
+        # Likewise, offset windows cannot form an aligned source comparison.
+        if path in unchanged or before["line_start"] != after["line_start"]:
+            continue
         if path in ambiguous["before"] or path in ambiguous["after"]:
             continue
         if before["content"] == after["content"]:

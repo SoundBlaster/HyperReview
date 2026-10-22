@@ -19,9 +19,15 @@ Family admission is a text-selection convention, not schema validity, accepted
 intent, approval or evidence that a declared check passed. Family changes require
 reviewed code; operator configuration does not grant arbitrary file patterns.
 
-Hypercode is selected before other declarative evidence, implementation, tests
-and prose. Request normalization preserves that priority under a smaller model
-source budget. Prose has an additional aggregate 87381-byte cap. All evidence
+Changed sources are selected before optional context. Within each group,
+Hypercode precedes other declarative evidence, implementation, tests and prose.
+New prose precedes paired historical documents so a new decision/audit cannot
+be displaced by earlier large documents. A changed Markdown pair exceeding
+the remaining prose/raw-space allowance is omitted together before reading it,
+instead of spending the allowance on an unusable before-only half. Encoded-size
+checks still apply independently. Request normalization and final pack eviction
+preserve the same priority under their byte budgets.
+Prose has an additional aggregate 87381-byte cap. All evidence
 still shares the 262144-byte encoded-pack cap, 30 logical source files, 60 source
 records, GitHub response/read deadlines, eligibility and revision checks.
 
@@ -30,14 +36,18 @@ records, GitHub response/read deadlines, eligibility and revision checks.
 The complete pinned trees also permit a bounded context selection:
 
 1. Add same-basename `.hc`/`.hcs` companions of changed Hypercode files. Otherwise
-   select one existing map and its companion, ranked by directory proximity to
-   the first 30 changed paths, then depth/path. Fixtures, examples, dependencies
+   select one existing map and its companion only from a directory enclosing
+   at least one of the first 30 changed paths, ranked by directory proximity,
+   then depth/path. A map in a sibling validation snapshot is not eligible
+   merely because it shares a distant ancestor. Fixtures, examples, dependencies
    and common generated directories are excluded from automatic map discovery.
    This heuristic chooses a candidate, not the repository's authoritative map.
 2. From retained changed Markdown/Hypercode/declarative sources, follow one hop
    of literal repository-relative paths (including root-level files) that exist
    in that side's pinned tree.
    Do not follow URLs, imports, includes, commands or recursive references.
+   A literally referenced `.hc`/`.hcs` also admits its same-basename companion
+   within the shared file cap; this does not follow declarations recursively.
 3. Share at most eight context files and 65536 content bytes across both sides
    within the ordinary total caps. Existing Hypercode counts toward this limit.
    Additional candidate paths are outside this bounded selection, not proof of
@@ -66,7 +76,7 @@ Budget exhaustion and oversized files are explicit omissions. No PR code runs.
 
 ## Explanation contract
 
-Profile v11 / prompt `composition-v17` distinguishes a changed obligation,
+Profile v12 / prompt `composition-v18` distinguishes a changed obligation,
 constraint or test binding from a changed implementation. `verified_by` is an
 additive common relation kind for declared obligation-to-check links. It does
 not imply execution, passing results or exhaustive coverage. Existing relation
@@ -75,10 +85,20 @@ IDs and meanings remain unchanged.
 Request v5 carries an `unchanged_files` ledger derived from equal collector-verified
 full Git blob identities, bound to the retained source IDs on both sides.
 Different excerpt windows must not be described as new/changed implementation.
+Optional provider diff hints omit unchanged full blobs and offset windows;
+navigation selection must not manufacture a source delta for the model.
 The paired #777 replay exposed this failure before any publication; a test
 definition present in a larger after-window was incorrectly called newly added.
 Absence of an unchanged marker does not prove a file changed. Full-blob identity
 is about source bytes, not runtime behavior or external dependencies.
+
+Request v6 adds a complete-or-partial changed-path inventory, including omitted
+files with policy-hidden paths represented as null. The explanation must lead
+with this PR's delta: a documentation reconciliation of an earlier extraction
+does not change implementation. Unchanged context may explain the boundary,
+but cannot stand in for missing changed content. An existing map is preferred
+only when its children/bindings establish the relevant responsibility scope;
+an unrelated CI/release map cannot be relabelled as application architecture.
 
 For `verified_by` declarations, `to` contains one complete verbatim target,
 without concatenation or truncation. The whole target with identifier boundaries

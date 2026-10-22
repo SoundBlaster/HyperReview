@@ -311,3 +311,13 @@ remain retained, including their inaccurate limitations; none was published.
 The existing comparison fixture now uses a 65536 context budget to exercise
 navigation with the expanded profile; smaller-budget fallback remains unchanged.
 Human acceptance and production activation remain separate steps.
+
+## Release automatic gates after terminal analysis failure
+
+A committed failed preview must not indefinitely block merging. Notify and
+resolve only the exact owned automatic thread; record gate status
+`failed_released` and retain preview failure and completion outcome `failed`.
+Do not publish or retry the failed generation, close unrelated discussions,
+release stale gates, or treat a failure as an approval. Preserve existing
+reply/resolve limits and reconcile uncertain writes without duplicate POSTs.
+Apply the same path to the already failed SessionMonitor #123 gate.

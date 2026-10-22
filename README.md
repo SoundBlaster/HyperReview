@@ -529,8 +529,9 @@ See [standing grants, recovery and retention](SPECS/24-automatic-publication.md)
 Add `--authorize-review-gates --review-gate-repository OWNER/REPO` to an explicitly
 configured private-preview worker to create a v3 configuration. An owned inline
 thread announces the start and ETA before inference; successful completed
-analysis resolves that thread. Failures leave it open with a clear failure
-notice. ETA expiry does not release the gate. Repository rules must require
+analysis resolves that thread. Terminal failures also close the tool's own thread
+after a clear notice that no review or approval was produced. ETA expiry alone
+does not release the gate. Repository rules must require
 conversation resolution for this to block merge.
 
 The ordinary publisher links its review summary back to the start thread.

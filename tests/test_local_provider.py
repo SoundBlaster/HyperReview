@@ -337,7 +337,7 @@ class LocalProviderTests(unittest.TestCase):
             callback=lambda _request: (200, {"Content-Type": "application/json"},
                                        self._envelope(self.config,
                                                       result=make_paired_plan(self.request))),
-            context_tokens=32768,
+            context_tokens=65536,
         )
         generate(self.request, self.config)
         messages = json.loads(fixture.requests[0]["body"])["messages"]

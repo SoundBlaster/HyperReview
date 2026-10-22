@@ -37,6 +37,30 @@ The local correlation ID is available for future tracking reconciliation;
   files; reject symlinks in the operator output path. No checkout, git hooks,
   package installation, source execution, or GitHub mutation is used.
 
+## Final encoded budget accounting
+
+The complete serialized pack is bounded after source selection, coverage IDs,
+omission ledgers, check observations and the revision recheck are populated,
+before calculating its digest. The fixed 262144-byte cap is unchanged.
+Intermediate source checks alone cannot reserve an exact amount of space for
+later omission metadata.
+
+If final accounting overflows, discard optional check observations first and
+record `evidence_byte_limit`. Then remove whole logical file source groups:
+original before/after pairs with only one retained side first, because the model
+normalizer already excludes incomplete comparisons; remaining groups follow the
+reverse of the existing source priority. Keep the complete changed-path inventory
+and record `encoded_evidence_byte_limit` for each removed source side. Retained
+source text, hashes and line ranges are never truncated or rewritten.
+
+Removed configuration groups retain their blob identities, mark coverage as
+`omitted`, clear excerpt IDs and record a whole-file budget omission. No dangling
+excerpt references or complete-coverage claims remain. If the remaining metadata
+still cannot fit, fail closed with `EvidenceLimitError`; the worker journals the
+fixed `evidence_byte_limit` code rather than arbitrary exception text. This does
+not change retries, accepted formats, author/repository grants, execution or
+publication authority, or the evidence schema.
+
 ## Evidence boundaries
 
 ### Bounded configuration evidence (historical intake policy v3)

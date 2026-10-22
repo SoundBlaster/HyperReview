@@ -41,6 +41,10 @@ class IntakeError(Exception):
     pass
 
 
+class EvidenceLimitError(IntakeError):
+    """Required evidence metadata cannot fit the fixed encoded byte budget."""
+
+
 def encoded(value):
     return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode()
 
@@ -409,6 +413,45 @@ def source(api, repo, revision, path, entries, budget):
     }, None
 
 
+def _bound_evidence(pack):
+    """Fit the complete pack, including omission metadata, before digesting it."""
+    if len(encoded(pack)) <= MAX_BYTES:
+        return
+    # Check observations are optional and must not displace source evidence.
+    while pack["checks"] and len(encoded(pack)) > MAX_BYTES:
+        pack["checks"].pop()
+        if "evidence_byte_limit" not in pack["check_omissions"]:
+            pack["check_omissions"].append("evidence_byte_limit")
+    # A partial original pair cannot feed a before/after model comparison.
+    # Remove those unusable groups first, then reuse source selection priority.
+    # Always remove a whole group to avoid creating an asymmetric comparison.
+    def removal_priority(item):
+        original_pair = item["before_path"] is not None and item["after_path"] is not None
+        sides = {record["side"] for record in item["sources"]}
+        incomplete_pair = original_pair and sides != {"before", "after"}
+        return incomplete_pair, _source_priority(item)
+
+    groups = sorted((item for item in pack["files"] if item["sources"]),
+                    key=removal_priority, reverse=True)
+    for item in groups:
+        if len(encoded(pack)) <= MAX_BYTES:
+            return
+        sides = sorted({record["side"] for record in item["sources"]})
+        item["sources"].clear()
+        for coverage in item["configuration_evidence"]:
+            coverage["coverage"] = "omitted"
+            coverage["excerpt_source_ids"] = []
+            coverage["omissions"] = [{"line_start": 1,
+                                      "line_end": coverage["line_count"],
+                                      "reason": "encoded_evidence_byte_limit"}]
+        for side in sides:
+            omission = {"side": side, "reason": "encoded_evidence_byte_limit"}
+            if omission not in item["omissions"]:
+                item["omissions"].append(omission)
+    if len(encoded(pack)) > MAX_BYTES:
+        raise EvidenceLimitError("Evidence metadata exceeds the byte limit")
+
+
 def _collect(repo, number, api=None, *, historical=False):
     if repo not in ALLOWLIST or number <= 0:
         raise IntakeError("Repository or PR is outside the initial operator policy")
@@ -495,7 +538,7 @@ def _collect(repo, number, api=None, *, historical=False):
         "checks": [], "check_omissions": [],
     }
     if len(encoded(pack)) + 128 > MAX_BYTES:
-        raise IntakeError("Changed-file inventory exceeds the evidence limit")
+        raise EvidenceLimitError("Changed-file inventory exceeds the evidence limit")
     _admit_context(pack, _architecture_context(inventory, before_tree, after_tree))
     selected = 0
     source_records_count = 0
@@ -645,10 +688,11 @@ def _collect(repo, number, api=None, *, historical=False):
     if any(current.get(field) != pr.get(field) for field in stable_fields):
         raise IntakeError("PR revisions changed during collection; rerun intake")
     pack["rechecked_at"] = utc_now()
+    _bound_evidence(pack)
     pack["evidence_digest"] = digest({key: value for key, value in pack.items()
                                       if key != "evidence_digest"})
     if len(encoded(pack)) > MAX_BYTES:
-        raise IntakeError("Evidence pack exceeds the byte limit")
+        raise EvidenceLimitError("Evidence pack exceeds the byte limit")
     return pack
 
 

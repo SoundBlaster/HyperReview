@@ -377,3 +377,10 @@ AST parsing, request reconstruction and byte/digest validation pass. No local
 unit suite ran; no tests were added. Existing profile-version assertion follows
 v12. Existing CI runs on PR #50; activation and public correction are next steps
 after integration, not part of this historical replay.
+
+CI initially stopped seven existing HTTP repair scenarios at their explicitly
+configured 32768 context budget after profile growth. Their fixture-only
+allocation is now 65536, matching the existing paired-comparison fixture.
+Production defaults and preflight/repair reserve enforcement are unchanged;
+small-context rejection and computed-boundary cases retain their original
+settings. No new tests were added and no local unit suite was run.

@@ -321,3 +321,19 @@ Do not publish or retry the failed generation, close unrelated discussions,
 release stale gates, or treat a failure as an approval. Preserve existing
 reply/resolve limits and reconcile uncertain writes without duplicate POSTs.
 Apply the same path to the already failed SessionMonitor #123 gate.
+
+## Final intake byte accounting — BuildHunter #99
+
+The frozen #99 intake snapshot reached 263089 bytes against a 262144-byte cap
+because omission metadata continued growing after source admission. Bound the
+complete encoded pack before its digest; preserve inventory and explicit
+omissions, evict optional checks and whole source groups deterministically, and
+retain configuration coverage/reference consistency. Prefer incomplete original
+pairs before removing usable comparisons. Surface irreducible metadata overflow
+with a fixed worker diagnostic code.
+
+Frozen replay at `3b324289` fits in 126066 bytes after removing only the incomplete
+`src/lib.rs` group. Every complete source group is unchanged and normalization
+produces a valid 32-source request. #99 merged during diagnosis; a fresh historical
+collection must remain publication-disabled. No model or publication is needed
+to verify this intake correction. Runtime activation remains a separate step.

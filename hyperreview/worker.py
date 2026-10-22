@@ -451,8 +451,10 @@ def tick(config_path, *, api=None, collect_request=True):
             _transition(db, candidate, "request_prepared", int(time.time()))
             return {**result, "status": "request_prepared", "candidate": candidate,
                     "bundle": str(destination)}
-        except (intake.IntakeError, model_contract.ContractError, StorageError):
-            _transition(db, candidate, "failed", int(time.time()), "collection_or_request_failed")
+        except (intake.IntakeError, model_contract.ContractError, StorageError) as error:
+            code = ("evidence_byte_limit" if isinstance(error, intake.EvidenceLimitError)
+                    else "collection_or_request_failed")
+            _transition(db, candidate, "failed", int(time.time()), code)
             with db:
                 db.execute("UPDATE tasks SET retry_after=? WHERE candidate=?",
                            (int(time.time()) + config["interval_seconds"], candidate))

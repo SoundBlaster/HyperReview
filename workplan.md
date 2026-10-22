@@ -363,3 +363,17 @@ a valid 20-source, 219559-byte request, with the runtime context explicitly
 unchanged. Publication is disabled. Replay on isolated Codex Luna 6 Medium,
 compile projections and assess claims separately; retain original outputs.
 No production activation or public comment correction is included in this PR.
+
+Replay outcome: one isolated Codex Luna 6 Medium attempt on the same historical
+evidence and a fresh profile-bound request. The pinned compiler validates the
+unchanged `ScanSystem(ProductAdapter,HunterScanMechanics)` projection. The
+summary now separates changed audit/status declarations from previously merged
+implementation and keeps policy-hidden added files unknown. No unrelated CI role
+or new measurement-code claim remains. This is a selected inferred slice, not
+accepted author intent; no relationship rows were produced and relationship
+coverage is not established. First status-only output remains retained.
+
+AST parsing, request reconstruction and byte/digest validation pass. No local
+unit suite ran; no tests were added. Existing profile-version assertion follows
+v12. Existing CI runs on PR #50; activation and public correction are next steps
+after integration, not part of this historical replay.

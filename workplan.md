@@ -337,3 +337,8 @@ Frozen replay at `3b324289` fits in 126066 bytes after removing only the incompl
 produces a valid 32-source request. #99 merged during diagnosis; a fresh historical
 collection must remain publication-disabled. No model or publication is needed
 to verify this intake correction. Runtime activation remains a separate step.
+
+Fresh historical collection of merged head `a5cb835b` succeeds with 262110
+encoded evidence bytes and a valid 32-source request. Its
+`historical_read_only` / `publication_allowed=false` boundary remains intact;
+no model calls or GitHub writes occurred.

@@ -289,3 +289,25 @@ the retry/reconciliation interval. Intake/publisher retry delays, one-generation
 limits, fresh revision checks, standing grants and no-replay journals remain.
 Installed services require a separate reviewed update; no journal reset or grant
 change is part of this correction.
+
+## Reviewer follow-up — SpecGraph #785
+
+Profile v11 / prompt v17 preserves intermediate call steps, distinguishes
+architectural owners from concrete caller symbols, selects the main mechanism
+before auxiliary policy inventories and names specific unavailable targets.
+Replay the immutable v10 #785 evidence on the same revisions and Luna 6 Medium
+configuration. Inspect each generated edge against its actual callsite and check
+limitations against supplied paths. Keep original outputs and receipts intact;
+source assessment and compiler validation remain separate from human acceptance.
+
+Replay outcome (profile v11 / composition-v17): the final Codex Luna Medium run
+on #785's unchanged `43dbe017` evidence preserves
+`build_publication_links → resolve_references → REFERENCE_STATUS_SPEC.decide`
+and distinguishes supplied diagnostic tests and the partial bound implementation
+from missing target tests/policies. The pinned compiler validates projections;
+the agent separately inspected the five selected call edges against source.
+One bounded `absent_side` repair was required. Two earlier local interpretations
+remain retained, including their inaccurate limitations; none was published.
+The existing comparison fixture now uses a 65536 context budget to exercise
+navigation with the expanded profile; smaller-budget fallback remains unchanged.
+Human acceptance and production activation remain separate steps.

@@ -238,7 +238,7 @@ def plan_schema(request, *, include_relations=False):
             "request_digest": {"type": "string", "const": request["request_digest"]},
             "nodes": {"type": "array", "maxItems": 100, "items": node_schema},
             "summary": {**canonical["summary"], "description": "Russian: start with the actual code/comment difference, then preserved responsibility and knowledge boundary. Do not just describe function purpose."},
-            "limitations": {**canonical["limitations"], "description": "Write missing evidence specific to this interpretation in Russian; do not repeat request boilerplate."},
+            "limitations": {**canonical["limitations"], "description": "Write missing evidence specific to this interpretation in Russian; do not repeat request boilerplate. Check sources[].path/content and omissions before claiming absence. Name exact missing target files/symbols; distinguish supplied tests of the tool from unavailable tests it references. Partial excerpts are not wholly absent files. Check each referenced path/symbol separately; supplied or excerpted implementations prevent claiming all binding targets are missing. Describe unavailable content, not an assumed missing identifier. Source availability, comparison coverage and observed execution are separate gaps."},
         },
     }
     # Existing callers and retained node-only plans remain supported. Live

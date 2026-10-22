@@ -195,8 +195,8 @@ and is a consumer-profile rule, not a Hypercode language restriction.
 
 ## G1 common relationship contract
 
-Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v16`
-and reviewer profile v10. The relationship vocabulary is `depends_on`, `calls`,
+Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v17`
+and reviewer profile v11. The relationship vocabulary is `depends_on`, `calls`,
 `shared_contract`, `data_flow`, `requires`, `available_when`, and `reuses_rule`.
 The same descriptions apply across stacks: a callee may be a function, service,
 syscall or policy; a common type is a shared contract, not proof of shared
@@ -217,7 +217,7 @@ five original relation kinds, labels and property keys. Node-only conversion
 remains available for direct callers; live providers require the full current
 plan. Saved results are never relabelled or given new inferred relationships.
 
-A fresh generation requires a fresh request bound to profile v10. Old requests
+A fresh generation requires a fresh request bound to profile v11. Old requests
 are not silently upgraded; their original pinned profile/code or retained
 rendered artifacts remain the historical interpretation. Already sanitized
 composition-v10 tracking events remain replayable without accepting old
@@ -286,3 +286,42 @@ vocabulary, compiler checks and rendering remain unchanged. This is a generation
 instruction, not deterministic semantic validation or a new merge gate. Saved
 outputs retain their original identities; fresh requests bind profile v10.
 Already sanitized v15 tracking events remain replayable.
+
+## Preserve call paths and specific knowledge gaps
+
+Profile v11 / prompt v17 addresses the SpecGraph #785 replay's unsupported
+shortcut from an adapter to a policy invoked by its resolver. A `source_analysis`
+`calls` row describes one immediate invocation. For A → B → C, selected rows
+preserve the supported steps and cite each actual caller's callsite. Intermediate
+operations do not require extra tree nodes. Within the existing six-row bound,
+select fewer useful edges rather than collapsing a delegation boundary; a source
+definition, import or prose flow alone is insufficient to establish a direct call.
+The architectural owner stays in `owner_id`; it does not supply a fictional
+concrete caller name.
+
+Compact node selection should expose the change's central architectural
+mechanism. A source-bound diagnostic may need source acquisition, resolution and
+report responsibilities; its policy names alone need not explain that mechanism.
+This is conditional guidance, not a required pipeline-shaped tree or call graph.
+
+Limitations compare the supplied path/content inventory and omission ledger.
+Supplied tool tests and unavailable referenced target tests are different facts.
+Name the latter's actual paths/symbols and inspect each target independently;
+a supplied implementation must not be bundled with missing bound tests/policies.
+An omission ID is not supplied content. Distinguish partial source, missing
+comparison and unobserved execution. Do not claim that an entire category is
+missing when relevant files were supplied.
+
+The Codex prompt repeats a compact supplied-source inventory after the complete
+request, retaining source IDs, sides, paths and line ranges. It is derived only
+from validated request records, carries untrusted data labels, and adds no
+source collection, symbol inference or execution claims. The complete original
+request remains unchanged; existing prompt byte limits still apply. Other
+providers retain the shared profile guidance without this Codex prompt envelope.
+
+These are shared generation/schema-description instructions, independent of
+repository, language or framework. Plan v3, request v5, result v2, relationship
+vocabulary and rendering are unchanged. Compiler/reference checks still do not
+prove that a call edge is semantically true. Fresh requests bind v11; retained
+v10 outputs are not edited/relabelled, and sanitized v16 tracking events remain
+replayable. This change adds no new semantic validation or merge gate.

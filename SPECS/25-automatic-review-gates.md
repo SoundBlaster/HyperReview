@@ -69,9 +69,14 @@ plans remain retained. Legacy v1/v2 sources grant no thread notification writes.
 Ordinary incomplete deliveries and newly available previews take priority over
 old notification backfills, which run only when no ordinary delivery is ready.
 
-Failed and interrupted analyses keep their threads open with an explicit failure
-notice; they are not silently retried or reported as successful reviews. A stale
-analysis keeps its gate open until an eligible replacement review succeeds.
+Once an analysis is durably `failed` (including an interrupted job), its own
+automatic thread receives a distinct `failed_released` reply explaining that
+no review or approval was produced and that a tool failure must not block merge.
+Only after confirming this reply does the controller resolve the exact journaled
+thread. Its terminal gate status is `failed_released`, completion outcome remains
+`failed`, and the preview job retains its failure code. No preview is published,
+no inference is replayed, and no earlier gates are released by this failure.
+A stale analysis keeps its gate open until an eligible replacement review succeeds.
 Successful current-revision analysis may release earlier automatic gates for the
 same PR after verifying each journaled root and ownership. Manual gates and
 other people's discussions are outside this authority.
@@ -83,6 +88,14 @@ completion before selecting more analysis work. Mutation/reconciliation budgets
 are bounded; unresolved outcomes remain visible for operator attention with
 their exact private plans retained. The controller never infers a successful
 remote write from a local exception or a deadline.
+
+Failure release uses the existing ownership, grant, root binding and mutation
+limits. Recovery verifies the exact failure-release reply when resolution already
+happened remotely. A new reply marker preserves earlier failure notices without
+editing their historical wording. Reconciliation can release older committed
+failures that previously kept their gates open; it does not repeatedly process
+`failed_released` records or relabel them when a later review succeeds. An
+unconfirmed notification or resolution stays pending for bounded recovery.
 
 Generation failures retain only a closed diagnostic code: known Codex process,
 timeout, event, output or isolation failures, or one/two allowlisted plan issue

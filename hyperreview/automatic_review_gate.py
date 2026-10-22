@@ -693,6 +693,8 @@ def _reply_body(record, outcome):
         message = "This HyperReview analysis no longer matches the pull request revisions. It cannot release the review gate."
     elif outcome == "replacement_completed":
         message = "A newer HyperReview analysis for this pull request completed successfully. This earlier review gate can be released."
+    elif outcome == "failed_released":
+        message = "HyperReview analysis failed before completion. No review or approval was produced. This automatic review thread is being closed so the tool failure does not block merging."
     else:
         message = "This HyperReview analysis failed before completion. The failure does not release the review gate."
     return f"{marker}\n{message}"
@@ -746,7 +748,9 @@ def _reply_once(db, record, api, outcome):
     return confirmed
 
 
-def _resolve(db, record, *, superseded=False):
+def _resolve(db, record, *, superseded=False, outcome="preview_ready"):
+    if outcome not in ("preview_ready", "failed"):
+        _fail("invalid_review_gate_outcome")
     if record["mutation_attempts"] >= _MAX_MUTATIONS:
         _set(db, record["job"], status="needs_attention", failure_code="mutation_limit")
         _fail("review_gate_write_uncertain")
@@ -759,17 +763,19 @@ def _resolve(db, record, *, superseded=False):
         _fail("review_gate_write_uncertain")
     if thread.get("id") != record["thread_id"] or thread.get("isResolved") is not True:
         _fail("review_gate_write_uncertain")
-    _set(db, record["job"], status="superseded" if superseded else "completed",
-         completion_outcome="replacement_completed" if superseded else "preview_ready",
+    terminal_status = "failed_released" if outcome == "failed" else "completed"
+    _set(db, record["job"], status="superseded" if superseded else terminal_status,
+         completion_outcome="replacement_completed" if superseded else outcome,
          failure_code=None)
 
 
-def _mark_resolved_after_recovery(db, record, api):
-    """Confirm an already-resolved thread has this job's exact success reply."""
-    marker = f"{_REPLY_PREFIX}{record['job']}:preview_ready -->"
+def _mark_resolved_after_recovery(db, record, api, *, outcome="preview_ready"):
+    """Confirm an already-resolved thread has this job's exact terminal reply."""
+    reply_outcome = "failed_released" if outcome == "failed" else "preview_ready"
+    marker = f"{_REPLY_PREFIX}{record['job']}:{reply_outcome} -->"
     matches = [item for item in _comments(api, record["repository"], record["pr"])
                if item.get("user") == record["account"] and marker in item.get("body", "")]
-    expected = _reply_body(record, "preview_ready")
+    expected = _reply_body(record, reply_outcome)
     if (len(matches) != 1 or matches[0].get("body") != expected
             or matches[0].get("in_reply_to_id") != record["comment_id"]):
         _fail("review_gate_binding_changed")
@@ -777,7 +783,8 @@ def _mark_resolved_after_recovery(db, record, api):
             or _comment_id(matches[0].get("html_url"), record["repository"], record["pr"])
             != matches[0]["id"]):
         _fail("review_gate_binding_changed")
-    _set(db, record["job"], status="completed", completion_outcome="preview_ready",
+    _set(db, record["job"], status="failed_released" if outcome == "failed" else "completed",
+         completion_outcome=outcome,
          reply_attempts=max(record["reply_attempts"], 1), failure_code=None)
     return record["url"]
 
@@ -787,7 +794,7 @@ def _schedule_older(db, record):
     with db:
         db.execute("UPDATE automatic_review_gates SET status='superseding',superseded_by=?,"
                    " recovery_attempts=0,updated_at=? WHERE repository=? AND pr=? AND job!=?"
-                   " AND status NOT IN ('completed','superseded')"
+                   " AND status NOT IN ('completed','superseded','failed_released')"
                    " AND (superseded_by IS NULL OR superseded_by!=?)",
                    (record["job"], int(time.time()), record["repository"], record["pr"],
                     record["job"], record["job"]))
@@ -825,7 +832,7 @@ def _finish_older(db, record, config, api):
 
 
 def complete(db, root, config, task, job, outcome, api_factory=None):
-    """Record a terminal result; resolve only a committed successful preview."""
+    """Release this job's gate after committed success or explicit terminal failure."""
     _setup(db)
     options = config.get("review_gate") if type(config) is dict else None
     validate_options(options, config.get("repositories", []))
@@ -851,9 +858,10 @@ def complete(db, root, config, task, job, outcome, api_factory=None):
         _fail("review_gate_preview_not_committed")
     if normalized == "stale" and (preview is None or preview["state"] != "stale"):
         _fail("review_gate_preview_not_committed")
+    releases_gate = normalized in ("preview_ready", "failed")
     api = _api(api_factory)
     thread_id, account, is_resolved = _bound_thread(
-        record, api, must_be_unresolved=normalized != "preview_ready",
+        record, api, must_be_unresolved=not releases_gate,
         allow_outdated=normalized != "preview_ready")
     if record["thread_id"] != thread_id or record["account"] != account:
         _fail("review_gate_binding_changed")
@@ -861,22 +869,26 @@ def complete(db, root, config, task, job, outcome, api_factory=None):
         # Success requires a current eligibility and revision observation.
         _fresh(api, task)
         _require_resolution_rules(api, repo, number, options["repositories"], account)
-        if is_resolved:
-            if record["status"] in ("completing", "completed"):
-                url = _mark_resolved_after_recovery(db, record, api)
+    if releases_gate and is_resolved:
+        terminal_status = "failed_released" if normalized == "failed" else "completed"
+        if record["status"] in ("completing", terminal_status):
+            url = _mark_resolved_after_recovery(db, record, api, outcome=normalized)
+            if normalized == "preview_ready":
                 _schedule_older(db, record)
-                return url
-            _fail("review_gate_binding_changed")
-    _reply_once(db, record, api, normalized)
+            return url
+        _fail("review_gate_binding_changed")
+    _reply_once(db, record, api, "failed_released" if normalized == "failed" else normalized)
     _set(db, job_id, completion_outcome=normalized,
-         status="completing" if normalized == "preview_ready" else normalized)
-    if normalized == "preview_ready":
+         status="completing" if releases_gate else normalized)
+    if releases_gate:
         record = db.execute("SELECT * FROM automatic_review_gates WHERE job=?", (job_id,)).fetchone()
-        _fresh(api, task)
-        _bound_thread(record, api)
-        _resolve(db, record)
+        if normalized == "preview_ready":
+            _fresh(api, task)
+        _bound_thread(record, api, allow_outdated=normalized == "failed")
+        _resolve(db, record, outcome=normalized)
         record = db.execute("SELECT * FROM automatic_review_gates WHERE job=?", (job_id,)).fetchone()
-        _schedule_older(db, record)
+        if normalized == "preview_ready":
+            _schedule_older(db, record)
     return record["url"]
 
 
@@ -913,7 +925,8 @@ def reconcile(db, root, config, api_factory=None):
                       or (item["status"] == "planned" and item["preview_state"] == "queued")
                       or (item["status"] == "needs_attention" and terminal)
                       or (item["status"] in ("open", "completing") and terminal)
-                      or (item["status"] in ("failed", "stale")
+                      or (item["status"] == "failed" and item["preview_state"] == "failed")
+                      or (item["status"] == "stale"
                           and item["completion_outcome"] is None and terminal))
         if actionable:
             row = item
@@ -925,7 +938,7 @@ def reconcile(db, root, config, api_factory=None):
                         if item["status"] == "completed" and item["preview_state"] == "preview_ready"
                         and item["grant_digest"] == _grant(config)
                         and db.execute("SELECT 1 FROM automatic_review_gates WHERE repository=? AND pr=?"
-                                       " AND job!=? AND status NOT IN ('completed','superseded')"
+                                       " AND job!=? AND status NOT IN ('completed','superseded','failed_released')"
                                        " AND (superseded_by IS NULL OR superseded_by!=?) LIMIT 1",
                                        (item["repository"], item["pr"], item["job"], item["job"])).fetchone()), None)
         if current is None:
@@ -954,13 +967,13 @@ def reconcile(db, root, config, api_factory=None):
             _set(db, row["job"], recovery_attempts=row["recovery_attempts"] + 1)
             complete(db, root, config, task, row["job"], row["preview_state"],
                      api_factory=lambda: api)
-        elif row["status"] in ("open", "completing") and row["preview_state"] == "preview_ready":
+        elif row["status"] in ("open", "completing") and row["preview_state"] in ("preview_ready", "failed"):
             _set(db, row["job"], recovery_attempts=row["recovery_attempts"] + 1)
-            complete(db, root, config, task, row["job"], "preview_ready", api_factory=lambda: api)
+            complete(db, root, config, task, row["job"], row["preview_state"], api_factory=lambda: api)
         elif row["status"] == "open" and row["preview_state"] in ("failed", "stale"):
             _set(db, row["job"], recovery_attempts=row["recovery_attempts"] + 1)
             complete(db, root, config, task, row["job"], row["preview_state"], api_factory=lambda: api)
-        elif row["status"] in ("failed", "stale") and row["reply_attempts"] == 0:
+        elif row["status"] == "failed" or (row["status"] == "stale" and row["reply_attempts"] == 0):
             if row["preview_state"] == row["status"]:
                 _set(db, row["job"], recovery_attempts=row["recovery_attempts"] + 1)
                 complete(db, root, config, task, row["job"], row["preview_state"],
@@ -993,7 +1006,7 @@ def link(db, job):
         return None
     comment_id = _comment_id(row["url"], row["repository"], row["pr"])
     if (row["comment_id"] != comment_id or row["status"] not in
-            ("open", "completed", "failed", "stale", "completing", "needs_attention")):
+            ("open", "completed", "failed", "failed_released", "stale", "completing", "needs_attention")):
         _fail("review_gate_state_invalid")
     _load_plan(row)
     return row["url"]

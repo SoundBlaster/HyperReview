@@ -289,3 +289,13 @@ the retry/reconciliation interval. Intake/publisher retry delays, one-generation
 limits, fresh revision checks, standing grants and no-replay journals remain.
 Installed services require a separate reviewed update; no journal reset or grant
 change is part of this correction.
+
+## Reviewer follow-up — SpecGraph #785
+
+Profile v11 / prompt v17 preserves intermediate call steps, distinguishes
+architectural owners from concrete caller symbols, selects the main mechanism
+before auxiliary policy inventories and names specific unavailable targets.
+Replay the immutable v10 #785 evidence on the same revisions and Luna 6 Medium
+configuration. Inspect each generated edge against its actual callsite and check
+limitations against supplied paths. Keep original outputs and receipts intact;
+source assessment and compiler validation remain separate from human acceptance.

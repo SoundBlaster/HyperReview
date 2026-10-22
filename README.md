@@ -348,9 +348,12 @@ This creates one review comment anchored to the selected changed line. GitHub
 returns its permalink. When preparing the completed review preview, pass that
 URL to `publish-plan` with `--review-gate-url`; the resulting ordinary summary
 comment links back to the review thread. HyperReview never resolves the thread.
-The repository's “require conversation resolution” rule supplies the merge
-gate; a timeline comment alone does not block merging. The expected completion
-time is an operator estimate, not an enforced deadline.
+The repository owner's “require conversation resolution” rule supplies any merge
+blocking; a timeline comment alone does not block merging. Automatic reviews
+start and complete independently of whether the actual base branch has that
+rule, including intermediate stack branches. New start threads explain this
+boundary; HyperReview does not query or change branch protection. The expected
+completion time is an operator estimate, not an enforced deadline.
 
 ```sh
 python3 -m hyperreview publish-plan \

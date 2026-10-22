@@ -79,7 +79,8 @@ def _added_line(patch, target):
 
 def _gate_body(expected_completion, gate_id):
     return (f"{GATE_MARKER}{gate_id} -->\n\n"
-            "**HyperReview review started.** This unresolved review thread is the merge gate.\n\n"
+            "**HyperReview review started.** This thread tracks review progress. "
+            "Whether unresolved threads block merging depends on the repository owner's GitHub rules.\n\n"
             f"Expected completion: {expected_completion} (UTC).\n\n"
             "The final review summary will link back to this thread. Resolve it only after "
             "the review is complete.")

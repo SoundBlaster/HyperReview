@@ -83,6 +83,7 @@ non-draft/open PR, file-format and source-budget checks remain in force.
 Allowlisting alone does not activate a scheduled worker or grant publication:
 the operator must select the repositories in the intake/private-preview
 configuration and the standing comment publication grant. Automatic review
-gates additionally require effective review-thread resolution rules on the
-actual PR base branch. A protected default branch does not establish protection
-for a stacked PR targeting an intermediate branch.
+threads use the separate repository-scoped thread grant. Review-thread resolution
+rules are owned by the repository administrator, not an analysis prerequisite.
+An intermediate stack branch may have different protection from the default
+branch; the worker does not require, change or claim those protections.

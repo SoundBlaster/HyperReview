@@ -392,3 +392,24 @@ optional-feature, literal-binding and omission rules. All seven fixture context
 allocations are restored to 32768; production defaults/reserve enforcement and
 small/computed boundary checks remain unchanged. Replay the same evidence with
 a fresh compact-profile digest before recording the final outcome.
+
+## Keep merge enforcement with the repository owner
+
+BuildHunter #104 targets `test/migration-parity-baseline`; its v12 job stopped
+with `review_gate_resolution_rule_missing` before inference. Conversation
+resolution rules determine GitHub merge enforcement, not eligibility to review.
+Remove the ruleset/classic-protection prerequisite from automatic thread planning
+and successful completion. New start comments describe progress and qualify
+merge blocking by the owner's GitHub rules. Retain account/repository/revision
+checks, explicit thread grants, exact root ownership, uncertain-write recovery,
+completion/failure handling and mutation limits. Existing comments/plans remain
+immutable. Changed gate code produces a fresh worker-generation fingerprint, so
+a failed pre-analysis job can be selected under the reviewed new implementation
+without resetting its journal. No inference, comment write, protection change or
+production activation is part of preparing this patch.
+
+Read-only #104 planning succeeds at `b098195f`: four GitHub reads, no
+ruleset/protection reads, no GitHub writes or inference, and no production
+state changes. The private plan contains the qualified progress-thread text.
+Python AST parsing and whitespace checks pass; no tests were added or run
+locally. Existing CI remains the regression gate for the proposed change.

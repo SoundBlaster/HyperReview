@@ -39,6 +39,17 @@ remain responsible for actual merge enforcement; HyperReview does not change
 rulesets or treat an inline comment as an atomic GitHub lock. ETA expiry does not
 release a gate.
 
+Repository rules are not prerequisites for starting or completing analysis.
+The worker does not query branch rulesets/protection or require conversation
+resolution on the PR's base branch, including an intermediate stacked-PR branch.
+Missing, disabled or unreadable merge-protection settings do not stop a review.
+The start comment identifies a progress thread and states that merge blocking
+depends on the repository owner's GitHub rules. Existing thread grants, eligible
+account/repository/revision checks, root ownership, recovery and completion
+budgets remain mandatory. No GitHub protection is installed or relaxed.
+Already journaled plans/comments retain their original bodies and hashes for
+recovery; the clarified wording applies to newly planned threads.
+
 The gate transaction uses its own bounded GitHub read client (120 seconds),
 separate from a short revision observation (30 seconds). Creation, inventory and
 thread binding must not consume an already-exhausted revision-check deadline.

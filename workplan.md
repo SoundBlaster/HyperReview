@@ -479,3 +479,29 @@ compatibility evidence.
 PR #53 is now merged and the automatic worker uses the inspected installed
 Codex 0.163.0 pin. The earlier startup limitation above is historical; repeat
 the same-source v13 comparison on the compatible runtime before activation.
+
+The first compatible v13 replay completed with the identical 36 sources and
+compiled, but omitted the declared GUI verification edge: profile wording made
+the model incorrectly require `file::symbol`. Clarify that a literal test-file
+path or check ID explicitly mapped to an obligation is a complete target. Keep
+same-side literal evidence validation and prohibit invented symbols. Repeat the
+private replay; the first compiler success alone does not establish improved
+architecture explanation. CI observations rendered separately with 12 checks
+and an explicit limit omission; no public comment was written by this replay.
+
+The second replay produced the correct three before/after verification rows,
+but copied the root role onto distinct descendants. Clarify per-node authored
+role preservation in the profile and provider schema: IDs must not disguise
+different responsibilities as repeated root instances. Keep the tree renderer,
+selector rules and structural validation unchanged; assess a fresh replay.
+
+Final same-source replay on installed Codex 0.163.0 / Luna Medium completed
+in one provider attempt (29.79 seconds). The compact tree preserves
+BuildHunterRuntime / SharedRuntime / ArtifactClassification; its `.hcs` exposes
+the newly declared GUI test-file binding without an invented symbol. These are
+selected relations, not a complete catalogue or removal of existing checks.
+The generated projections compiled, and optional CI rendered 12 head-bound
+check-runs with an explicit truncation notice under its separate spoiler.
+The profile is 14827 bytes, below the earlier 15384-byte v11 profile. Four
+private replay receipts preserve the intermediate interpretation errors and
+corrections; no historical PR comment was changed and no local test suite ran.

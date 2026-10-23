@@ -231,9 +231,16 @@ For additions of tests, documentation or specification bindings, profile v13
 first inspects supplied declarations linking obligations to checks. When the
 main change adds another verification path to an existing responsibility,
 prioritize that declared `verified_by` delta over secondary loader/data-flow
-edges. The `.hc` composition can remain unchanged. Preserve supported earlier
+edges. Select the obligation owner and its complete authored ancestor chain,
+omitting unrelated branches without flattening containing owners.
+The `.hc` composition can remain unchanged. Preserve supported earlier
 bindings, add the new complete literal target only on its declared side, and
 keep the six-relation budget. Do not add an edge without its declaration.
+
+Preserve the declaration's target granularity: a complete test-file path or
+check ID is valid when explicitly linked to the obligation; `file::symbol` is
+not required. Do not invent symbols or infer bindings from file coexistence.
+The existing literal same-side evidence check applies to all these targets.
 
 Sharing a fixture/corpus does not imply identical client profiles or behavior.
 `verified_by` establishes a declared binding, not execution, passing or complete

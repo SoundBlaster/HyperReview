@@ -45,7 +45,7 @@ def schema(request):
         "description": (
             "Up to six important source-supported relationships, separate from the .hc tree. "
             "Explain dependencies, operation calls, shared data contracts, data flow, boundary obligations and availability conditions across any stack. Use reuses_rule only for one actual rule with multiple application sites, not a shared type. "
-            "Use verified_by for a declared obligation-to-check binding, never proof the check passed. "
+            "Use verified_by for a declared obligation-to-check binding, never proof the check passed. A complete declared test-file path or check ID is valid; file::symbol is not required. Preserve declaration granularity and do not invent a symbol. "
             "On an attribute-only change keep the same .hc composition and describe before/after properties. "
             "Endpoints can name an obligation or source-established symbol without adding tree nodes. "
             "Ground each edge's direction and kind, not just its endpoints. Coexistence, containment or optional availability does not establish a dependency or integration. "

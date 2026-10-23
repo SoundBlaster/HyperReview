@@ -140,6 +140,35 @@ Operational/security prompt instructions remain in the full local ledger.
 Literal declaration and Python syntax anchors can narrow citations; these are
 navigation aids with whole-record fallback, not semantic verification.
 
+Profile v14 / prompt `composition-v20` requires checking literal same-revision
+map declarations before asserting a role was absent. Optional bounded map hints
+index core node lines near map edits, preserving path, source ID and absolute
+line. They are partial navigation data in an untrusted user message, never a
+complete map, authoritative identity match or an absence check. The supplied
+source records remain unchanged. The index selects at most 24 declarations per
+record; edit-neighborhood matching is limited to pairs of at most 512 lines.
+It shares the existing 6144-byte optional navigation payload budget with diff
+and policy-reference hints. Shared-object parameter wiring and immediate
+calls take priority over secondary capability declarations when they explain
+the main changed mechanism; object reuse is not decision-rule reuse.
+
+For plain core node lines beginning at the authored root, local conversion
+also checks positive containment paths of uniquely named roles in cited `.hc`
+records. Within a shared selected root, a plan cannot omit an intermediate
+authored owner. The safe `authored_parent` issue requests a repaired plan. A
+review may start at an authored subtree; conflicting cited paths, repeated
+roles, offset windows and unsupported syntax do not establish a unique path.
+This is a structural consistency check, not a Hypercode parser, an absence
+check or proof of source correspondence. Compiler validation remains separate.
+
+Compact render v14 adds bounded literal identifier windows for other code
+formats alongside Python AST and declarative anchors. They locate supplied
+text, not resolved calls or verified behavior; unmatched references retain the
+whole supplied range. Repeated omissions are grouped by path and reason with
+per-side occurrence counts. Equal configuration coverage is combined only when
+displayed coverage, excerpt count and omitted ranges match. Exact raw ledgers,
+request/result bindings and the six-relationship limit remain unchanged.
+
 ## Delivery and remaining work
 
 This layer follows #41 -> #42. It does not activate runtime code, change service

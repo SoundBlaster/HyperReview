@@ -5,6 +5,7 @@ rule is semantically equivalent across call sites, or that a call executes.
 """
 
 import ast
+import difflib
 import re
 from pathlib import PurePosixPath
 
@@ -12,6 +13,81 @@ from pathlib import PurePosixPath
 MAX_SOURCE_BYTES = 256 * 1024
 MAX_RESULTS = 4
 _IDENTIFIER = re.compile(r"\b[A-Za-z_]\w*\b")
+_CORE_NODE = re.compile(r"( *)([A-Za-z_][A-Za-z0-9_]*)(?:\.[A-Za-z_][A-Za-z0-9_]*)*(?:#[A-Za-z_][A-Za-z0-9_]*)? *")
+
+
+def literal_authored_paths(source):
+    """Return positive, unique role paths for a plain core .hc prefix.
+
+    Unknown syntax, tabs, offset windows or multiple roots disable this helper.
+    This does not validate Hypercode or establish absent roles or cross-map IDs.
+    """
+    if (not source["path"].endswith(".hc") or source["line_start"] != 1
+            or len(source["content"].encode("utf-8")) > MAX_SOURCE_BYTES):
+        return {}
+    paths, duplicates, stack = {}, set(), []
+    roots = 0
+    for line in source["content"].splitlines():
+        if not line.strip() or line.lstrip().startswith(("//", "# ")):
+            continue
+        match = _CORE_NODE.fullmatch(line)
+        if match is None:
+            return {}
+        indent, role = len(match[1]), match[2]
+        while stack and stack[-1][0] >= indent:
+            stack.pop()
+        if not stack:
+            roots += 1
+            if roots > 1 or indent:
+                return {}
+        path = tuple(value[1] for value in stack) + (role,)
+        if role in paths:
+            duplicates.add(role)
+        paths[role] = path
+        stack.append((indent, role))
+    return {role: path for role, path in paths.items() if role not in duplicates
+            and not any(ancestor in duplicates for ancestor in path)}
+
+
+def authored_map_hints(request):
+    """Index literal .hc declarations near map edits, with same-side lines.
+
+    This deliberately recognizes only plain core node lines. It is navigation,
+    not a Hypercode parser, identity resolver or a complete absence check.
+    """
+    maps = {}
+    for source in request["sources"]:
+        if (PurePosixPath(source["path"]).suffix == ".hc"
+                and len(source["content"].encode("utf-8")) <= MAX_SOURCE_BYTES):
+            maps.setdefault(source["path"], {}).setdefault(source["side"], []).append(source)
+    for path, sides in sorted(maps.items()):
+        if any(len(records) != 1 for records in sides.values()):
+            continue  # Do not align ambiguous or differently windowed records.
+        records = {side: values[0] for side, values in sides.items()}
+        lines = {side: record["content"].splitlines() for side, record in records.items()}
+        if any(len(lines[side]) != record["line_end"] - record["line_start"] + 1
+               for side, record in records.items()):
+            continue
+        focus = {side: set() for side in records}
+        if (set(records) == {"before", "after"}
+                and records["before"]["line_start"] == records["after"]["line_start"]
+                and max(map(len, lines.values())) <= 512):
+            matcher = difflib.SequenceMatcher(None, lines["before"], lines["after"], autojunk=False)
+            for tag, a, b, c, d in matcher.get_opcodes():
+                if tag != "equal":
+                    for side, lower, upper in (("before", a, b), ("after", c, d)):
+                        focus[side].update(range(max(0, lower - 4), min(len(lines[side]), upper + 4)))
+        for side, record in records.items():
+            declarations = []
+            for index, line in enumerate(lines[side]):
+                if _CORE_NODE.fullmatch(line):
+                    declarations.append((index, line))
+            selected = sorted(declarations, key=lambda row: (row[0] not in focus[side], row[0]))[:24]
+            if selected:
+                yield {"source_id": record["id"], "path": path, "side": side,
+                       "declarations": [f"{record['line_start'] + index}: {line}"
+                                        for index, line in sorted(selected)],
+                       "partial_index": True}
 
 
 def _source_tree(source):
@@ -284,15 +360,16 @@ def _declaration_spans(source, text):
     names = set(re.findall(r"\b[A-Za-z][A-Za-z0-9_-]{2,}\b", text))
     names = {name for name in names if "_" in name or "-" in name
              or re.search(r"[a-z][A-Z]", name) or name.isupper()}
+    names.update(re.findall(r"\b[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z][A-Za-z0-9_-]*)+\b", text))
     candidates = []
     seen = set()
     for index, line in enumerate(lines):
         matches = sorted(name for name in names if re.search(
-            r"(?<![A-Za-z0-9_-])" + re.escape(name) + r"(?![A-Za-z0-9_-])", line))
+            r"(?<![A-Za-z0-9_.-])" + re.escape(name) + r"(?![A-Za-z0-9_.-])", line))
         if not matches:
             continue
         lower, upper = max(0, index - 1), min(len(lines), index + 3)
-        declaration = re.match(r"^(\s*)-\s+id:\s*['\"]?([A-Za-z][A-Za-z0-9_-]+)", line)
+        declaration = re.match(r"^(\s*)-\s+id:\s*['\"]?([A-Za-z][A-Za-z0-9_.-]+)", line)
         is_declaration = declaration and declaration.group(2) in matches
         if is_declaration:
             lower, upper = index, index + 1
@@ -319,18 +396,70 @@ def _declaration_spans(source, text):
     return sorted(result, key=lambda value: value["line_start"])
 
 
+def _code_literal_spans(source, text):
+    """Find bounded literal identifier windows in other supplied code formats.
+
+    These are lexical anchors, not parsed definitions or resolved calls. No
+    language adapter is required, and an unmatched claim keeps its full range.
+    """
+    if not isinstance(source, dict) or not isinstance(source.get("path"), str):
+        return []
+    if PurePosixPath(source["path"]).suffix in (".md", ".hc", ".hcs", ".yaml", ".yml", ".json", ".toml", ".py"):
+        return []
+    content, start, end = source.get("content"), source.get("line_start"), source.get("line_end")
+    if not isinstance(content, str) or type(start) is not int or type(end) is not int or start < 1:
+        return []
+    if len(content.encode("utf-8")) > MAX_SOURCE_BYTES:
+        return []
+    lines = content.splitlines()
+    if len(lines) != end - start + 1:
+        return []
+    names = {name for name in _IDENTIFIER.findall(text)
+             if "_" in name or re.search(r"[a-z][A-Z]", name)
+             or (len(name) > 2 and name[0].isupper())}
+    windows = []
+    for index, line in enumerate(lines):
+        if line.lstrip().startswith(("//", "/*", "*", "# ")):
+            continue
+        matches = sorted(name for name in names if re.search(
+            r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])", line))
+        if not matches:
+            continue
+        stop = min(len(lines), index + 3)
+        # Retain nearby multiline arguments rather than citing only the call
+        # name. This is bounded lexical navigation, not a language parser.
+        balance = line.count("(") - line.count(")")
+        cursor = index + 1
+        while balance > 0 and cursor < min(len(lines), index + 14):
+            balance += lines[cursor].count("(") - lines[cursor].count(")")
+            cursor += 1
+        stop = max(stop, cursor)
+        lower, upper = max(0, index - 2) + start, stop + start - 1
+        if windows and lower <= windows[-1]["line_end"] + 1:
+            previous = windows[-1]
+            # Keep navigation windows bounded even for repeatedly used names.
+            if upper - previous["line_start"] < 16:
+                previous["line_end"] = upper
+                previous["label"] = ", ".join(sorted(set(previous["label"].split(", ")) | set(matches)))
+                continue
+        if len(windows) == MAX_RESULTS:
+            break
+        windows.append({"label": ", ".join(matches), "line_start": lower, "line_end": upper})
+    return windows
+
+
 def citation_spans(source, text):
     """Return up to four syntax/literal spans for identifiers named in ``text``.
 
-    Python uses parsed AST locations; declarative formats use exact literal
-    anchors. Absolute lines remain within the supplied record. Neither method
+    Python uses parsed AST locations; other formats use exact literal anchors.
+    Absolute lines remain within the supplied record. Neither method
     establishes semantic binding, dynamic dispatch or execution.
     """
     if not isinstance(text, str):
         return []
     parsed = _source_tree(source)
     if parsed is None:
-        return _declaration_spans(source, text)
+        return _declaration_spans(source, text) or _code_literal_spans(source, text)
     tree, _content, start, end = parsed
     mentioned = set(_IDENTIFIER.findall(text))
     if not mentioned:

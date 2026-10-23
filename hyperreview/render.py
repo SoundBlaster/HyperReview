@@ -8,7 +8,7 @@ from urllib.parse import quote
 from . import intake, model_contract, relation_sheet, source_analysis, relation_plan
 
 
-COMPACT_RENDER_VERSION = "compact-v13"
+COMPACT_RENDER_VERSION = "compact-v14"
 _SMALL_PROJECTION_LINES = 40
 
 
@@ -180,15 +180,43 @@ def _companion_details(receipt):
 
 def _configuration_coverage(request):
     lines = []
+    groups = {}
     for coverage in request.get("configuration_coverage", []):
+        key = (coverage["path"], coverage["coverage"], len(coverage["source_ids"]),
+               tuple((item["line_start"], item["line_end"], item["reason"])
+                     for item in coverage["omissions"]))
+        groups.setdefault(key, []).append(coverage)
+    for records in groups.values():
+        coverage = records[0]
         omissions = coverage["omissions"]
         ranges = "; ".join(f"L{item['line_start']}–{item['line_end']}: {item['reason']}"
                            for item in omissions[:8])
         extra = f"; ещё {len(omissions) - 8} диапазонов" if len(omissions) > 8 else ""
         lines.append("- Конфигурация: " + _text(coverage["path"]) + "; "
-                     + _text(coverage["side"]) + "; охват " + _text(coverage["coverage"])
+                     + " / ".join(_text(item["side"]) for item in records)
+                     + "; охват " + _text(coverage["coverage"])
                      + f"; фрагментов {len(coverage['source_ids'])}. "
                      + _text(ranges + extra) + "\n")
+    return lines
+
+
+def _omission_summary(request):
+    """Group repeated ledger entries without erasing side or occurrence counts."""
+    groups = {}
+    for item in request["omissions"]:
+        reasons = groups.setdefault(item.get("path"), {})
+        counts = reasons.setdefault(item["reason"], {})
+        side = item["side"]
+        counts[side] = counts.get(side, 0) + 1
+    lines = []
+    for path, reasons in groups.items():
+        details = []
+        for reason, counts in reasons.items():
+            sides = ", ".join(("до" if side == "before" else "после") + f": {count}"
+                              for side, count in sorted(counts.items()))
+            details.append(_text(reason) + " (" + sides + ")")
+        lines.append("- Пропущено: " + _text(path or "путь скрыт политикой")
+                     + " — " + "; ".join(details) + ".\n")
     return lines
 
 
@@ -232,12 +260,15 @@ def _identity_source_ranges(request, result, sources, labels):
                 refs = sorted(sides[side], key=lambda source: (source["line_start"], source["line_end"]))
                 ranges = []
                 for source in refs:
-                    spans = source_analysis.citation_spans(source, identity["reason"]) or [source]
+                    anchors = " ".join(filter(None, (identity["reason"], identity.get("before_role"),
+                                                      identity.get("after_role"))))
+                    spans = source_analysis.citation_spans(source, anchors) or [source]
                     for span in spans:
                         narrowed = {**source, "line_start": span["line_start"], "line_end": span["line_end"]}
                         ranges.append(f"[L{span['line_start']}–{span['line_end']}]"
                                       f"({_source_url(request, narrowed, lines=True)})")
-                versions.append(("до: " if side == "before" else "после: ") + ", ".join(ranges))
+                versions.append(("до: " if side == "before" else "после: ")
+                                + ", ".join(dict.fromkeys(ranges)))
             lines.append("- " + _text(path) + " — " + "; ".join(versions) + "\n")
     return lines
 
@@ -372,9 +403,7 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
     # Operational instructions remain in the full local ledger, not public prose.
     for limitation in dict.fromkeys(result["limitations"]):
         lines.append("- " + _text(limitation) + "\n")
-    for omission in request["omissions"]:
-        lines.append("- Пропущено: " + _text(omission.get("path") or "путь скрыт политикой")
-                     + " — " + _text(omission["reason"]) + ".\n")
+    lines.extend(_omission_summary(request))
     lines.extend(_identity_source_ranges(request, result, sources, address_labels))
     lines.extend(["\n</details>\n", "**Ок или не ок?**\n"])
     return "\n".join(lines).encode("utf-8")

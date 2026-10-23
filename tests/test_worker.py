@@ -12,6 +12,7 @@ from hyperreview import intake, worker
 from hyperreview.launchd import write_launchd_plan
 from hyperreview.worker_task_eligibility import WorkerTaskContext, WorkerTaskEligibility
 from test_intake import FakeGitHub, PR, REPO
+from test_model_contract import pack as model_pack
 
 
 class WorkerGitHub(FakeGitHub):
@@ -132,6 +133,66 @@ class WorkerTests(unittest.TestCase):
             row = db.execute("SELECT attempts,failure_code FROM tasks").fetchone()
             self.assertEqual(tuple(row), (2, "collection_or_request_failed"))
             self.assertNotIn("private", str(db.execute("SELECT * FROM events").fetchall()))
+
+    def empty_evidence(self, reasons):
+        return model_pack(sources=[], omissions=[{"side": "both", "reason": reason} for reason in reasons],
+                          pr=PR["number"], base_sha=PR["base_sha"], head_sha=PR["head_sha"])
+
+    def test_permanent_empty_input_is_saved_and_never_collected_again(self):
+        evidence = self.empty_evidence(["operator_file"])
+        with patch("hyperreview.worker.intake.collect", return_value=evidence) as collect:
+            first = self.tick()
+            self.assertEqual(first["status"], "skipped")
+            self.assertEqual(first["omission_reasons"], ["operator_file"])
+            self.assertEqual(first["model_calls"], 0)
+            self.assertEqual(first["github_writes"], 0)
+            self.assertEqual(self.tick(10300)["status"], "idle")
+            self.assertEqual(collect.call_count, 1)
+        status = worker.status(self.config)
+        self.assertEqual(status["handoffs"], [])
+        self.assertEqual(status["counts"], {"skipped": 1})
+        self.assertEqual(status["skipped_tasks"][0]["evidence_digest"], evidence["evidence_digest"])
+        self.assertEqual(status["skipped_tasks"][0]["omission_reasons"], ["operator_file"])
+        with worker._state(self.state) as db:
+            row = db.execute("SELECT attempts,retry_after,failure_code,artifact,request_digest FROM tasks").fetchone()
+            self.assertEqual(tuple(row), (1, 0, None, None, None))
+
+    def test_reenabled_stale_skip_is_restored_without_collection_or_attempt_reset(self):
+        with patch("hyperreview.worker.intake.collect", return_value=self.empty_evidence(["input_byte_limit"])):
+            first = self.tick()
+        self.repositories(["SoundBlaster/SessionMonitor"])
+        self.tick(10300)
+        self.assertEqual(worker.status(self.config)["skipped_tasks"], [])
+        self.repositories([REPO])
+        with patch("hyperreview.worker.intake.collect") as collect:
+            self.assertEqual(self.tick(10600)["status"], "idle")
+            collect.assert_not_called()
+        restored = worker.status(self.config)["skipped_tasks"]
+        self.assertEqual(restored[0]["candidate"], first["candidate"])
+        self.assertEqual(restored[0]["omission_reasons"], ["input_byte_limit"])
+        with worker._state(self.state) as db:
+            self.assertEqual(tuple(db.execute("SELECT state,attempts FROM tasks").fetchone()), ("skipped", 1))
+
+    def assert_empty_failure_retries(self, reasons):
+        with patch("hyperreview.worker.intake.collect", return_value=self.empty_evidence(reasons)) as collect:
+            self.assertEqual(self.tick()["status"], "failed")
+            self.assertEqual(self.tick(10300)["status"], "failed")
+            self.assertEqual(self.tick(10600)["status"], "idle")
+            self.assertEqual(collect.call_count, 2)
+        self.assertEqual(worker.status(self.config)["skipped_tasks"], [])
+        with worker._state(self.state) as db:
+            self.assertEqual(tuple(db.execute("SELECT state,attempts,failure_code FROM tasks").fetchone()),
+                             ("failed", 2, "source_evidence_unavailable"))
+            self.assertEqual(db.execute("SELECT count(*) FROM intake_skips").fetchone()[0], 0)
+
+    def test_mixed_empty_input_keeps_the_bounded_failure_retry_path(self):
+        self.assert_empty_failure_retries(["operator_file", "source_read_failure"])
+
+    def test_unknown_empty_input_reason_keeps_the_bounded_failure_retry_path(self):
+        self.assert_empty_failure_retries(["future_reason"])
+
+    def test_unexplained_empty_input_keeps_the_bounded_failure_retry_path(self):
+        self.assert_empty_failure_retries([])
 
     def test_changed_revisions_do_not_create_a_handoff(self):
         result = self.tick(api=WorkerGitHub(revision_changed=True))

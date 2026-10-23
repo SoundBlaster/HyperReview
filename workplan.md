@@ -511,3 +511,37 @@ the rephrased description lost its established `Domain responsibility` prefix.
 Restore that prefix and the explicit distinction from PythonFile/Function/Module
 without weakening the per-node role instructions or changing the test. Keep
 the same verified profile and await all checks on the corrected head.
+
+## Explain terminal empty-source intake outcomes
+
+Live read-only diagnostics reproduced both reported collection failures at
+unchanged revisions: SessionMonitor #128 (`83533930`) changes only ROADMAP.md,
+whose before/after pair exceeds the prose selection budget; Hunter #16
+(`e8c1fecd`) changes only AGENTS.md, excluded as an operator file. Both collectors
+complete, then normalization rejects zero eligible source records. Neither is
+a Codex/CI failure, and neither attempted model inference.
+
+Carry fixed omission reasons in a typed ContractError subclass. A named pure
+SpecificationCore policy makes known permanent selection/budget exclusions
+terminal `skipped` outcomes, with codes retained in the private journal and
+bounded status output. Preserve retry/failure behavior for unavailable source
+evidence, unknown reasons and malformed input. Do not admit operator files,
+increase budgets, publish empty reviews, create gates or reset exhausted jobs.
+Bind the new policy to the intake pipeline fingerprint. Validate using fresh
+targeted intake in separate private diagnostic state, then retain existing CI
+as the regression gate; production journals/configs remain untouched.
+
+Fresh targeted intake of both live PRs in separate v1 diagnostic journals now
+returns `skipped`: `input_byte_limit` for #128 and `operator_file` for #16.
+Each consumes one collection attempt; the following tick makes zero GitHub
+reads and leaves the skip terminal. Status exposes fixed reasons, without
+source paths/content, model calls, review threads or publication. Python AST
+parsing and whitespace checks pass. No tests were added or run locally.
+
+PR #54 review required deterministic coverage of the terminal/retry boundary,
+as requested by AGENTS.md. Added 11 regression tests covering permanent-only,
+empty, unknown, mixed/read/identity reasons, typed/sanitized normalization,
+malformed evidence, skip persistence and stale-skip restoration without a new
+collection or attempt reset. All 59 worker-related tests pass locally; temporary
+outputs use the verified TB5 worktree-specific path. No provider or GitHub calls
+are made by these offline tests. Await fresh CI and close the addressed thread.

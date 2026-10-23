@@ -23,6 +23,9 @@ cannot bypass the PR-list polling interval. Already queued work is eligible
 between discoveries; retries retain their per-task interval. `worker-status` reads only local state. Both commands
 return small JSON summaries; raw source and GitHub response bodies are absent.
 Status includes at most 32 recent request handoffs and their private bundle paths.
+It also includes at most 32 recent `skipped_tasks`, with revision-bound candidate
+identities and fixed omission codes; it never exposes excluded source paths or
+content in those receipts.
 
 ## Queue and recovery
 
@@ -67,6 +70,30 @@ attempts have been consumed and after their retry time. A failed attempt waits
 at least one configured interval. There is no unbounded retry, provider fallback
 or inference replay. The intake client's shared 300-second deadline, 30-file and
 262144-byte evidence limits and supported-format exclusions remain in force.
+
+### Empty eligible input
+
+An otherwise valid evidence pack can contain no model-eligible sources: for
+example, a PR changes only an excluded operator file, or a before/after document
+pair cannot fit the existing prose budget. Normalization raises the typed
+`NoEligibleSourcesError` (still a `ContractError` for existing CLI callers),
+carrying only the normalized omission codes. No empty model request is admitted.
+
+The pure SpecificationCore rule `worker_empty_source_selection_terminal`
+selects `skipped` only for a nonempty list consisting entirely of known permanent
+selection exclusions or budget limits. The private `intake_skips` table retains
+those fixed codes with the candidate; it contains no source, paths or exception
+text. `skipped` is terminal for that exact active candidate, consumes no second
+collection attempt and is excluded from pending capacity. Restoring the same
+stale candidate restores its skip receipt without recollecting. New revisions
+or a changed pipeline still produce a fresh candidate; old attempts are not reset.
+
+Empty input with a source-read, integrity, revision, missing-blob, unknown or
+unexplained omission remains `failed` with `source_evidence_unavailable` and the
+ordinary two-attempt limit. Other malformed contracts/transport errors retain
+their existing failure handling. A skip is not an architectural review, approval
+or correctness result. It creates no preview job, model call, review gate or
+publication. Existing exclusions and file/byte budgets are unchanged.
 
 ## Artifacts and retention
 
@@ -127,7 +154,7 @@ python -m hyperreview worker-launchd-plan \
 ```
 
 Both `worker-tick` and `worker-run` can read live GitHub. A `failed` tick
-returns exit 1; `idle`, `busy`, `not_due`, `stale` and `request_prepared` return 0.
+returns exit 1; `idle`, `busy`, `not_due`, `stale`, `skipped` and `request_prepared` return 0.
 Configuration/storage/transport errors return 1 with a fixed sanitized message.
 
 Offline fixtures cover request preparation and deduplication, interval and lock

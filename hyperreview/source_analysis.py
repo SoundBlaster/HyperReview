@@ -438,8 +438,9 @@ def _code_literal_spans(source, text):
         if windows and lower <= windows[-1]["line_end"] + 1:
             previous = windows[-1]
             # Keep navigation windows bounded even for repeatedly used names.
-            if upper - previous["line_start"] < 16:
-                previous["line_end"] = upper
+            combined_end = max(previous["line_end"], upper)
+            if combined_end - previous["line_start"] < 16:
+                previous["line_end"] = combined_end
                 previous["label"] = ", ".join(sorted(set(previous["label"].split(", ")) | set(matches)))
                 continue
         if len(windows) == MAX_RESULTS:

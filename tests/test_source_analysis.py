@@ -123,6 +123,13 @@ class SourceNavigationTests(unittest.TestCase):
         record = source("fn use_scope() {\n    Scope::new(&filesystem);\n}\n")
         self.assertTrue(source_analysis.citation_spans(record, "Scope::new"))
 
+    def test_early_argument_match_cannot_shrink_a_multiline_call_window(self):
+        record = source("invoke_shared(\n    SharedAccess::default(),\n    root,\n"
+                        "    options,\n    control,\n    &filesystem,\n    observer,\n);\n", start=137)
+        spans = source_analysis.citation_spans(record, "invoke_shared SharedAccess")
+        self.assertEqual(len(spans), 1)
+        self.assertEqual((spans[0]["line_start"], spans[0]["line_end"]), (137, 144))
+
     def test_lowercase_dotted_capability_is_a_complete_declarative_anchor(self):
         record = source("requires:\n  - id: product.current.scan\n    optional: false\n"
                         "  - id: product.current.scanner\n    optional: true\n",

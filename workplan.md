@@ -413,3 +413,31 @@ ruleset/protection reads, no GitHub writes or inference, and no production
 state changes. The private plan contains the qualified progress-thread text.
 Python AST parsing and whitespace checks pass; no tests were added or run
 locally. Existing CI remains the regression gate for the proposed change.
+
+## Retry current-head reviews with the installed Codex
+
+SpecGraph #790 at `3073099d` failed before inference because the installed npm
+Codex binary changed from the worker's pinned fingerprint. The user explicitly
+requires the currently installed CLI. Pin its inspected 0.163.0 native binary
+for an explicit retained retry; do not downgrade or reset failed-job journals.
+
+The installed CLI then failed CoreFoundation managed-preference synchronization
+inside the old boundary. A credential-free native diagnostic reproduces the
+failure after forced-preference reads: the original policy returns sync=false;
+adding only `com.apple.system.opendirectoryd.libinfo` makes it return true.
+Experimental preference-domain and HOME overrides were removed as unnecessary.
+Keep managed-policy loading, preference/Keychain IPC restrictions, file roots,
+process restrictions and the supervised egress proxy. Repeat generation against
+the retained 11-source request, then compile, assess and publish the exact-head
+review. Record outcome and close the owned retry thread after completion or
+failure. Runtime activation is separate from this bounded retry.
+
+The installed Codex 0.163.0 / Luna Medium completed the retained #790 request
+in one provider attempt (27.61 seconds). The generated Hypercode compiled,
+MLflow confirmed metadata delivery, and exact-head publication updated the
+existing review at `#issuecomment-6352564407`; no duplicate summary was created.
+The owned retry thread links to that summary and is resolved. Production service
+configs/pins and failed-job journals remain unchanged; activating this compatible
+runtime in automatic workers is a separate deployment step. No test suite was
+run locally; the native startup diagnostics and real review are the observed
+compatibility evidence.

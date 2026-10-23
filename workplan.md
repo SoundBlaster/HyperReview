@@ -505,3 +505,9 @@ check-runs with an explicit truncation notice under its separate spoiler.
 The profile is 14827 bytes, below the earlier 15384-byte v11 profile. Four
 private replay receipts preserve the intermediate interpretation errors and
 corrections; no historical PR comment was changed and no local test suite ran.
+
+The updated CI ran 299 tests and reported one textual schema-guidance assertion:
+the rephrased description lost its established `Domain responsibility` prefix.
+Restore that prefix and the explicit distinction from PythonFile/Function/Module
+without weakening the per-node role instructions or changing the test. Keep
+the same verified profile and await all checks on the corrected head.

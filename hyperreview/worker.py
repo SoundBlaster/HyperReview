@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import fcntl
 import hashlib
 from itertools import islice
+import json
 import os
 from pathlib import Path
 import sqlite3
@@ -14,6 +15,8 @@ from uuid import UUID
 from . import intake, model_contract, reviewer_profile
 from .storage import StorageError, read_json, write_bundle
 from .worker_task_eligibility import WorkerTaskContext, WorkerTaskEligibility
+from .worker_empty_source_policy import (EmptySourceContext, NonRetryableEmptySources,
+                                        NON_RETRYABLE_OMISSIONS)
 
 
 CONFIG_SCHEMA = "hyperreview.worker-config.v1"
@@ -27,7 +30,7 @@ RETENTION_SECONDS = 7 * 86400
 WAKE_SECONDS = 30
 _ARTIFACT_FILES = frozenset(("evidence.json", "request.json", "metadata.json"))
 _LOG_FILES = ("worker.stdout.log", "worker.stderr.log")
-_STATES = frozenset(("queued", "collecting", "request_prepared", "failed", "stale"))
+_STATES = frozenset(("queued", "collecting", "request_prepared", "skipped", "failed", "stale"))
 
 
 class WorkerError(Exception):
@@ -184,6 +187,9 @@ def _state(root):
                 candidate TEXT NOT NULL, state TEXT NOT NULL, at INTEGER NOT NULL,
                 attempt INTEGER NOT NULL, failure_code TEXT
             );
+            CREATE TABLE IF NOT EXISTS intake_skips (
+                candidate TEXT PRIMARY KEY, omission_reasons TEXT NOT NULL
+            );
         """)
         yield db
     finally:
@@ -204,7 +210,7 @@ def _transition(db, candidate, state, now, failure_code=None):
 
 def _pipeline():
     code = {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-            for name in ("worker.py", "worker_task_eligibility.py", "intake.py",
+            for name in ("worker.py", "worker_task_eligibility.py", "worker_empty_source_policy.py", "intake.py",
                          "model_contract.py", "pr_eligibility.py")}
     return intake.digest({"task_schema": TASK_SCHEMA, "code": code,
                           "intake_policy": intake.POLICY,
@@ -254,6 +260,23 @@ def _supersede(db, repo, number, candidate, now):
         _transition(db, previous[0], "stale", now, "superseded")
 
 
+def _skip_reasons(db, candidate):
+    row = db.execute("SELECT omission_reasons FROM intake_skips WHERE candidate=?",
+                     (candidate,)).fetchone()
+    if row is None:
+        return None
+    try:
+        reasons = json.loads(row[0])
+    except (TypeError, ValueError):
+        raise WorkerError("Intake skip receipt is invalid") from None
+    _require(type(reasons) is list and 1 <= len(reasons) <= len(NON_RETRYABLE_OMISSIONS)
+             and all(type(reason) is str for reason in reasons)
+             and reasons == sorted(set(reasons))
+             and NonRetryableEmptySources().is_satisfied_by(EmptySourceContext(tuple(reasons))),
+             "Intake skip receipt is invalid")
+    return reasons
+
+
 def _discover(db, config, api, pipeline, now):
     account = api.get("user", "{login}")["login"]
     _require(account == intake.AUTHOR, "Worker GitHub account differs from configured author")
@@ -279,6 +302,10 @@ def _discover(db, config, api, pipeline, now):
             candidate = intake.digest([repo, number, pr["base_sha"], pr["head_sha"], pipeline])
             existing = db.execute("SELECT * FROM tasks WHERE candidate=?", (candidate,)).fetchone()
             if existing is not None and existing["state"] != "stale":
+                continue
+            if existing is not None and _skip_reasons(db, candidate) is not None:
+                _supersede(db, repo, number, candidate, now)
+                _transition(db, candidate, "skipped", now)
                 continue
             if existing is not None and _retained_handoff(Path(config["state_root"]), existing):
                 _supersede(db, repo, number, candidate, now)
@@ -451,6 +478,22 @@ def tick(config_path, *, api=None, collect_request=True):
             _transition(db, candidate, "request_prepared", int(time.time()))
             return {**result, "status": "request_prepared", "candidate": candidate,
                     "bundle": str(destination)}
+        except model_contract.NoEligibleSourcesError as error:
+            if NonRetryableEmptySources().is_satisfied_by(EmptySourceContext(error.omission_reasons)):
+                with db:
+                    db.execute("INSERT OR REPLACE INTO intake_skips VALUES (?,?)",
+                               (candidate, intake.encoded(list(error.omission_reasons)).decode()))
+                    db.execute("UPDATE tasks SET evidence_digest=? WHERE candidate=?",
+                               (pack["evidence_digest"], candidate))
+                    _transition(db, candidate, "skipped", int(time.time()))
+                return {**result, "status": "skipped", "candidate": candidate,
+                        "skip_reason": "no_eligible_sources",
+                        "omission_reasons": list(error.omission_reasons)}
+            _transition(db, candidate, "failed", int(time.time()), "source_evidence_unavailable")
+            with db:
+                db.execute("UPDATE tasks SET retry_after=? WHERE candidate=?",
+                           (int(time.time()) + config["interval_seconds"], candidate))
+            return {**result, "status": "failed", "candidate": candidate}
         except (intake.IntakeError, model_contract.ContractError, StorageError) as error:
             code = ("evidence_byte_limit" if isinstance(error, intake.EvidenceLimitError)
                     else "collection_or_request_failed")
@@ -507,5 +550,12 @@ def status(config_path):
                 "model_calls": None if "preview" in config else 0, **preview_status,
                 "github_writes": None if "review_gate" in config else 0, "next_poll": _meta(db, "next_poll"),
                 "handoffs": handoffs,
+                "skipped_tasks": [{"repository": row["repository"], "pr": row["pr"],
+                                   "candidate": row["candidate"], "reason": "no_eligible_sources",
+                                   "base_sha": row["base_sha"], "head_sha": row["head_sha"],
+                                   "evidence_digest": row["evidence_digest"],
+                                   "omission_reasons": _skip_reasons(db, row["candidate"])}
+                                  for row in db.execute("SELECT candidate,repository,pr,base_sha,head_sha,evidence_digest FROM tasks"
+                                                       " WHERE state='skipped' ORDER BY updated_at DESC LIMIT 32")],
                 "counts": {row["state"]: row["n"] for row in
                            db.execute("SELECT state,count(*) n FROM tasks GROUP BY state")}}

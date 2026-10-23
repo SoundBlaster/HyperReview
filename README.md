@@ -78,6 +78,11 @@ the trusted configuration, private queue, requests and reviewable LaunchAgent.
 The generator does not install a service. Automatic inference and publishing
 remain disabled at this stage.
 
+An input containing only permanently excluded or over-budget source records is
+recorded as `skipped`, with fixed omission reasons in `worker-status`, rather
+than retried as a generic collection failure. A skip is not a completed review.
+Read/identity/unknown omissions keep the bounded failure/retry path.
+
 Requirements: Python 3.10+ and an authenticated `gh` CLI for `github.com`.
 Install into a Python 3.10+ environment before running from this repository:
 

@@ -23,6 +23,9 @@ HyperReview:
 '#intake-task-policy':
   policy_library: "specification-core"
   max_collection_attempts: 2
+  empty_input_policy: "worker_empty_source_selection_terminal"
+  permanent_empty_input_state: "skipped"
+  empty_input_changes_source_policy: false
 
 '#request-handoff':
   stage: "request_prepared"

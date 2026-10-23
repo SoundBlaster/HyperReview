@@ -56,6 +56,14 @@ class ContractError(Exception):
     """Raised when evidence or model output violates the local contract."""
 
 
+class NoEligibleSourcesError(ContractError):
+    """Valid normalization produced no sources; carry only fixed reason codes."""
+
+    def __init__(self, omission_reasons):
+        super().__init__("No eligible source records remain for model analysis")
+        self.omission_reasons = tuple(sorted(set(omission_reasons)))
+
+
 def _require(condition, message):
     if not condition:
         raise ContractError(message)
@@ -374,7 +382,8 @@ def _prepare_request(pack, *, max_source_bytes=MAX_BYTES, include_paths=None):
         for candidate in group:
             candidate.pop("_content_encoded_bytes")
             source_records.append(candidate)
-    _require(source_records, "No eligible source records remain for model analysis")
+    if not source_records:
+        raise NoEligibleSourcesError(item["reason"] for item in omissions)
     _require(len(source_records) <= MAX_REQUEST_SOURCES,
              "Request exceeds the normalized source-record limit")
     _require(len({record["id"] for record in source_records}) == len(source_records),

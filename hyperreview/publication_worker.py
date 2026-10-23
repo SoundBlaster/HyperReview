@@ -317,7 +317,7 @@ def tick(config_path):
                 directory, plan = publication.plan_publication(
                     bundle, expected_preview_sha256=preview_digest,
                     output_root=worker._private_directory(root / "plans", create=True),
-                    review_gate_url=row["review_gate_url"], api=_api())
+                    review_gate_url=row["review_gate_url"], api=_api(), include_ci=True)
                 worker._require(plan["repository"] == row["repository"] and plan["pr"] == row["pr"])
                 if plan["status"] != "ready":
                     if _retryable_plan(plan):

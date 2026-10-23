@@ -115,7 +115,7 @@ class ModelContractTests(unittest.TestCase):
     def test_request_pins_versioned_review_profile(self):
         request = prepare_request(pack())
         self.assertEqual(request["reviewer_profile"]["version"],
-                         "hyperreview-review-profile.v12")
+                         "hyperreview-review-profile.v13")
         self.assertRegex(request["reviewer_profile"]["sha256"], r"^[0-9a-f]{64}$")
         for change in ({"sha256": "0" * 64}, {"version": "hyperreview-review-profile.v1"}):
             with self.subTest(change=change):

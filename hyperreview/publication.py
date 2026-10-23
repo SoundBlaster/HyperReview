@@ -10,7 +10,7 @@ import re
 import stat
 import subprocess
 
-from . import intake, render, tracking
+from . import ci_observations, intake, render, tracking
 from .feedback import (FeedbackError, _MAX_PREVIEW_BYTES, _parse_json_bytes,
                        _read_bounded_regular, _safe_bundle)
 from .model_contract import ContractError
@@ -295,8 +295,9 @@ def _review_gate_reference(api, repo, number, account, url):
 
 
 def plan_publication(bundle, *, expected_preview_sha256, output_root,
-                     review_gate_url=None, api=None):
+                     review_gate_url=None, api=None, include_ci=False, ci_api=None):
     """Persist a private dry-run plan; this function never writes to GitHub."""
+    _require(type(include_ci) is bool)
     try:
         bundle = _safe_bundle(bundle)
         root = _safe_output_root(output_root, bundle)
@@ -378,10 +379,6 @@ def plan_publication(bundle, *, expected_preview_sha256, output_root,
     body = (COMMENT_MARKER + "\n\n" + preview.decode("utf-8", errors="strict") + gate_link)
     if len(body.encode("utf-8")) > MAX_COMMENT_BYTES:
         raise PublicationError("Publication comment exceeds the GitHub body limit")
-    action, comment_id, comment_blocker = _comment_action(comments, account, body)
-    if comment_blocker:
-        blockers.append(comment_blocker)
-
     final_account = None
     final_pr = None
     final_current = dict(current)
@@ -403,6 +400,18 @@ def plan_publication(bundle, *, expected_preview_sha256, output_root,
         blockers.extend(_eligibility_blockers(repo, number, final_pr, final_account))
     except (intake.IntakeError, KeyError, TypeError, AttributeError):
         blockers.append("final_recheck_failed")
+
+    # After the authorization reads, so optional CI cannot exhaust their deadline.
+    # The broker still rechecks revisions before any write, as for legacy plans.
+    ci_snapshot = (ci_observations.collect(repo, pinned["head_sha"], api=ci_api)
+                   if include_ci and not blockers else None)
+    ci_suffix = ci_observations.render_suffix(
+        ci_snapshot, repo, pinned["head_sha"],
+        max_bytes=MAX_COMMENT_BYTES - len(body.encode("utf-8")))
+    body = COMMENT_MARKER + "\n\n" + preview.decode("utf-8", errors="strict") + ci_suffix + gate_link
+    action, comment_id, comment_blocker = _comment_action(comments, account, body)
+    if comment_blocker:
+        blockers.append(comment_blocker)
 
     # Stable order and no duplicate codes, even when the final recheck finds a
     # second reason for the same revision blocker.
@@ -436,6 +445,8 @@ def plan_publication(bundle, *, expected_preview_sha256, output_root,
         "tracking_run_id": tracking_receipt["run_id"] if tracking_receipt else None,
         "tracking_trace_id": tracking_receipt["trace_id"] if tracking_receipt else None,
         "review_gate": review_gate,
+        "ci_observations": ci_snapshot,
+        "ci_included": bool(ci_suffix),
         "checked_at": checked_at,
         "authorization_required": True,
         "writes_performed": False,
@@ -545,6 +556,20 @@ def publish_comment(plan_dir, *, expected_plan_sha256, expected_comment_sha256,
         gate_suffix = f"\n\nReview gate: [review thread]({plan['review_gate']['url']})."
         _require(preview_body.endswith(gate_suffix))
         preview_body = preview_body[:-len(gate_suffix)]
+    # Old plans lack these optional fields and retain their exact saved body.
+    if plan.get("ci_observations") is not None:
+        try:
+            suffix = ci_observations.render_suffix(
+                plan["ci_observations"], plan["repository"], plan["head_sha"],
+                max_bytes=MAX_COMMENT_BYTES)
+        except (ValueError, TypeError, KeyError):
+            raise PublicationError("Publication CI observations are invalid") from None
+        _require(type(plan.get("ci_included")) is bool)
+        if plan["ci_included"]:
+            _require(bool(suffix) and preview_body.endswith(suffix))
+            preview_body = preview_body[:-len(suffix)]
+    else:
+        _require(plan.get("ci_included", False) is False)
     _require(hashlib.sha256(preview_body.encode()).hexdigest() == plan.get("preview_sha256"))
     action, planned_id = plan.get("action"), plan.get("comment_id")
     _require(action in ("create", "update", "unchanged")

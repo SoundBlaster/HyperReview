@@ -413,3 +413,21 @@ ruleset/protection reads, no GitHub writes or inference, and no production
 state changes. The private plan contains the qualified progress-thread text.
 Python AST parsing and whitespace checks pass; no tests were added or run
 locally. Existing CI remains the regression gate for the proposed change.
+
+## Verification bindings with optional CI support
+
+BuildHunter #104 adds GUI verification of existing classification obligations,
+but its first v12 explanation selected only a secondary corpus-loader edge.
+Profile v13 / composition-v19 prioritizes a source-declared `verified_by` delta
+when another test path is the central change. Keep the existing responsibilities
+and earlier bindings; shared fixtures do not erase client-profile differences.
+
+The publisher and CLI capture an optional head-bound check-run snapshot before
+saving the comment plan. CI supports the explanation under a separate spoiler;
+it cannot gate inference, compilation or publication. Limit the independent
+read to five seconds, one page and 12 displayed checks; preserve exact saved
+plans across retries and omit the optional block on comment-byte exhaustion.
+Do not infer individual test execution from a green job, add blocking checks,
+expand source formats/budgets, or change production services while preparing
+this increment. Replay the retained #104 source evidence with Luna medium,
+compile its generated `.hc`/`.hcs`, and inspect the private CI-enriched draft.

@@ -45,6 +45,12 @@ The plan must be ready and refer to the authorized repository and PR. Its exact
 directory, plan SHA256 and comment SHA256 are committed to the local journal
 **before** entering the existing comment broker.
 
+Planning also captures optional head-bound CI observations under HR-PLAN-005.
+This uses a separate five-second read budget and a collapsed supporting-evidence
+block; it cannot add a readiness blocker or change the architecture preview.
+Pending/failed checks and unavailable CI do not stop delivery. The exact saved
+plan freezes these observations for retries; delivery never waits for CI.
+
 The broker uses the ordinary shared publication-state root by default, including
 the same per-PR lock as manual publication. It performs fresh eligibility,
 revision and comment-inventory checks, verifies the returned comment, and marks

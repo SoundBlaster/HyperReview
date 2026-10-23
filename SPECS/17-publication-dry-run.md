@@ -32,6 +32,36 @@ current revisions, result/preview identities, tracking IDs, gate outcomes and
 check time. Exclude feedback notes, credentials and source bodies from the plan.
 The draft retains the preview's inferred status, limitations and pinned links.
 
+## Optional CI evidence
+
+**HR-PLAN-005.** The CLI and automatic publisher request a separate check-run
+snapshot immediately before planning the comment. The programmatic planner
+keeps `include_ci=False` for callers that only need the original architecture
+preview. CI observations are outside model input and never change `.hc`, `.hcs`,
+verification bindings, tracking events or publication readiness.
+
+Use one read of the pinned head's check-runs (at most 100 records), a separate
+five-second client budget, and no polling or workflow/log/artifact downloads.
+Keep at most 12 validated records and 16384 encoded bytes. Capture repository,
+head, retrieval time, check IDs, bounded escaped names, status/conclusion and
+fixed omission codes. Drop other-revision, malformed or secret-pattern records;
+derive GitHub links from repository and numeric check IDs. An empty response,
+failed read, incomplete page, pending check or failed check is supporting data,
+not a blocker, failure of architecture analysis or approval.
+
+Render the snapshot under its own collapsed details block after the compact
+architecture preview. State that a check-run result does not establish that a
+particular test ran, coverage or architectural conformity. Do not infer test
+execution by matching a workflow/check name to a `verified_by` target. Omit the
+entire optional block when it would exceed the existing comment byte budget.
+
+The publication plan stores `ci_observations` and `ci_included` alongside the
+unchanged preview digest. The broker reconstructs and removes the exact CI
+suffix before verifying that digest. The reviewed comment/plan hashes bind the
+snapshot, including its timestamp; retries reuse it without another CI read.
+Legacy plans without these fields preserve their exact body and recovery path.
+Invalid or tampered local artifacts still fail the existing integrity checks.
+
 ## Diff-anchored review gate
 
 `review-gate-plan --repo OWNER/REPO --pr N --path PATH --line N

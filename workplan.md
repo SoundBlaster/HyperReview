@@ -431,3 +431,19 @@ Do not infer individual test execution from a green job, add blocking checks,
 expand source formats/budgets, or change production services while preparing
 this increment. Replay the retained #104 source evidence with Luna medium,
 compile its generated `.hc`/`.hcs`, and inspect the private CI-enriched draft.
+
+Validation: the changed design `.hc`/`.hcs` passes the real compiler in default
+and automatic-publication contexts; Python AST parsing/imports and whitespace
+checks pass. A live optional CI read for #104 at `b098195f` retained 12 check-runs
+with an explicit `check_limit` omission, and its collapsed rendering succeeded.
+No tests were added or run locally. New profile text is 14557 bytes, below the
+15384-byte v11 profile that preceded the earlier prompt-budget regression.
+
+The retained 36-source #104 replay prepares the new request without changing its
+source set, but model generation is currently blocked before inference. The npm
+Codex executable changed from its production SHA pin; separately pinned official
+CLI binaries also fail thread startup in the existing macOS isolation boundary
+with `Failed to synchronize managed preferences`. Production configs/services
+and isolation permissions were not changed. Do not claim a completed v13 model
+review or update #104's public comment from these failed attempts. Repair the
+runtime compatibility separately, then repeat the same source-bound replay.

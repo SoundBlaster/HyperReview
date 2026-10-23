@@ -13,8 +13,12 @@ MAX_BYTES = 16384
 _STATUSES = {"queued", "in_progress", "completed", "waiting", "pending", "requested"}
 _CONCLUSIONS = {"success", "failure", "neutral", "cancelled", "skipped", "timed_out",
                 "action_required", "stale", "startup_failure"}
-_OMISSIONS = {"read_failed", "invalid_response", "invalid_check", "revision_mismatch",
-              "page_limit", "check_limit"}
+_OMISSION_TEXT = {"read_failed": "CI недоступен",
+                  "invalid_response": "ответ CI не распознан",
+                  "invalid_check": "некорректные записи опущены",
+                  "revision_mismatch": "записи других коммитов исключены",
+                  "page_limit": "получена только первая страница",
+                  "check_limit": f"показано не более {MAX_CHECKS} проверок"}
 _FIELDS = {"schema", "repository", "head_sha", "retrieved_at", "checks", "omissions"}
 _CHECK_FIELDS = {"id", "name", "status", "conclusion"}
 
@@ -43,7 +47,7 @@ def validate(snapshot, repository, head_sha):
             or not all(_valid_check(check) for check in snapshot["checks"])
             or len({check["id"] for check in snapshot["checks"]}) != len(snapshot["checks"])
             or type(snapshot["omissions"]) is not list
-            or not all(type(code) is str and code in _OMISSIONS for code in snapshot["omissions"])
+            or not all(type(code) is str and code in _OMISSION_TEXT for code in snapshot["omissions"])
             or len(snapshot["omissions"]) != len(set(snapshot["omissions"]))
             or len(intake.encoded(snapshot)) > MAX_BYTES):
         raise ValueError("Invalid CI observations")
@@ -105,7 +109,7 @@ def render_suffix(snapshot, repository, head_sha, *, max_bytes):
     if snapshot is None:
         return ""
     validate(snapshot, repository, head_sha)
-    lines = ["\n\n<details>\n<summary>CI · дополнительное evidence</summary>\n",
+    lines = ["\n\n<details>\n<summary>CI · результаты проверок</summary>\n",
              f"\nСнимок для `{head_sha[:8]}` · {snapshot['retrieved_at']} (UTC).\n",
              "\nРезультат check-run не доказывает выполнение конкретного теста, "
              "полноту покрытия или соответствие архитектуре.\n"]
@@ -118,7 +122,8 @@ def render_suffix(snapshot, repository, head_sha, *, max_bytes):
     else:
         lines.append("\nНаблюдения check-run не получены; это не результат проверки.\n")
     if snapshot["omissions"]:
-        lines.append("\nСнимок неполный: " + ", ".join(snapshot["omissions"]) + ".\n")
+        lines.append("\nСнимок неполный: " + "; ".join(
+            _OMISSION_TEXT[code] for code in snapshot["omissions"]) + ".\n")
     lines.append("\nОтсутствие, ожидание или сбой CI не блокируют архитектурный обзор.\n\n</details>\n")
     text = "".join(lines)
     # Optional evidence must never push a valid architectural comment over its limit.

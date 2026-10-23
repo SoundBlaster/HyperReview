@@ -117,6 +117,16 @@ JSONL event audit, output validation and shared deadline remain mandatory.
 This boundary is not a VM or protection against a compromised same-user broker,
 OS/kernel defects, or an operator replacing trusted binaries/policy files.
 
+Installed Codex CLI 0.163.0 also needs the fixed macOS
+`com.apple.system.opendirectoryd.libinfo` lookup for CoreFoundation's account
+resolution before managed-preference synchronization. Grant that named service
+only. Do not grant preference-daemon or Keychain IPC, general preference access,
+additional file roots, or shell execution. The CLI's managed-policy loading is
+retained; do not replace an unreadable managed layer with an empty override.
+The native executable remains bound to an explicitly inspected SHA256; an npm
+upgrade cannot silently satisfy an earlier pin. An explicit operator retry may
+pin the currently installed native executable in its own retained run receipt.
+
 The only outbound socket destination is the loopback proxy's selected port.
 The credential-free proxy runs in a supervised subprocess and accepts only
 CONNECT to `chatgpt.com:443`, `api.openai.com:443` or `auth.openai.com:443`.

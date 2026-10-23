@@ -59,6 +59,8 @@ def profile(executable, workdir, protected, auth, proxy_port):
 (deny file-map-executable iokit-get-properties process-info* nvram*)
 (deny dynamic-code-generation)
 (allow process-info* (target self))
+; CoreFoundation needs local account lookup before managed-preference sync.
+(allow mach-lookup (global-name "com.apple.system.opendirectoryd.libinfo"))
 (allow file-map-executable
   (literal {q(executable)}) (subpath "/System/Library")
   (subpath "/System/Cryptexes") (subpath "/System/Volumes/Preboot/Cryptexes")

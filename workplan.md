@@ -537,3 +537,11 @@ Each consumes one collection attempt; the following tick makes zero GitHub
 reads and leaves the skip terminal. Status exposes fixed reasons, without
 source paths/content, model calls, review threads or publication. Python AST
 parsing and whitespace checks pass. No tests were added or run locally.
+
+PR #54 review required deterministic coverage of the terminal/retry boundary,
+as requested by AGENTS.md. Added 11 regression tests covering permanent-only,
+empty, unknown, mixed/read/identity reasons, typed/sanitized normalization,
+malformed evidence, skip persistence and stale-skip restoration without a new
+collection or attempt reset. All 59 worker-related tests pass locally; temporary
+outputs use the verified TB5 worktree-specific path. No provider or GitHub calls
+are made by these offline tests. Await fresh CI and close the addressed thread.

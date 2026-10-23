@@ -14,7 +14,7 @@ from . import configuration_evidence, intake, reviewer_profile
 MAX_BYTES = 262144
 REQUEST_SCHEMA = "hyperreview.request.v6"
 RESULT_SCHEMA = "hyperreview.result.v2"
-PROMPT_VERSION = "composition-v18"
+PROMPT_VERSION = "composition-v19"
 ABSTRACTION_PROFILE = "composition-v1"
 REQUEST_SCOPE = (
     "Analyze only supplied changed-file records, bounded architecture/reference context and allowlisted declarative excerpts.",

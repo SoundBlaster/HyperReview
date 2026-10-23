@@ -373,6 +373,14 @@ operation. It makes no GitHub writes. When supplied, `--review-gate-url` must
 identify the authenticated operator's HyperReview review comment on the same
 PR and pinned head; its permalink is included in the ordinary comment draft.
 
+The CLI and automatic publisher also try one five-second read of check-runs for
+that exact head. A separate collapsed CI block supports the architectural
+explanation; unavailable, pending or failed checks never block it. The snapshot
+is frozen into the publication plan and omitted if the comment has no space.
+It reports check-run outcomes, without claiming that a specific `verified_by`
+test executed or that architecture conforms. See
+[optional CI evidence](SPECS/17-publication-dry-run.md#optional-ci-evidence).
+
 Only the authenticated operator's comment bearing the fixed HyperReview marker
 is an update candidate. Duplicate owned markers or an incomplete comment
 inventory block planning. Feedback `ok` does not grant publication authority.

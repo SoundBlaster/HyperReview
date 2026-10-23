@@ -99,6 +99,12 @@ AutomaticCommentDelivery:
   retry_interval_seconds: 300
   model_calls: 0
   publication_mode: "comment"
+  ci_observations: "hyperreview/ci_observations.py"
+  ci_revision: "pinned head"
+  ci_required: false
+  ci_read_timeout_seconds: 5
+  ci_max_checks: 12
+  ci_display: "collapsed supporting evidence"
 
 StandingPublicationGrant:
   source: "operator_config"

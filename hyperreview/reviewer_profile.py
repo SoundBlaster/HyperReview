@@ -4,7 +4,7 @@ from hashlib import sha256
 from importlib.resources import files
 
 
-VERSION = "hyperreview-review-profile.v12"
+VERSION = "hyperreview-review-profile.v13"
 
 
 def content():

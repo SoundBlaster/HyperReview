@@ -264,7 +264,8 @@ def main():
             try:
                 destination, plan = plan_publication(
                     args.bundle, expected_preview_sha256=args.expected_preview_sha256,
-                    output_root=args.output_root, review_gate_url=args.review_gate_url)
+                    output_root=args.output_root, review_gate_url=args.review_gate_url,
+                    include_ci=True)
             except (PublicationError, IntakeError, StorageError, ContractError,
                     OSError, ValueError, KeyError, TypeError) as error:
                 print(f"HyperReview: {type(error).__name__}; publication plan was not saved", file=sys.stderr)

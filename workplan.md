@@ -414,6 +414,40 @@ state changes. The private plan contains the qualified progress-thread text.
 Python AST parsing and whitespace checks pass; no tests were added or run
 locally. Existing CI remains the regression gate for the proposed change.
 
+## Verification bindings with optional CI support
+
+BuildHunter #104 adds GUI verification of existing classification obligations,
+but its first v12 explanation selected only a secondary corpus-loader edge.
+Profile v13 / composition-v19 prioritizes a source-declared `verified_by` delta
+when another test path is the central change. Keep the existing responsibilities
+and earlier bindings; shared fixtures do not erase client-profile differences.
+
+The publisher and CLI capture an optional head-bound check-run snapshot before
+saving the comment plan. CI supports the explanation under a separate spoiler;
+it cannot gate inference, compilation or publication. Limit the independent
+read to five seconds, one page and 12 displayed checks; preserve exact saved
+plans across retries and omit the optional block on comment-byte exhaustion.
+Do not infer individual test execution from a green job, add blocking checks,
+expand source formats/budgets, or change production services while preparing
+this increment. Replay the retained #104 source evidence with Luna medium,
+compile its generated `.hc`/`.hcs`, and inspect the private CI-enriched draft.
+
+Validation: the changed design `.hc`/`.hcs` passes the real compiler in default
+and automatic-publication contexts; Python AST parsing/imports and whitespace
+checks pass. A live optional CI read for #104 at `b098195f` retained 12 check-runs
+with an explicit `check_limit` omission, and its collapsed rendering succeeded.
+No tests were added or run locally. New profile text is 14557 bytes, below the
+15384-byte v11 profile that preceded the earlier prompt-budget regression.
+
+The retained 36-source #104 replay prepares the new request without changing its
+source set, but model generation is currently blocked before inference. The npm
+Codex executable changed from its production SHA pin; separately pinned official
+CLI binaries also fail thread startup in the existing macOS isolation boundary
+with `Failed to synchronize managed preferences`. Production configs/services
+and isolation permissions were not changed. Do not claim a completed v13 model
+review or update #104's public comment from these failed attempts. Repair the
+runtime compatibility separately, then repeat the same source-bound replay.
+
 ## Retry current-head reviews with the installed Codex
 
 SpecGraph #790 at `3073099d` failed before inference because the installed npm
@@ -441,3 +475,39 @@ configs/pins and failed-job journals remain unchanged; activating this compatibl
 runtime in automatic workers is a separate deployment step. No test suite was
 run locally; the native startup diagnostics and real review are the observed
 compatibility evidence.
+
+PR #53 is now merged and the automatic worker uses the inspected installed
+Codex 0.163.0 pin. The earlier startup limitation above is historical; repeat
+the same-source v13 comparison on the compatible runtime before activation.
+
+The first compatible v13 replay completed with the identical 36 sources and
+compiled, but omitted the declared GUI verification edge: profile wording made
+the model incorrectly require `file::symbol`. Clarify that a literal test-file
+path or check ID explicitly mapped to an obligation is a complete target. Keep
+same-side literal evidence validation and prohibit invented symbols. Repeat the
+private replay; the first compiler success alone does not establish improved
+architecture explanation. CI observations rendered separately with 12 checks
+and an explicit limit omission; no public comment was written by this replay.
+
+The second replay produced the correct three before/after verification rows,
+but copied the root role onto distinct descendants. Clarify per-node authored
+role preservation in the profile and provider schema: IDs must not disguise
+different responsibilities as repeated root instances. Keep the tree renderer,
+selector rules and structural validation unchanged; assess a fresh replay.
+
+Final same-source replay on installed Codex 0.163.0 / Luna Medium completed
+in one provider attempt (29.79 seconds). The compact tree preserves
+BuildHunterRuntime / SharedRuntime / ArtifactClassification; its `.hcs` exposes
+the newly declared GUI test-file binding without an invented symbol. These are
+selected relations, not a complete catalogue or removal of existing checks.
+The generated projections compiled, and optional CI rendered 12 head-bound
+check-runs with an explicit truncation notice under its separate spoiler.
+The profile is 14827 bytes, below the earlier 15384-byte v11 profile. Four
+private replay receipts preserve the intermediate interpretation errors and
+corrections; no historical PR comment was changed and no local test suite ran.
+
+The updated CI ran 299 tests and reported one textual schema-guidance assertion:
+the rephrased description lost its established `Domain responsibility` prefix.
+Restore that prefix and the explicit distinction from PythonFile/Function/Module
+without weakening the per-node role instructions or changing the test. Keep
+the same verified profile and await all checks on the corrected head.

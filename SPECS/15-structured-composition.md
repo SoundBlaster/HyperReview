@@ -195,9 +195,9 @@ and is a consumer-profile rule, not a Hypercode language restriction.
 
 ## G1 common relationship contract
 
-Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v18`
-and reviewer profile v12. The relationship vocabulary is `depends_on`, `calls`,
-`shared_contract`, `data_flow`, `requires`, `available_when`, and `reuses_rule`.
+Live providers use `hyperreview.composition-plan.v3`, prompt `composition-v19`
+and reviewer profile v13. The relationship vocabulary is `depends_on`, `calls`,
+`shared_contract`, `data_flow`, `requires`, `available_when`, `reuses_rule`, and `verified_by`.
 The same descriptions apply across stacks: a callee may be a function, service,
 syscall or policy; a common type is a shared contract, not proof of shared
 behavior. Endpoints need source references, not additional `.hc` nodes.
@@ -217,13 +217,38 @@ five original relation kinds, labels and property keys. Node-only conversion
 remains available for direct callers; live providers require the full current
 plan. Saved results are never relabelled or given new inferred relationships.
 
-A fresh generation requires a fresh request bound to profile v12. Old requests
+A fresh generation requires a fresh request bound to profile v13. Old requests
 are not silently upgraded; their original pinned profile/code or retained
 rendered artifacts remain the historical interpretation. Already sanitized
 composition-v10 tracking events remain replayable without accepting old
 inference requests as current. Generation fingerprints change through the
 existing composition/profile/render pins. Publication still requires the
 existing compiler/reference checks, tracking receipt and live revision gate.
+
+### Verification-path changes
+
+For additions of tests, documentation or specification bindings, profile v13
+first inspects supplied declarations linking obligations to checks. When the
+main change adds another verification path to an existing responsibility,
+prioritize that declared `verified_by` delta over secondary loader/data-flow
+edges. Select the obligation owner and its complete authored ancestor chain,
+omitting unrelated branches without flattening containing owners.
+The `.hc` composition can remain unchanged. Preserve supported earlier
+bindings, add the new complete literal target only on its declared side, and
+keep the six-relation budget. Do not add an edge without its declaration.
+
+Preserve the declaration's target granularity: a complete test-file path or
+check ID is valid when explicitly linked to the obligation; `file::symbol` is
+not required. Do not invent symbols or infer bindings from file coexistence.
+The existing literal same-side evidence check applies to all these targets.
+
+Sharing a fixture/corpus does not imply identical client profiles or behavior.
+`verified_by` establishes a declared binding, not execution, passing or complete
+coverage. Scope execution notes in source documentation to the described local
+environment/revision. Optional publisher CI observations stay outside the model
+request and never gate architecture explanation or publication. Sanitized
+composition-v18 tracking events remain replayable; their requests/results are
+not silently promoted to the current profile.
 
 This increment generalizes semantic instructions and output only. The bounded
 input selection changes in G2 and the pinned cross-example replay in G3 remain

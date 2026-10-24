@@ -1,0 +1,240 @@
+{
+  "assessor_type": "deterministic_witness",
+  "checks": [
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-003",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-004",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-002",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 1,
+      "case_id": "case-002",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 0,
+      "case_id": "case-002",
+      "check_id": "check-003",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-003",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-003",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-003",
+      "check_id": "check-003",
+      "regressed": false
+    }
+  ],
+  "coverage": {
+    "explanation": {
+      "paired_cases": [
+        "case-001",
+        "case-002",
+        "case-003"
+      ],
+      "unpaired_cases": []
+    }
+  },
+  "metric_version": "review-witnesses-v2",
+  "publication_gate": false,
+  "rows": [
+    {
+      "artifact_digest": "8c52405fb2a55cede54ffdcb42b2b7ee54b3f8faac5d5bc4d283a06241df5760",
+      "axis": "explanation",
+      "case_id": "case-001",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": 0.0,
+        "relation_presence": 0.5,
+        "source_retention": 1.0
+      },
+      "profile_digest": "470545353710b1c2c5b1566d43dc775e0dfa94f99bfc31e1b0bf8afeec56008a",
+      "request_digest": "978918fd61053d67115b8feb0449b28ccf5795d18619b60e8b4e4d075843048d",
+      "source_digest": "587b794453b796ade9c4911624dd0309c0ee99dc328eef492b3c74d96b5b2098",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "97a1f8a10bc63583a6083db5196b49ccaca01a4d9366180f3cb41a5dbdbc9018",
+      "axis": "explanation",
+      "case_id": "case-001",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": 1.0,
+        "relation_presence": 1.0,
+        "source_retention": 1.0
+      },
+      "profile_digest": "8aebb713b5bd08ac0befb58720b3cd9f6396d8d0e957a72dde83b6a549120658",
+      "request_digest": "905324f5553e61606fd2a5644c0718c41633f6ea9dc4c397de3390dd2166cabf",
+      "source_digest": "587b794453b796ade9c4911624dd0309c0ee99dc328eef492b3c74d96b5b2098",
+      "variant": "candidate"
+    },
+    {
+      "artifact_digest": "2aa372e3533f68122eef5b2db56019ce59df128348034a2519b0c69e61b4b9a9",
+      "axis": "explanation",
+      "case_id": "case-002",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": null,
+        "relation_presence": 0.0,
+        "source_retention": 1.0
+      },
+      "profile_digest": "decf9fc329b7b48c8997a7cbb74725dd6330e07877931418d7b531d8bff6382b",
+      "request_digest": "78d35f7763330c0ddbf1589c0d1dfe2f44fe97e7ec8cf1618d3723312e889168",
+      "source_digest": "6523137c2fba1befaf21b5cf71f334f7da86ef67cbb6be386ef372caa3d0c238",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "4349326b5d1a4203f7e6ee8201ff1b490e2d337c285173eca79c17b78355ab02",
+      "axis": "explanation",
+      "case_id": "case-002",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": null,
+        "relation_presence": 0.5,
+        "source_retention": 1.0
+      },
+      "profile_digest": "8aebb713b5bd08ac0befb58720b3cd9f6396d8d0e957a72dde83b6a549120658",
+      "request_digest": "21c2a88f3e48f34b655eb2f8edb660b4d75b9bdbcebe95fa14ce47a3c56f2b7c",
+      "source_digest": "6523137c2fba1befaf21b5cf71f334f7da86ef67cbb6be386ef372caa3d0c238",
+      "variant": "candidate"
+    },
+    {
+      "artifact_digest": "e5be1a6f0d3e298da54a7c7ab780c2ed1233b649377711d9c9153741a9d09f5d",
+      "axis": "explanation",
+      "case_id": "case-003",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": 1.0,
+        "forbidden_relation_absent": null,
+        "relation_presence": null,
+        "source_retention": null
+      },
+      "profile_digest": "decf9fc329b7b48c8997a7cbb74725dd6330e07877931418d7b531d8bff6382b",
+      "request_digest": "d08ec62570f246929aa300a8756e73814851bd89361665c38bf5bbc9e8c1bb3d",
+      "source_digest": "a1add15b344b5905b3f4e7e3dde5f9f1d48d1b3ddc071a3bdda244ec3157a17f",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "1276373e18a1c6ca1347bc9cf9cef5b1f9144846c617d0a06af79aa97aa9d529",
+      "axis": "explanation",
+      "case_id": "case-003",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": 1.0,
+        "forbidden_relation_absent": null,
+        "relation_presence": null,
+        "source_retention": null
+      },
+      "profile_digest": "8aebb713b5bd08ac0befb58720b3cd9f6396d8d0e957a72dde83b6a549120658",
+      "request_digest": "398f3d7f1cce4624f03aeb154d7c169e3f9440eb50a023f09ae6574a83761e4f",
+      "source_digest": "a1add15b344b5905b3f4e7e3dde5f9f1d48d1b3ddc071a3bdda244ec3157a17f",
+      "variant": "candidate"
+    }
+  ],
+  "schema": "hyperreview.review-comparison.v1",
+  "semantic_assessment": "pending",
+  "suite_digest": "0e6d32e66639d174a9fb86c3b8a48c4bf755879580e7bf1c5d9ef6b86f270b79",
+  "native_runs": [
+    {
+      "axis": "explanation",
+      "run_id": "b3a4dd39e36e4301b64244da61a3039c",
+      "variant": "baseline"
+    },
+    {
+      "axis": "explanation",
+      "run_id": "e6da52e2356747f2a95ad640654b5212",
+      "variant": "candidate"
+    }
+  ],
+  "replay_outcomes": [
+    {
+      "case_id": "case-001",
+      "provider_attempts": 1,
+      "status": "preview_ready"
+    },
+    {
+      "case_id": "case-002",
+      "provider_attempts": 1,
+      "status": "preview_ready"
+    },
+    {
+      "case_id": "case-003",
+      "provider_attempts": 2,
+      "status": "preview_ready"
+    }
+  ],
+  "baseline_note": "case-001 uses the retained v15 combined preview with the incorrect caller; cases 002/003 retain the earlier v14 baselines. Inputs are identical within each pair."
+}

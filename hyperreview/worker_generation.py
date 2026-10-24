@@ -40,6 +40,7 @@ _FINGERPRINT_FILES = (
     "hyperreview/composition_plan.py",
     "hyperreview/relation_plan.py",
     "hyperreview/source_analysis.py",
+    "hyperreview/callsite_navigation.py",
     "hyperreview/relation_sheet.py",
     "hyperreview/configuration_evidence.py",
     "hyperreview/compiled_preview.py",

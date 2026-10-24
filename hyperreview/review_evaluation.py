@@ -15,8 +15,9 @@ from .storage import read_json
 SUITE_SCHEMA = "hyperreview.review-suite.v1"
 PAIR_SCHEMA = "hyperreview.review-pairs.v1"
 REPORT_SCHEMA = "hyperreview.review-comparison.v1"
-METRIC_VERSION = "review-witnesses-v1"
-METRICS = ("source_retention", "relation_presence", "containment_preserved", "compiler_receipt_consistent")
+METRIC_VERSION = "review-witnesses-v2"
+METRICS = ("source_retention", "relation_presence", "containment_preserved", "compiler_receipt_consistent",
+           "forbidden_relation_absent")
 ID = re.compile(r"case-[0-9]{3}\Z")
 CHECK_ID = re.compile(r"check-[0-9]{3}\Z")
 SHA = re.compile(r"[a-f0-9]{64}\Z")
@@ -65,7 +66,7 @@ def validate_suite(suite):
             if check.get("kind") == "source":
                 require(set(check) == base | {"path"} and _text(check["path"])
                         and intake._source_exclusion(check["path"]) is None, "Invalid expected source")
-            elif check.get("kind") == "relation":
+            elif check.get("kind") in ("relation", "relation_absence"):
                 require(set(check) == base | {"relation_kind", "from_contains", "to_contains"}
                         and check["relation_kind"] in KINDS, "Invalid expected relation")
                 for field in ("from_contains", "to_contains"):
@@ -174,8 +175,10 @@ def observe(case, bundle, axis):
         elif result is None:
             checks.append({"id": check["id"], "value": None})
             continue
-        elif kind == "relation":
-            value, metric = _relation_witness(result, check), "relation_presence"
+        elif kind in ("relation", "relation_absence"):
+            present = _relation_witness(result, check)
+            value, metric = ((present, "relation_presence") if kind == "relation" else
+                             (not present, "forbidden_relation_absent"))
         else:
             hc = result[f"{check['side']}_hc"]
             paths = source_analysis.literal_authored_paths({"path": "projection.hc", "line_start": 1, "content": hc})

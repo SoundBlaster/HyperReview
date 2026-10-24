@@ -580,3 +580,34 @@ witness scores or compilation as semantic acceptance. Production is unchanged.
 
 Next: add a negative callsite-attribution case on these frozen sources and
 review the compact output before enabling the candidate in the worker.
+
+### Caller attribution follow-up
+
+Completed the negative case before the next model run. Suite v3 retains the
+earlier criteria and adds a curated forbidden caller relation for #143;
+`review-witnesses-v2` reports its absence separately from positive coverage.
+Earlier datasets/results remain unchanged. Optional Python AST / Swift lexical
+callsite navigation supplies bounded named scopes, with no project/framework
+vocabulary or new validation/publication gate. Unsupported formats/syntax fall
+back to ordinary source review. Profile v16 / composition-v22 distinguishes
+architecture ownership from the containing named operation; fingerprint the
+new helper with the generation pipeline.
+
+The retained v15 combined #143 preview is the failing baseline, on exactly the
+same 35 source records. Its bad QuotaPresentationSection attribution is absent
+in v16; QuotaCoverageSummary.body, QuotaWindowRow.body and MenuSummaryPage.summary
+are shown instead. Required positive relation witnesses increase 1/2 -> 2/2
+and forbidden-relation absence 0 -> 1. #793 still shows update -> publish but
+does not select publish -> os.replace; #107 retains all three authored-path
+witnesses. No selected witness regresses across the three pairs. All previews
+compile; #107 uses its one bounded repair. This is one candidate run per case,
+not a general semantic-correctness or statistical-superiority claim.
+
+Native MLflow/Evidently metric and artifact readback succeeded; sanitized
+[v16 results](evaluations/results/2026-10-24-reviewer-v16.json) preserve lineage
+and measured coverage. Local offline validation: 348 tests, 4 skipped, no
+failures. The earlier combined preview remains available as the negative case.
+Production remains on v14 while the updated PR passes normal review and CI.
+
+Next: merge the reviewed candidate and activate it using the existing guarded
+worker-update procedure, then inspect the first automatic architecture review.

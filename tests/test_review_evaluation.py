@@ -154,10 +154,31 @@ class ReviewEvaluationTests(unittest.TestCase):
                 evaluation.validate_suite(suite)
 
     def test_checked_in_suite_is_valid_and_pinned(self):
-        for version in ("v1", "v2"):
+        for version in ("v1", "v2", "v3"):
             suite = json.loads((Path(__file__).resolve().parents[1] / f"evaluations/reviewer-{version}.json").read_text())
             evaluation.validate_suite(suite)
             self.assertEqual(len(suite["cases"]), 3)
+
+    def test_forbidden_relation_is_separate_from_positive_coverage(self):
+        forbidden = copy.deepcopy(self.suite["cases"][0]["checks"][1])
+        forbidden.update(id="check-004", kind="relation_absence")
+        self.suite["cases"][0]["checks"].append(forbidden)
+        self.pairs["suite_digest"] = intake.digest(self.suite)
+        report = evaluation.compare(self.suite, self.pairs)
+        self.assertEqual(report["rows"][0]["outputs"]["forbidden_relation_absent"], 0)
+        self.assertEqual(report["rows"][1]["outputs"]["forbidden_relation_absent"], 1)
+        # An empty relation list also fails the positive witness. No aggregate
+        # score can hide that missing coverage behind forbidden-edge absence.
+        self.assertEqual(report["rows"][1]["outputs"]["relation_presence"], 0)
+        self.assertEqual(report["rows"][1]["outputs"]["compiler_receipt_consistent"], 1)
+
+    def test_forbidden_relation_is_unmeasured_without_projection(self):
+        case = copy.deepcopy(self.suite["cases"][0])
+        case["checks"][1]["kind"] = "relation_absence"
+        bundle = evaluation.load_bundle(self.baseline, projection=False)
+        values, checks = evaluation.observe(case, bundle, "intake")
+        self.assertIsNone(values["forbidden_relation_absent"])
+        self.assertIsNone(checks[1]["value"])
 
     def test_incomplete_suite_coverage_remains_visible(self):
         other = copy.deepcopy(self.suite["cases"][0])

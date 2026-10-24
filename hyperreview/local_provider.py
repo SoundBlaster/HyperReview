@@ -12,7 +12,7 @@ import threading
 import time
 from urllib.parse import urlsplit
 
-from . import intake, model_contract, reviewer_profile, source_analysis
+from . import callsite_navigation, intake, model_contract, reviewer_profile, source_analysis
 from .composition_plan import CompositionPlanError, plan_schema, to_result, require_current_provider_plan
 
 
@@ -267,6 +267,14 @@ def _comparison_content(request):
         map_hints.append(hint)
     if map_hints:
         payload["authored_map_hints"] = map_hints
+    call_hints = []
+    for hint in callsite_navigation.callsite_hints(request):
+        candidate = {**payload, "callsite_hints": call_hints + [hint],
+                     "callsite_hint_scope": "Partial lexical locations, not binding or execution proof. Verify the named caller in source."}
+        if len(_wire_bytes(candidate)) > 6144:
+            break
+        call_hints.append(hint)
+        payload = candidate
     hints = []
     for hint in source_analysis.policy_reuse_hints(request):
         candidate = {**payload, "policy_reference_hints": hints + [hint],
@@ -277,7 +285,7 @@ def _comparison_content(request):
     if hints:
         payload["policy_reference_hints"] = hints
         payload["hint_scope"] = "Python identifier references only; verify binding and meaning in source."
-    return _wire_bytes(payload).decode("utf-8") if comparisons or hints or map_hints else None
+    return _wire_bytes(payload).decode("utf-8") if comparisons or hints or map_hints or call_hints else None
 
 
 def _attempt_payload(config, schema, user_content, issue=None, comparison_content=None):

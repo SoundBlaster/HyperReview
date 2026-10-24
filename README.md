@@ -474,7 +474,8 @@ See [evaluation handoff](SPECS/14-evaluation-handoff.md).
 
 The [controlled reviewer evaluation](SPECS/28-controlled-reviewer-evaluation.md)
 uses native MLflow GenAI custom scorers and Evidently reference/current reports.
-The [versioned suite](evaluations/reviewer-v2.json) starts with three real PRs.
+The [versioned suite](evaluations/reviewer-v3.json) starts with three real PRs,
+including a negative caller-attribution example paired with positive coverage.
 It separates source-selection experiments from prompt comparisons, validates
 sealed artifact lineage and records missing coverage. SDKs receive numeric
 witnesses and digests only. Human acceptance remains `ok`/`not_ok`; there is no

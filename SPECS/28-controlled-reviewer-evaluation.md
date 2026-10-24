@@ -6,7 +6,7 @@ boundary pilot. Neither evaluation is a publication gate.
 
 ## Freeze before changing behavior
 
-The versioned [review suite](../evaluations/reviewer-v2.json) pins real PR
+The versioned [review suite](../evaluations/reviewer-v3.json) pins real PR
 revisions, narrow deterministic witnesses and a short local human rubric. Keep
 baseline artifacts and their digests before editing a prompt, selector or
 renderer. Commit changes to criteria separately from the change being assessed;
@@ -44,6 +44,7 @@ custom code scorers. No `predict_fn`, model judge or inference runs in evaluatio
 | --- | --- | --- |
 | `source_retention` | Named same-side source was supplied | Source was understood |
 | `relation_presence` | A selected kind and endpoint tokens occur in a same-side structured relation | Correct binding, meaning, execution or completeness |
+| `forbidden_relation_absent` | A curated, source-reviewed incorrect relation is absent | Other relations are correct, or necessary relations are present |
 | `containment_preserved` | The positive unambiguous literal role path is retained | Entire projection matches architecture |
 | `compiler_receipt_consistent` | Stored projection/IR hashes agree with a successful compiler receipt | Fresh compilation, authenticity or behavioral correctness |
 
@@ -52,6 +53,28 @@ remain representation-sensitive witnesses. A review may explain a mechanism
 well without selecting a particular edge. Missing measurements stay null and
 are excluded from means; measured and unpaired case counts remain visible.
 There is no combined quality score or statistical significance claim.
+
+V3 adds a negative caller-attribution witness for SessionMonitor #143, paired
+with the existing positive witnesses. Reporting no relations satisfies absence
+but loses positive coverage. The metric definition advances to
+`review-witnesses-v2`; previous suite versions, results and fingerprints stay
+unchanged. This checks the known outer-component error, not arbitrary semantic
+precision or every possible incorrect caller name.
+
+Profile v16 / composition-v22 distinguishes architecture ownership from the
+named operation containing a call. Optional `callsite_hints` provide up to four
+literal targets and four distinct named caller/source locations per target,
+inside the existing 6144-byte shared navigation budget. Added-file stems only
+choose literal search words; they do not establish which file implements a
+target. Python AST and a conservative Swift lexical adapter supply locations.
+Swift skips comments/string contents, unsupported raw/triple strings,
+conditional-compilation files, unbalanced braces and offset windows. Python
+omits unnamed callbacks. Swift reports lexical named owners, including calls
+inside closures; it does not resolve callback execution identity. Some
+declaration forms are outside this partial index. Other
+formats continue through the normal source-review path without this helper.
+These are untrusted navigation hints, not resolved binding, a runtime call
+graph or a new rejection/publication gate. Verify each hint in the source.
 
 The existing local `feedback` command remains the human acceptance path:
 `ok`/`not_ok` for the exact preview, with an optional note. Rubrics are reading
@@ -90,7 +113,7 @@ local integrity checks, not signatures or attestations.
 
 ```sh
 ~/.local/share/hyperreview/evaluation-runtime/bin/python -m hyperreview.review_evaluation_sdk \
-  --suite /absolute/trusted/evaluations/reviewer-v2.json \
+  --suite /absolute/trusted/evaluations/reviewer-v3.json \
   --pairs /absolute/private/pairs.json \
   --database /absolute/private/evaluation/tracking.sqlite \
   --artifacts-root /absolute/private/evaluation/artifacts \

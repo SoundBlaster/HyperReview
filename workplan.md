@@ -545,3 +545,38 @@ malformed evidence, skip persistence and stale-skip restoration without a new
 collection or attempt reset. All 59 worker-related tests pass locally; temporary
 outputs use the verified TB5 worktree-specific path. No provider or GitHub calls
 are made by these offline tests. Await fresh CI and close the addressed thread.
+
+## Controlled reviewer changes with MLflow GenAI and Evidently
+
+Add a separate real-PR evaluation suite and sealed artifact comparator. Use
+native MLflow GenAI custom scorers on numeric, pre-generated observations and
+Evidently reference/current reports. Keep raw sources, prompts, review prose
+and human rubrics local. Preserve missing measurements, incomplete case coverage
+and failed development attempts. This adds no publication gate or model judge.
+
+Intake v5 prioritizes added code within its existing evidence family using the
+same key for collection, final eviction and normalization. A frozen-response
+replay of SessionMonitor #143 retains the new 13-line provider where v4 omitted
+it; source records change from 34 to 35 with unchanged limits and v14 prompt.
+Profile v15 / composition-v21 accepts direct callsite evidence without callee
+internals and prioritizes the changed mechanism over outer wrappers. Its text
+is 15656 bytes; existing local HTTP context budgets remain unchanged.
+
+Three private prompt-only development iterations retain exact request inputs
+and installed Codex/Luna Medium settings. The second iteration's BuildHunter
+#107 response fails bounded validation; the final iteration produces three
+validated previews and preserves its authored hierarchy. The final SpecGraph
+#793 review includes NotesStore.update -> NotesStore.publish. Selected edges
+remain incomplete: the publish -> os.replace witness is not selected, and the
+final #143 prompt-only view selects quota subviews rather than the menu edge.
+
+Native evaluation and artifact/metric readback ran with MLflow 3.16.1 and
+Evidently 0.7.23. [Sanitized results](evaluations/results/2026-10-24-reviewer-v15.json)
+preserve all development outcomes and separate intake/prompt measurements.
+V2 corrects a source-verified caller label from the retained v1 suite; it does
+not change model output. A combined #143 private preview includes the provider
+and connections but still attributes nested calls too broadly. Do not treat
+witness scores or compilation as semantic acceptance. Production is unchanged.
+
+Next: add a negative callsite-attribution case on these frozen sources and
+review the compact output before enabling the candidate in the worker.

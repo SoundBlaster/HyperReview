@@ -1,0 +1,353 @@
+{
+  "assessor_type": "deterministic_witness",
+  "checks": [
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 0,
+      "case_id": "case-001",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 0,
+      "case_id": "case-001",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-003",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-002",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 1,
+      "case_id": "case-002",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 0,
+      "case_id": "case-002",
+      "check_id": "check-003",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-003",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-003",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-003",
+      "check_id": "check-003",
+      "regressed": false
+    },
+    {
+      "axis": "intake",
+      "baseline": 0,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "intake",
+      "baseline": null,
+      "candidate": null,
+      "case_id": "case-001",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "intake",
+      "baseline": null,
+      "candidate": null,
+      "case_id": "case-001",
+      "check_id": "check-003",
+      "regressed": false
+    }
+  ],
+  "coverage": {
+    "explanation": {
+      "paired_cases": [
+        "case-001",
+        "case-002",
+        "case-003"
+      ],
+      "unpaired_cases": []
+    },
+    "intake": {
+      "paired_cases": [
+        "case-001"
+      ],
+      "unpaired_cases": [
+        "case-002",
+        "case-003"
+      ]
+    }
+  },
+  "metric_version": "review-witnesses-v1",
+  "publication_gate": false,
+  "rows": [
+    {
+      "artifact_digest": "68ad8bd5e40390ad88e468449331ed316e465f9007ec06cb6dc5a37c5fd2fa05",
+      "axis": "explanation",
+      "case_id": "case-001",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "relation_presence": 0.0,
+        "source_retention": 0.0
+      },
+      "profile_digest": "decf9fc329b7b48c8997a7cbb74725dd6330e07877931418d7b531d8bff6382b",
+      "request_digest": "86d858259fa7056a3a53cc8d64fb0652d42c73e6273eae9dd6ce34a93e85a9b7",
+      "source_digest": "082c1c9726757770edd98510dc91a87a13d2e025ae76dfd8f8234234a8cbd8cd",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "8bd90f6b44be576f77b6d0b932032589968124dbd5813334279c7249476db04c",
+      "axis": "explanation",
+      "case_id": "case-001",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "relation_presence": 0.5,
+        "source_retention": 0.0
+      },
+      "profile_digest": "470545353710b1c2c5b1566d43dc775e0dfa94f99bfc31e1b0bf8afeec56008a",
+      "request_digest": "a389872e2a3fabd8caebe34f2fdcf0ec135f823675da98c4aa9e56072ed80729",
+      "source_digest": "082c1c9726757770edd98510dc91a87a13d2e025ae76dfd8f8234234a8cbd8cd",
+      "variant": "candidate"
+    },
+    {
+      "artifact_digest": "2aa372e3533f68122eef5b2db56019ce59df128348034a2519b0c69e61b4b9a9",
+      "axis": "explanation",
+      "case_id": "case-002",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "relation_presence": 0.0,
+        "source_retention": 1.0
+      },
+      "profile_digest": "decf9fc329b7b48c8997a7cbb74725dd6330e07877931418d7b531d8bff6382b",
+      "request_digest": "78d35f7763330c0ddbf1589c0d1dfe2f44fe97e7ec8cf1618d3723312e889168",
+      "source_digest": "6523137c2fba1befaf21b5cf71f334f7da86ef67cbb6be386ef372caa3d0c238",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "8f7917fdbe2f99e4838dae6a62d2bcc093fe9054d4770adfa2532af4c2da070c",
+      "axis": "explanation",
+      "case_id": "case-002",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "relation_presence": 0.5,
+        "source_retention": 1.0
+      },
+      "profile_digest": "470545353710b1c2c5b1566d43dc775e0dfa94f99bfc31e1b0bf8afeec56008a",
+      "request_digest": "68d3f5ce0a7af82ede9bcc2c13914ec498a7277d69936788fb519623154d510d",
+      "source_digest": "6523137c2fba1befaf21b5cf71f334f7da86ef67cbb6be386ef372caa3d0c238",
+      "variant": "candidate"
+    },
+    {
+      "artifact_digest": "e5be1a6f0d3e298da54a7c7ab780c2ed1233b649377711d9c9153741a9d09f5d",
+      "axis": "explanation",
+      "case_id": "case-003",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": 1.0,
+        "relation_presence": null,
+        "source_retention": null
+      },
+      "profile_digest": "decf9fc329b7b48c8997a7cbb74725dd6330e07877931418d7b531d8bff6382b",
+      "request_digest": "d08ec62570f246929aa300a8756e73814851bd89361665c38bf5bbc9e8c1bb3d",
+      "source_digest": "a1add15b344b5905b3f4e7e3dde5f9f1d48d1b3ddc071a3bdda244ec3157a17f",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "9912590590f0155d03b14f41a4e2c802d4f64f0d082c969f8c000bc720b921c5",
+      "axis": "explanation",
+      "case_id": "case-003",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": 1.0,
+        "relation_presence": null,
+        "source_retention": null
+      },
+      "profile_digest": "470545353710b1c2c5b1566d43dc775e0dfa94f99bfc31e1b0bf8afeec56008a",
+      "request_digest": "a1be48ac094b566bcb70284fbbeb2e4a332db3877155790ab54b1a1575132b68",
+      "source_digest": "a1add15b344b5905b3f4e7e3dde5f9f1d48d1b3ddc071a3bdda244ec3157a17f",
+      "variant": "candidate"
+    },
+    {
+      "artifact_digest": "85fbdf81cd7cfb4b661e067423e7bb33415fb9078c1cde7663515a2eb36c133f",
+      "axis": "intake",
+      "case_id": "case-001",
+      "compiler_sha256": null,
+      "model_settings_digest": null,
+      "outputs": {
+        "compiler_receipt_consistent": null,
+        "containment_preserved": null,
+        "relation_presence": null,
+        "source_retention": 0.0
+      },
+      "profile_digest": "decf9fc329b7b48c8997a7cbb74725dd6330e07877931418d7b531d8bff6382b",
+      "request_digest": "2beb48896a386acd5f9881b210409035b65218eaebfbc0deadb052eb1c4412ba",
+      "source_digest": "082c1c9726757770edd98510dc91a87a13d2e025ae76dfd8f8234234a8cbd8cd",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "01b5a1d0037147b7735e09e977ad6bc02111918a3c964cd17124c5ad07b887c6",
+      "axis": "intake",
+      "case_id": "case-001",
+      "compiler_sha256": null,
+      "model_settings_digest": null,
+      "outputs": {
+        "compiler_receipt_consistent": null,
+        "containment_preserved": null,
+        "relation_presence": null,
+        "source_retention": 1.0
+      },
+      "profile_digest": "decf9fc329b7b48c8997a7cbb74725dd6330e07877931418d7b531d8bff6382b",
+      "request_digest": "477bdc97d541fcf0c71afc9b0efc89c7ae461d562a4acba7bf39f0a1991b8c99",
+      "source_digest": "587b794453b796ade9c4911624dd0309c0ee99dc328eef492b3c74d96b5b2098",
+      "variant": "candidate"
+    }
+  ],
+  "schema": "hyperreview.review-comparison.v1",
+  "semantic_assessment": "pending",
+  "suite_digest": "9a3639fc9ee168791d2b0dfa1f7525dadf8026e62b0be1e06da2b0b0447bd2c3",
+  "native_runs": [
+    {
+      "axis": "explanation",
+      "run_id": "a688fe2256c041eda6ce56b140509585",
+      "variant": "baseline"
+    },
+    {
+      "axis": "explanation",
+      "run_id": "18a0886818614f01a3b2653edc452df9",
+      "variant": "candidate"
+    },
+    {
+      "axis": "intake",
+      "run_id": "1019a95f692e4f9aaf9e33afc1ac8537",
+      "variant": "baseline"
+    },
+    {
+      "axis": "intake",
+      "run_id": "e9060515e2df4f8082fc070800b292ff",
+      "variant": "candidate"
+    }
+  ],
+  "development_iterations": [
+    {
+      "id": "iteration-001",
+      "outcomes": [
+        {
+          "case_id": "case-001",
+          "provider_attempts": 1,
+          "status": "preview_ready"
+        },
+        {
+          "case_id": "case-002",
+          "provider_attempts": 1,
+          "status": "preview_ready"
+        },
+        {
+          "case_id": "case-003",
+          "provider_attempts": 1,
+          "status": "preview_ready"
+        }
+      ]
+    },
+    {
+      "id": "iteration-002",
+      "outcomes": [
+        {
+          "case_id": "case-001",
+          "provider_attempts": 1,
+          "status": "preview_ready"
+        },
+        {
+          "case_id": "case-002",
+          "provider_attempts": 1,
+          "status": "preview_ready"
+        },
+        {
+          "case_id": "case-003",
+          "failure": "codex_plan_rejected_invalid_plan_duplicate_refs",
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "id": "iteration-003",
+      "outcomes": [
+        {
+          "case_id": "case-001",
+          "provider_attempts": 1,
+          "status": "preview_ready"
+        },
+        {
+          "case_id": "case-002",
+          "provider_attempts": 1,
+          "status": "preview_ready"
+        },
+        {
+          "case_id": "case-003",
+          "provider_attempts": 1,
+          "status": "preview_ready"
+        }
+      ]
+    }
+  ],
+  "end_to_end": {
+    "status": "preview_ready",
+    "controlled_prompt_comparison": false,
+    "human_acceptance": "pending",
+    "known_gap": "Caller attribution still needs source review; a syntactically valid projection can assign a nested construction to an outer responsibility."
+  }
+}

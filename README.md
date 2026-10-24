@@ -470,6 +470,16 @@ for upload. Failed delivery leaves the local report available; another explicit
 invocation may create another run. There is no durable evaluation retry outbox.
 See [evaluation handoff](SPECS/14-evaluation-handoff.md).
 
+### Compare reviewer revisions on frozen PRs
+
+The [controlled reviewer evaluation](SPECS/28-controlled-reviewer-evaluation.md)
+uses native MLflow GenAI custom scorers and Evidently reference/current reports.
+The [versioned suite](evaluations/reviewer-v2.json) starts with three real PRs.
+It separates source-selection experiments from prompt comparisons, validates
+sealed artifact lineage and records missing coverage. SDKs receive numeric
+witnesses and digests only. Human acceptance remains `ok`/`not_ok`; there is no
+model judge, inference, GitHub write or additional publication gate.
+
 ## Architecture validation
 
 [GitHub Actions](.github/workflows/hypercode-validation.yml) builds Hypercode

@@ -236,5 +236,11 @@
       "status": "preview_ready"
     }
   ],
-  "baseline_note": "case-001 uses the retained v15 combined preview with the incorrect caller; cases 002/003 retain the earlier v14 baselines. Inputs are identical within each pair."
+  "baseline_note": "case-001 uses the retained v15 combined preview with the incorrect caller; cases 002/003 retain the earlier v14 baselines. Inputs are identical within each pair.",
+  "navigation_payload_digests": {
+    "case-001": "562b8ba99f46ff2dd2a37be4a2b20247882d3a76f81da5d79ab0fff0f82a3661",
+    "case-002": "ce1b5f90fbe498f7f273c12293dfbef3085c0bce9233b4f1f1f93e824bb18a31",
+    "case-003": "97e5232f814a07bca94f5d28fe14fe000d356d2088513046669aa1a977f237f5"
+  },
+  "navigation_payload_unchanged_after_hardening": true
 }

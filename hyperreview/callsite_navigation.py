@@ -13,7 +13,7 @@ import re
 MAX_BYTES = 262144
 MAX_SITES = 128
 _NAME = r"[A-Za-z_][A-Za-z0-9_]*"
-_DECL = re.compile(r"(?m)^[ \t]*(?:(?:public|private|fileprivate|internal|open|final|static|"
+_DECL = re.compile(r"(?m)^[ \t]*(?:(?:public|private|fileprivate|internal|open|final|static|class|"
                    r"override|mutating|nonmutating|nonisolated|indirect|lazy|required|convenience)\s+)*"
                    r"(struct|class|enum|actor|protocol|extension|func|var|let)\s+(" + _NAME + r")\b")
 
@@ -122,7 +122,7 @@ def _swift_sites(content, names):
                 index = ends[index]  # Default-argument closure, outside the function body.
             index += 1
     sites = []
-    pattern = re.compile(r"(?<![A-Za-z0-9_.])(" + "|".join(re.escape(n) for n in sorted(names)) + r")\s*\(")
+    pattern = re.compile(r"(?<![\w.])(" + "|".join(re.escape(n) for n in sorted(names)) + r")\s*\(")
     for call in pattern.finditer(code):
         # Never mistake a function declaration for an invocation.
         if any(start <= call.start() <= body for start, body, _end, _kind, _name in scopes):

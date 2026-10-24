@@ -605,9 +605,11 @@ not a general semantic-correctness or statistical-superiority claim.
 
 Native MLflow/Evidently metric and artifact readback succeeded; sanitized
 [v16 results](evaluations/results/2026-10-24-reviewer-v16.json) preserve lineage
-and measured coverage. Local offline validation: 348 tests, 4 skipped, no
+and measured coverage. Local offline validation: 349 tests, 4 skipped, no
 failures. The earlier combined preview remains available as the negative case.
-Production remains on v14 while the updated PR passes normal review and CI.
+A final class-method/Unicode navigation hardening preserves the exact optional
+payload digest for all three frozen candidate requests. Production remains on
+v14 while the updated PR passes normal review and CI.
 
 Next: merge the reviewed candidate and activate it using the existing guarded
 worker-update procedure, then inspect the first automatic architecture review.

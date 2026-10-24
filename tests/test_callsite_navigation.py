@@ -90,6 +90,17 @@ struct Inner {
         data["change_inventory"]["files"][0]["after_path"] = "src/Other.swift"
         self.assertEqual(navigation.callsite_hints(data), [])
 
+    def test_class_method_modifier_and_unicode_identifier_boundaries(self):
+        text = '''class Factory {
+    class func render() -> Output {
+        ЯProvider()
+        Provider()
+    }
+}
+'''
+        site = navigation.callsite_hints(request(text))[0]["sites"][0]
+        self.assertEqual((site["caller"], site["line_start"]), ("Factory.render", 4))
+
     def test_distinct_callers_get_a_bounded_partial_index(self):
         text = "".join(f"struct C{n} {{\n var body: View {{ Provider() }}\n}}\n" for n in range(200))
         hints = navigation.callsite_hints(request(text))

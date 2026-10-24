@@ -64,6 +64,37 @@ class FakeGitHub:
 
 
 class IntakeTests(unittest.TestCase):
+    def test_new_code_survives_consumers_at_collection_and_normalization_limits(self):
+        from hyperreview import intake, model_contract
+
+        class NewProvider(FakeGitHub):
+            def __init__(self):
+                super().__init__()
+                self.contents = {raw: blob(raw) for raw in (b"old()\n" * 20, b"new()\n" * 20, b"provider()\n")}
+
+            def get(self, endpoint, query="."):
+                if "/git/trees/" in endpoint:
+                    values = {"a_consumer.py": b"old()\n" * 20} if BASE in endpoint else {
+                        "a_consumer.py": b"new()\n" * 20, "z_provider.py": b"provider()\n"}
+                    return {"truncated": False, "tree": [
+                        {"path": path, "mode": "100644", "type": "blob", "sha": self.contents[raw][0],
+                         "size": len(raw)} for path, raw in values.items()]}
+                if "/git/blobs/" in endpoint:
+                    return next(value for sha, value in self.contents.values() if endpoint.endswith(sha))
+                return super().get(endpoint, query)
+
+        with patch.object(intake, "MAX_FILES", 1):
+            pack = collect(REPO, 761, NewProvider())
+        self.assertEqual([f["after_path"] for f in pack["files"] if f["sources"]], ["z_provider.py"])
+        pack = collect(REPO, 761, NewProvider())
+        request = model_contract.prepare_request(pack, max_source_bytes=50)
+        self.assertEqual([source["path"] for source in request["sources"]], ["z_provider.py"])
+        self.assertLessEqual(len(encoded(pack)), MAX_BYTES)
+        # Family and context priorities still dominate additions.
+        key = lambda path, **kw: intake.file_priority({"before_path": None, "after_path": path, **kw})
+        self.assertLess(key("map.hc", status="context"), key("z_provider.py", status="context"))
+        self.assertLess(key("z_provider.py"), key("a_context.py", status="context"))
+
     def test_eligibility_rejects_foreign_author_fork_draft_closed_account(self):
         eligible(REPO, 761, PR, AUTHOR)
         for change in ({"author": "other"}, {"head_repo": "other/fork"},

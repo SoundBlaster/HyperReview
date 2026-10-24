@@ -31,7 +31,7 @@ MAX_BYTES = 262144
 DEADLINE_SECONDS = 300
 API_BYTES = 4 * 1024 * 1024
 SCHEMA = "hyperreview.evidence.v2"
-POLICY = "own-pr-intake.v4"
+POLICY = "own-pr-intake.v5"
 EXTENSIONS = frozenset((".py", ".swift", ".rs", ".ts", ".tsx", ".js", ".jsx",
                         ".c", ".h", ".cpp", ".hpp", ".m", ".mm", ".md", ".hc"))
 OPERATOR_FILES = frozenset(("agents.md", "claude.md", "skill.md", "mcp.json"))
@@ -203,11 +203,11 @@ def file_priority(item):
     """Apply the same bounded selection order during intake and normalization."""
     path = item["after_path"] or item["before_path"]
     rank, path = source_priority(path)
-    # Changed evidence must survive before optional, unchanged context. New
-    # prose is often the actual decision/audit; large historical documents
-    # should not exhaust the prose cap before that new material is read.
-    new_prose = path.endswith(".md") and item.get("before_path") is None
-    return item.get("status") == "context", rank, not new_prose, path
+    # A new provider must not disappear behind whole modified consumers. Keep
+    # existing evidence-family and changed-before-context ordering; this is no
+    # dependency inference, and does not enlarge the file or byte budgets.
+    new_material = item.get("before_path") is None and rank in (2, 4)
+    return item.get("status") == "context", rank, not new_material, path
 
 
 def source_priority(path):

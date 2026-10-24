@@ -545,3 +545,71 @@ malformed evidence, skip persistence and stale-skip restoration without a new
 collection or attempt reset. All 59 worker-related tests pass locally; temporary
 outputs use the verified TB5 worktree-specific path. No provider or GitHub calls
 are made by these offline tests. Await fresh CI and close the addressed thread.
+
+## Controlled reviewer changes with MLflow GenAI and Evidently
+
+Add a separate real-PR evaluation suite and sealed artifact comparator. Use
+native MLflow GenAI custom scorers on numeric, pre-generated observations and
+Evidently reference/current reports. Keep raw sources, prompts, review prose
+and human rubrics local. Preserve missing measurements, incomplete case coverage
+and failed development attempts. This adds no publication gate or model judge.
+
+Intake v5 prioritizes added code within its existing evidence family using the
+same key for collection, final eviction and normalization. A frozen-response
+replay of SessionMonitor #143 retains the new 13-line provider where v4 omitted
+it; source records change from 34 to 35 with unchanged limits and v14 prompt.
+Profile v15 / composition-v21 accepts direct callsite evidence without callee
+internals and prioritizes the changed mechanism over outer wrappers. Its text
+is 15656 bytes; existing local HTTP context budgets remain unchanged.
+
+Three private prompt-only development iterations retain exact request inputs
+and installed Codex/Luna Medium settings. The second iteration's BuildHunter
+#107 response fails bounded validation; the final iteration produces three
+validated previews and preserves its authored hierarchy. The final SpecGraph
+#793 review includes NotesStore.update -> NotesStore.publish. Selected edges
+remain incomplete: the publish -> os.replace witness is not selected, and the
+final #143 prompt-only view selects quota subviews rather than the menu edge.
+
+Native evaluation and artifact/metric readback ran with MLflow 3.16.1 and
+Evidently 0.7.23. [Sanitized results](evaluations/results/2026-10-24-reviewer-v15.json)
+preserve all development outcomes and separate intake/prompt measurements.
+V2 corrects a source-verified caller label from the retained v1 suite; it does
+not change model output. A combined #143 private preview includes the provider
+and connections but still attributes nested calls too broadly. Do not treat
+witness scores or compilation as semantic acceptance. Production is unchanged.
+
+Next: add a negative callsite-attribution case on these frozen sources and
+review the compact output before enabling the candidate in the worker.
+
+### Caller attribution follow-up
+
+Completed the negative case before the next model run. Suite v3 retains the
+earlier criteria and adds a curated forbidden caller relation for #143;
+`review-witnesses-v2` reports its absence separately from positive coverage.
+Earlier datasets/results remain unchanged. Optional Python AST / Swift lexical
+callsite navigation supplies bounded named scopes, with no project/framework
+vocabulary or new validation/publication gate. Unsupported formats/syntax fall
+back to ordinary source review. Profile v16 / composition-v22 distinguishes
+architecture ownership from the containing named operation; fingerprint the
+new helper with the generation pipeline.
+
+The retained v15 combined #143 preview is the failing baseline, on exactly the
+same 35 source records. Its bad QuotaPresentationSection attribution is absent
+in v16; QuotaCoverageSummary.body, QuotaWindowRow.body and MenuSummaryPage.summary
+are shown instead. Required positive relation witnesses increase 1/2 -> 2/2
+and forbidden-relation absence 0 -> 1. #793 still shows update -> publish but
+does not select publish -> os.replace; #107 retains all three authored-path
+witnesses. No selected witness regresses across the three pairs. All previews
+compile; #107 uses its one bounded repair. This is one candidate run per case,
+not a general semantic-correctness or statistical-superiority claim.
+
+Native MLflow/Evidently metric and artifact readback succeeded; sanitized
+[v16 results](evaluations/results/2026-10-24-reviewer-v16.json) preserve lineage
+and measured coverage. Local offline validation: 349 tests, 4 skipped, no
+failures. The earlier combined preview remains available as the negative case.
+A final class-method/Unicode navigation hardening preserves the exact optional
+payload digest for all three frozen candidate requests. Production remains on
+v14 while the updated PR passes normal review and CI.
+
+Next: merge the reviewed candidate and activate it using the existing guarded
+worker-update procedure, then inspect the first automatic architecture review.

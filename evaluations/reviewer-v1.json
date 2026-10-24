@@ -1,0 +1,56 @@
+{
+  "schema": "hyperreview.review-suite.v1",
+  "version": "reviewer-v1",
+  "cases": [
+    {
+      "id": "case-001",
+      "repository": "SoundBlaster/SessionMonitor",
+      "pr": 143,
+      "base": "3ca4ece501dd6870fac11614240704a0c4b1bfec",
+      "head": "9a75c716ac1085ee702f6b2eacef7233edcb25fb",
+      "checks": [
+        {"id": "check-001", "kind": "source", "side": "after", "path": "Apps/MonitorMac/Sources/shared/ui/DesignNumericRow.swift"},
+        {"id": "check-002", "kind": "relation", "side": "after", "relation_kind": "calls", "from_contains": ["MenuSummaryPage"], "to_contains": ["DesignNumericRow"]},
+        {"id": "check-003", "kind": "relation", "side": "after", "relation_kind": "calls", "from_contains": ["QuotaPresentationSection"], "to_contains": ["DesignNumericRow"]}
+      ],
+      "rubric": [
+        "Does the first screen expose the shared numeric presentation change and its consumers?",
+        "When provider source is supplied, does the review distinguish monospaced numeric values, proportional labels and caller-owned formatting?",
+        "With callsites alone, does it report their direct constructions while leaving callee internals unknown?"
+      ]
+    },
+    {
+      "id": "case-002",
+      "repository": "0al-spec/SpecGraph",
+      "pr": 793,
+      "base": "bc051b08c68dfe795d10fd9309e98867d3430911",
+      "head": "567f55206a1f7322ea792ab0047c72c8968541e0",
+      "checks": [
+        {"id": "check-001", "kind": "source", "side": "after", "path": "tools/conversation_notes/store.py"},
+        {"id": "check-002", "kind": "relation", "side": "after", "relation_kind": "calls", "from_contains": ["NotesStore", "update"], "to_contains": ["publish"]},
+        {"id": "check-003", "kind": "relation", "side": "after", "relation_kind": "calls", "from_contains": ["NotesStore", "publish"], "to_contains": ["os", "replace"]}
+      ],
+      "rubric": [
+        "Does the compact view explain revisioned persistence and publication rather than only CLI/API wrappers?",
+        "Does it explain expected_revision, the writer lock, preparation of a complete revision and replacement of CURRENT without claiming observed crash safety?",
+        "Does it keep caller-attributed approval observations separate from canonical authority?"
+      ]
+    },
+    {
+      "id": "case-003",
+      "repository": "SoundBlaster/BuildHunter",
+      "pr": 107,
+      "base": "b48d271402ac9e34eb2e81bd5a5f8fc20b30ab58",
+      "head": "3fc0eeddd4a5f05a6bee60355837c090b2df1d01",
+      "checks": [
+        {"id": "check-001", "kind": "containment", "side": "before", "roles": ["BuildHunterRuntime", "SharedRuntime", "PluginScanning"]},
+        {"id": "check-002", "kind": "containment", "side": "after", "roles": ["BuildHunterRuntime", "SharedRuntime", "PluginScanning"]},
+        {"id": "check-003", "kind": "containment", "side": "after", "roles": ["BuildHunterRuntime", "SharedRuntime", "HunterScopedFilesystem"]}
+      ],
+      "rubric": [
+        "Are authored roles and shared containment preserved independently on each revision?",
+        "Does the explanation show delegation without inventing an architectural move or a direct call across an intermediate helper?"
+      ]
+    }
+  ]
+}

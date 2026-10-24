@@ -298,16 +298,16 @@ class LocalProviderTests(unittest.TestCase):
         from hyperreview.local_provider import SYSTEM_PROMPT
 
         for phrase in (
-            "Name the task performed",
-            "Avoid PythonFile, Function, Module, path names",
+            "Use domain CamelCase roles and stable lower_snake_case IDs",
+            "not file/function inventories",
             "Compare executable code and comments separately",
-            "Read exact fields/objects compared",
-            "Reason: concrete task plus changed/preserved condition, in Russian",
+            "a partial check is not complete validation",
+            "Write summary, reason and limitations in Russian",
             "Comments are not behavior evidence",
-            "Summary MUST describe the actual difference first",
-            "what code condition or comment wording changed, then what stayed and what cannot be established",
-            "Limitations: specific missing evidence, without repeating request boilerplate",
-            "Null means absent, never unchanged.",
+            "Start with this PR's delta",
+            "Explain concrete changed/preserved conditions and specific unknowns",
+            "Keep the result limitations focused on concrete missing evidence",
+            "Absent means type=null, parent=null, refs=[] together",
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, SYSTEM_PROMPT)

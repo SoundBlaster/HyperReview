@@ -6,7 +6,7 @@ executed; source text remains untrusted data and is only used as references.
 
 import re
 
-from . import intake, model_contract, relation_plan
+from . import intake, model_contract, relation_plan, source_analysis
 
 
 PLAN_SCHEMA = "hyperreview.composition-plan.v3"
@@ -171,6 +171,29 @@ def _validate_plan(plan, request):
         for root in roots[side]:
             visit(root, 1)
         _require(visited == expected, f"{side} tree has an orphan or cycle")
+        source_by_id = {source["id"]: source for source in request["sources"]}
+        map_paths = {ref: source_analysis.literal_authored_paths(source)
+                     for ref, source in source_by_id.items() if source["side"] == side
+                     and source["path"].endswith(".hc")}
+        for index, node_id in enumerate(order):
+            node = by_id[node_id]
+            role = node[f"{side}_type"]
+            if role is None:
+                continue
+            actual = []
+            current = node_id
+            while current is not None:
+                actual.insert(0, by_id[current][f"{side}_type"])
+                current = by_id[current][f"{side}_parent"]
+            paths = {map_paths[ref][role] for ref in node[f"{side}_refs"]
+                     if role in map_paths.get(ref, {})}
+            if len(paths) == 1:
+                path = next(iter(paths))
+                # A review can start at an authored subtree. Inside that
+                # shared scope, however, it cannot drop a containing owner.
+                if actual[0] in path:
+                    _require(tuple(actual) == path[path.index(actual[0]):],
+                             f"Authored containment mismatch at nodes[{index}].{side}_parent")
         rendered[side] = ("\n".join(lines) + "\n") if lines else "\n"
 
     before_bytes = len(rendered["before"].encode("utf-8"))
@@ -200,7 +223,7 @@ def plan_schema(request, *, include_relations=False):
     identifier = {"type": "string", "pattern": r"^[A-Za-z][A-Za-z0-9_]{0,79}$", "maxLength": 80}
     node_properties = {
         "reason": {"type": "string", "minLength": 1, "maxLength": 2000,
-                   "description": "Write in Russian: the concrete task and what changed/remained. Explain comment changes separately from code behavior. For an inferred rescope/new wrapper, name the relevant existing .hc roles and explain why their scope does not fit; distinguish this from an actual source rename. Never merely unchanged or file changed."},
+                   "description": "Write in Russian: the concrete task and what changed/remained, naming exact operations for citations. Check literal same-side .hc declarations before claiming absence: a retained role is not newly inferred. Explain comment changes separately from code behavior. For an inferred rescope/new wrapper, name relevant existing .hc roles and why their scope does not fit; distinguish this from a source rename. Never merely unchanged or file changed."},
         "id": {**identifier, "description": "Stable internal identity for this responsibility role; a #selector is rendered only when this side has .hcs and the role repeats."},
         "before_type": {"anyOf": [identifier, {"type": "null"}],
                         "description": "Domain responsibility of this node, not PythonFile, Function, Module, its root/parent role or internal id. Copy the corresponding before-side .hc role for EACH node; distinct named children keep their own names, not repeated root names plus IDs. Infer a name only without a suitable existing role and explain why. Preserve old inline responsibilities even if their extracted file is new. Null means responsibility absent, not new file absent."},

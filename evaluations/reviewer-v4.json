@@ -1,0 +1,218 @@
+{
+  "schema": "hyperreview.review-suite.v1",
+  "version": "reviewer-v4",
+  "cases": [
+    {
+      "id": "case-001",
+      "repository": "SoundBlaster/SessionMonitor",
+      "pr": 143,
+      "base": "3ca4ece501dd6870fac11614240704a0c4b1bfec",
+      "head": "9a75c716ac1085ee702f6b2eacef7233edcb25fb",
+      "checks": [
+        {
+          "id": "check-001",
+          "kind": "source",
+          "side": "after",
+          "path": "Apps/MonitorMac/Sources/shared/ui/DesignNumericRow.swift"
+        },
+        {
+          "id": "check-002",
+          "kind": "relation",
+          "side": "after",
+          "relation_kind": "calls",
+          "from_contains": [
+            "MenuSummaryPage"
+          ],
+          "to_contains": [
+            "DesignNumericRow"
+          ]
+        },
+        {
+          "id": "check-003",
+          "kind": "relation",
+          "side": "after",
+          "relation_kind": "calls",
+          "from_contains": [
+            "QuotaCoverageSummary"
+          ],
+          "to_contains": [
+            "DesignNumericRow"
+          ]
+        },
+        {
+          "id": "check-004",
+          "kind": "relation_absence",
+          "side": "after",
+          "relation_kind": "calls",
+          "from_contains": [
+            "QuotaPresentationSection"
+          ],
+          "to_contains": [
+            "DesignNumericRow"
+          ]
+        }
+      ],
+      "rubric": [
+        "Does the first screen expose the shared numeric presentation change and its consumers?",
+        "When provider source is supplied, does the review distinguish monospaced numeric values, proportional labels and caller-owned formatting?",
+        "With callsites alone, does it report their direct constructions while leaving callee internals unknown?",
+        "The construction is in QuotaCoverageSummary.body, QuotaWindowRow.body and ResetDiscontinuityPopover.body, not QuotaPresentationSection.body; architecture ownership is not an invoking operation."
+      ]
+    },
+    {
+      "id": "case-002",
+      "repository": "0al-spec/SpecGraph",
+      "pr": 793,
+      "base": "bc051b08c68dfe795d10fd9309e98867d3430911",
+      "head": "567f55206a1f7322ea792ab0047c72c8968541e0",
+      "checks": [
+        {
+          "id": "check-001",
+          "kind": "source",
+          "side": "after",
+          "path": "tools/conversation_notes/store.py"
+        },
+        {
+          "id": "check-002",
+          "kind": "relation",
+          "side": "after",
+          "relation_kind": "calls",
+          "from_contains": [
+            "NotesStore",
+            "update"
+          ],
+          "to_contains": [
+            "publish"
+          ]
+        },
+        {
+          "id": "check-003",
+          "kind": "relation",
+          "side": "after",
+          "relation_kind": "calls",
+          "from_contains": [
+            "NotesStore",
+            "publish"
+          ],
+          "to_contains": [
+            "os",
+            "replace"
+          ]
+        }
+      ],
+      "rubric": [
+        "Does the compact view explain revisioned persistence and publication rather than only CLI/API wrappers?",
+        "Does it explain expected_revision, the writer lock, preparation of a complete revision and replacement of CURRENT without claiming observed crash safety?",
+        "Does it keep caller-attributed approval observations separate from canonical authority?"
+      ]
+    },
+    {
+      "id": "case-003",
+      "repository": "SoundBlaster/BuildHunter",
+      "pr": 107,
+      "base": "b48d271402ac9e34eb2e81bd5a5f8fc20b30ab58",
+      "head": "3fc0eeddd4a5f05a6bee60355837c090b2df1d01",
+      "checks": [
+        {
+          "id": "check-001",
+          "kind": "containment",
+          "side": "before",
+          "roles": [
+            "BuildHunterRuntime",
+            "SharedRuntime",
+            "PluginScanning"
+          ]
+        },
+        {
+          "id": "check-002",
+          "kind": "containment",
+          "side": "after",
+          "roles": [
+            "BuildHunterRuntime",
+            "SharedRuntime",
+            "PluginScanning"
+          ]
+        },
+        {
+          "id": "check-003",
+          "kind": "containment",
+          "side": "after",
+          "roles": [
+            "BuildHunterRuntime",
+            "SharedRuntime",
+            "HunterScopedFilesystem"
+          ]
+        }
+      ],
+      "rubric": [
+        "Are authored roles and shared containment preserved independently on each revision?",
+        "Does the explanation show delegation without inventing an architectural move or a direct call across an intermediate helper?"
+      ]
+    },
+    {
+      "id": "case-004",
+      "repository": "SoundBlaster/SessionMonitor",
+      "pr": 145,
+      "base": "3eaa86281b9e3874176ebc980178f07457a2d7c1",
+      "head": "8097a8b98a8691e85fb2441d4016b9b926320a52",
+      "checks": [
+        {
+          "id": "check-001",
+          "kind": "source",
+          "side": "after",
+          "path": "Sources/MonitorStore/QuotaProjectionRead.swift"
+        },
+        {
+          "id": "check-002",
+          "kind": "relation_exact",
+          "side": "before",
+          "relation_kind": "calls",
+          "from_any": [
+            "SessionMonitor.agentStatus",
+            "agentStatus"
+          ],
+          "to_any": [
+            "snapshot",
+            "self.snapshot",
+            "SessionMonitor.snapshot"
+          ]
+        },
+        {
+          "id": "check-003",
+          "kind": "relation_absence",
+          "side": "before",
+          "relation_kind": "calls",
+          "from_contains": [
+            "SessionMonitor",
+            "agentStatus"
+          ],
+          "to_contains": [
+            "UsageStore",
+            "snapshot"
+          ]
+        },
+        {
+          "id": "check-004",
+          "kind": "relation_exact",
+          "side": "before",
+          "relation_kind": "calls",
+          "from_any": [
+            "SessionMonitor.agentStatus",
+            "agentStatus"
+          ],
+          "to_any": [
+            "UsageStore.latestSessionID",
+            "store.latestSessionID"
+          ]
+        }
+      ],
+      "rubric": [
+        "Each calls row names one immediate caller and one callee; never merge snapshot and latestSessionID into one endpoint.",
+        "Before AgentStatus.swift invokes store.latestSessionID and an unqualified snapshot(query:). QueryObservation.swift is NOT supplied: retain that literal target or self.snapshot, not an invented direct call to UsageStore.snapshot.",
+        "Explain why reduced quota input preserves relevant decisions: all latest timestamp ties and reset-transition witnesses, with full coverage tracked separately. Ordered LIMIT 1 selections and 256/1024 batching are not an arbitrary overall row cap; do not claim constant total database work.",
+        "Migration registration and initialization are supplied in UsageStore.swift; acknowledge that wiring rather than declaring it missing. Distinguish unknown external writers and unobserved runs.",
+        "Describe only source-supported policy reuse, not complete semantic equivalence or benchmark speedups; performance documentation was omitted."
+      ]
+    }
+  ]
+}

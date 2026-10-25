@@ -661,3 +661,44 @@ the original known caller contradiction. Swift type-checking confirms both
 reported invocation forms. All four stored final plans revalidate to identical
 canonical results; [post-review receipt](evaluations/results/2026-10-25-reviewer-v17-post-review.json)
 records this without new model inference or rewriting earlier evaluation runs.
+
+### Review-derived corpus and model comparison
+
+Keep Luna as the current development baseline and counterexample source, not
+an oracle for correct architecture. Preserve review-derived cases before the
+next fix, with raw source-bearing packets, feedback provenance, expected
+witnesses and visible agent/human/model attribution. New captures always stay
+candidate until separately curated; model feedback does not approve itself.
+
+The v1 corpus has four model-review groups from SessionMonitor #143/#145,
+SpecGraph #793 and BuildHunter #107, plus a distinct HyperReview #57 validator
+group (two reported forms and a contradiction control). Seven model packets
+and one validator packet are frozen privately. The positive containment case
+prevents treating an empty explanation as overall success. Every group has
+already informed development; none is described as blind holdout.
+
+The explicit local capture/export CLI copies bounded sealed artifacts and
+requires matching private observations before exporting model suites. It
+preserves available final plans and reports earlier raw attempts as missing;
+there is no new background collection, inference or automatic label promotion.
+AGENTS.md makes capture part of future reviewer-finding work. Versioned PR
+groups cannot cross splits, and validator cases do not enter model ranking.
+
+New `model` comparisons keep the entire request, profile, effort, provider,
+executable, runtime code, instruction/schema seals, compiler and configured
+budget fixed. Worker receipts bind runtime code before/after generation and
+store the budget; old receipts without these fields remain unavailable for
+this axis. Existing prompt/intake comparisons keep their earlier semantics.
+No production switch, new model, cloud judge, dependency or publication gate
+is introduced. Native MLflow/Evidently continue receiving numeric witnesses
+and opaque lineage only; feedback/source bodies remain local.
+
+Validation: 371 offline tests pass with the real compiler enabled; ten
+architecture profiles and IR diff checks pass. The [seed receipt](evaluations/results/2026-10-25-corpus-v1.json)
+binds the public manifest/exported suite and counts eight private packets
+(about 4 MB). Model-axis/harness-drift tests use explicit synthetic artifacts,
+not relabelled real responses or inference; no stronger-model result is claimed.
+
+Next: after review/merge, run a freshly generated Luna baseline and one
+explicitly selected stronger model on the same exported development suite,
+then collect untouched PR groups for a real holdout before further tuning.

@@ -1,0 +1,16 @@
+{
+  "schema": "hyperreview.corpus-seed-receipt.v1",
+  "corpus_digest": "42402ecb6e2d9f79a2d308613c63e2958f64b75c44a1456c10f89bde59cda2b6",
+  "exported_suite_digest": "bbb7644e5c99707239b3f2c7beb22fc09d8fa27886a8eeae1a46e36f8350eb84",
+  "development_model_cases": 4,
+  "validator_groups": 1,
+  "validator_cases": 3,
+  "holdout_groups": 0,
+  "frozen_packets": 8,
+  "private_data_bytes": 3985346,
+  "adjudicator_kind": "agent",
+  "human_acceptance": false,
+  "model_inference": false,
+  "model_comparison_run": false,
+  "native_sdk_invoked": false
+}

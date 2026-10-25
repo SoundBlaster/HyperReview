@@ -17,6 +17,13 @@ attempts and incomplete comparisons visible.
 | --- | --- | --- |
 | `explanation` | Exact request inputs, including source bytes/order, evidence, selection, model, effort, executable and compiler | Reviewer profile/prompt and implementation |
 | `intake` | Repository/base/head, prompt/profile and file/byte selection budgets | Retained evidence/source records |
+| `model` | Identical complete request/profile, provider, effort, executable, reviewer runtime, schema/instruction seals, compiler and configured time budget | Model identity |
+
+The [review-derived corpus](29-review-corpus.md) preserves observation packets,
+separates model/validator cases and exports curated suites. Model-only pairs
+require new receipts with matching runtime/budget seals; missing historical
+seals remain unavailable, not inferred. No stronger model is invoked by the
+comparator or native SDK adapter.
 
 An explanation comparison rejects any input change outside the profile, prompt
 version and resulting request digest. An intake comparison does not require

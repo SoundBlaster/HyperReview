@@ -105,6 +105,55 @@ class ReviewEvaluationTests(unittest.TestCase):
         with self.assertRaisesRegex(evaluation.ReviewEvaluationError, "provider/model"):
             evaluation.compare(self.suite, self.pairs)
 
+    def model_pair(self):
+        # Same inputs/harness, a different named model; no model is invoked.
+        self.pairs["pairs"][0].update(axis="model", baseline=str(self.baseline), candidate=str(self.baseline))
+        candidate = self.bundle("model-candidate", profile="a", calls=False)
+        self.candidate = candidate
+        self.pairs["pairs"][0]["candidate"] = str(candidate)
+        for variant, directory in (("baseline", self.baseline), ("candidate", candidate)):
+            self.change_json(directory / "generation-receipt.json", lambda v: v.update(
+                model="small" if variant == "baseline" else "stronger",
+                **{key: "e" * 64 for key in ("reviewer_runtime_sha256", "provider_schema_sha256",
+                                            "system_prompt_sha256", "result_schema_sha256")}, generation_budget_seconds=180))
+            self.pairs["pairs"][0][f"{variant}_digest"] = evaluation.bundle_digest(directory, axis="model")
+
+    def test_model_axis_keeps_inputs_fixed_and_measures_each_model(self):
+        self.model_pair()
+        report = evaluation.compare(self.suite, self.pairs)
+        self.assertEqual(report["coverage"]["model"]["paired_cases"], ["case-001"])
+        self.assertNotEqual(report["rows"][0]["model_settings_digest"], report["rows"][1]["model_settings_digest"])
+        self.assertEqual(report["rows"][0]["source_digest"], report["rows"][1]["source_digest"])
+        self.assertEqual(report["rows"][0]["reviewer_runtime_sha256"], "e" * 64)
+        self.assertEqual(report["rows"][1]["generation_budget_seconds"], 180)
+        self.assertTrue(report["checks"][1]["regressed"])
+
+    def test_model_axis_rejects_harness_drift_or_missing_historical_seals(self):
+        self.model_pair()
+        receipt_path = self.candidate / "generation-receipt.json"
+        original = receipt_path.read_bytes()
+        for key, value in (("reviewer_runtime_sha256", "f" * 64), ("reviewer_runtime_sha256", None),
+                           ("generation_budget_seconds", 60), ("generation_budget_seconds", True),
+                           ("system_prompt_sha256", "f" * 64), ("provider_schema_sha256", "f" * 64),
+                           ("reasoning_effort", "high"), ("executable_sha256", "f" * 64)):
+            with self.subTest(key=key, value=value):
+                receipt_path.write_bytes(original)
+                self.change_json(receipt_path, lambda v: v.update({key: value}))
+                self.reseal_candidate(axis="model")
+                with self.assertRaises(evaluation.ReviewEvaluationError):
+                    evaluation.compare(self.suite, self.pairs)
+
+    def test_model_axis_exports_only_numeric_and_opaque_lineage_to_sdk(self):
+        self.model_pair()
+        received = []
+        sdk.evaluate(self.suite, self.pairs, database=self.root / "tracking.sqlite",
+                     artifacts_root=self.root / "artifacts", output_root=self.root / "reports",
+                     engine=lambda report, **kwargs: received.append(report))
+        serialized = intake.encoded(received).decode()
+        self.assertEqual(received[0]["rows"][0]["axis"], "model")
+        for raw in ("small", "stronger", "PRIVATE_SOURCE_CONTENT", "Private human rubric", "store.py"):
+            self.assertNotIn(raw, serialized)
+
     def test_source_selection_change_is_not_a_prompt_comparison(self):
         self.change_json(self.candidate / "request.json", lambda v: v["source_selection"].update(max_source_bytes=100),
                          redigest="request_digest")

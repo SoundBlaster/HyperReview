@@ -168,6 +168,20 @@ def fingerprint(options):
         _fail("invalid_preview_config")
 
 
+def runtime_fingerprint():
+    """Bind model comparisons to the same reviewer code, excluding model options."""
+    root = Path(__file__).resolve().parent.parent
+    files = {}
+    for relative in _FINGERPRINT_FILES:
+        path = root / relative
+        if path.is_symlink() or not path.is_file():
+            _fail("invalid_preview_config")
+        files[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(intake.encoded({"files": files, "platform": sys.platform,
+        "python": {"implementation": sys.implementation.name, "version": list(sys.version_info[:3])},
+        "specification_core_commit": _SPECIFICATION_CORE_COMMIT})).hexdigest()
+
+
 def _compiler_pin(path, expected, deadline):
     """Check the pinned local compiler before any source can reach a provider."""
     descriptor = None
@@ -266,6 +280,7 @@ def run(evidence, request, options):
 
     try:
         from .codex_provider import CodexError, generate
+        runtime_before = runtime_fingerprint()
         generated = generate(request, codex_config)
     except Exception as error:
         # Provider diagnostics can contain request material; expose only a stable code.
@@ -293,13 +308,16 @@ def run(evidence, request, options):
         provider_attempts = receipt.get("attempt_count")
         if type(provider_attempts) is not int or not 1 <= provider_attempts <= 2:
             _fail("generation_failed")
+        if runtime_fingerprint() != runtime_before:
+            _fail("generation_failed")
     except PreviewJobError:
         raise
     except Exception:
         _fail("generation_failed")
 
     receipt.update({"stage": "model_generated", "hypercode_validation": "not_started",
-                   "tracking_status": "not_started"})
+                   "tracking_status": "not_started", "reviewer_runtime_sha256": runtime_before,
+                   "generation_budget_seconds": options["timeout_seconds"]})
     remaining = deadline - time.monotonic()
     compiler_budget = min(120, int(remaining))
     if compiler_budget < 1:

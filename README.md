@@ -481,6 +481,16 @@ sealed artifact lineage and records missing coverage. SDKs receive numeric
 witnesses and digests only. Human acceptance remains `ok`/`not_ok`; there is no
 model judge, inference, GitHub write or additional publication gate.
 
+The [review-derived corpus](SPECS/29-review-corpus.md) freezes feedback and
+source-bearing observations before reviewer changes. Its [v1 manifest](evaluations/review-corpus-v1.json)
+contains four development model cases and a separate validator group; private
+packets retain actual bytes, not live source paths. `review_corpus capture`
+creates candidates, and `review_corpus suite` exports curated model cases.
+Use comparison axis `model` to vary model identity under an identical sealed
+request, profile, effort, runtime, compiler and configured budget. Historical
+Luna output is useful evidence, but cannot serve as a model-only baseline for
+a candidate on a changed prompt or harness. No blind holdout exists yet.
+
 ## Architecture validation
 
 [GitHub Actions](.github/workflows/hypercode-validation.yml) builds Hypercode

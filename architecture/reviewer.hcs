@@ -180,6 +180,25 @@ GateRecovery:
 '#evaluation':
   llm_judge_enabled: false
 
+ReviewCorpus:
+  implementation: "hyperreview/review_corpus.py"
+  publication_gate: false
+
+FrozenObservations:
+  capture: "hyperreview.review_corpus.capture"
+  validator_capture: "hyperreview.review_corpus.capture_validator"
+  storage: "private operator-owned packets"
+  default_label_status: "candidate"
+
+CuratedCases:
+  source: "evaluations/review-corpus-v1.json"
+  selection: "hyperreview.review_corpus.model_suite"
+  model_validator_populations: "separate"
+
+'#baseline':
+  implementation: "hyperreview/review_evaluation.py"
+  comparison_axes: "intake, explanation, model"
+
 '#evidently':
   enabled: true
   deployment: "local-library"

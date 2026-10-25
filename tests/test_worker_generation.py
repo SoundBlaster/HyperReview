@@ -184,7 +184,23 @@ class WorkerGenerationTests(unittest.TestCase):
         self.assertEqual(generation["stage"], "model_generated")
         self.assertEqual(generation["hypercode_validation"], "not_started")
         self.assertEqual(generation["tracking_status"], "not_started")
+        self.assertRegex(generation["reviewer_runtime_sha256"], r"^[0-9a-f]{64}$")
+        self.assertEqual(generation["generation_budget_seconds"], self.options["timeout_seconds"])
         self.assertEqual(outcome["provider_attempts"], 1)
+
+    def test_runtime_change_during_generation_rejects_mixed_lineage(self):
+        patches, _, _ = self._run_mocks()
+        with patch("hyperreview.worker_generation.sys.platform", "darwin"), \
+                patch("hyperreview.worker_generation.runtime_fingerprint", side_effect=["a" * 64, "b" * 64]):
+            mocks = [item.start() for item in patches]
+            try:
+                with self.assertRaises(PreviewJobError) as caught:
+                    run(self.evidence, self.request, self.options)
+                self.assertEqual(caught.exception.code, "generation_failed")
+                mocks[2].assert_not_called()
+            finally:
+                for item in reversed(patches):
+                    item.stop()
 
     def test_post_generation_executable_pin_or_isolation_failure_is_rejected(self):
         for changes in (

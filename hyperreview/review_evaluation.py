@@ -23,6 +23,7 @@ CHECK_ID = re.compile(r"check-[0-9]{3}\Z")
 SHA = re.compile(r"[a-f0-9]{64}\Z")
 KINDS = frozenset(("calls", "depends_on", "data_flow", "requires", "available_when",
                    "shared_contract", "reuses_rule", "verified_by"))
+AXES = frozenset(("intake", "explanation", "model"))
 
 
 class ReviewEvaluationError(Exception):
@@ -142,8 +143,26 @@ def load_bundle(path, *, projection):
 
 
 def bundle_digest(path, *, axis):
-    require(axis in ("intake", "explanation"), "Invalid comparison axis")
-    return load_bundle(path, projection=axis == "explanation")["digest"]
+    require(axis in AXES, "Invalid comparison axis")
+    return load_bundle(path, projection=axis != "intake")["digest"]
+
+
+def _same_model_harness(old, new):
+    require(old["request"] == new["request"], "Model comparison requires an identical frozen request/profile")
+    require(old["receipt"]["compiler_sha256"] == new["receipt"]["compiler_sha256"],
+            "Model comparison changed compiler")
+    require(all(old["generation"].get(key) == new["generation"].get(key)
+                for key in ("provider", "reasoning_effort", "executable_sha256")),
+            "Model comparison changed provider, effort or executable")
+    for key in ("reviewer_runtime_sha256", "provider_schema_sha256", "system_prompt_sha256", "result_schema_sha256"):
+        value = old["generation"].get(key)
+        require(type(value) is str and SHA.fullmatch(value) and value == new["generation"].get(key),
+                "Model comparison requires matching runtime, schema and instruction seals")
+    budget = old["generation"].get("generation_budget_seconds")
+    require(type(budget) is int and 30 <= budget <= 300
+            and type(new["generation"].get("generation_budget_seconds")) is int
+            and budget == new["generation"]["generation_budget_seconds"],
+            "Model comparison requires the same generation budget")
 
 
 def _contains(endpoint, tokens):
@@ -209,13 +228,13 @@ def compare(suite, pairs):
         require(type(pair) is dict and set(pair) == {"case_id", "axis", "baseline", "candidate",
                                                     "baseline_digest", "candidate_digest"}, "Invalid pair fields")
         case_id, axis = pair["case_id"], pair["axis"]
-        require(case_id in cases and axis in ("intake", "explanation")
+        require(case_id in cases and axis in AXES
                 and (case_id, axis) not in seen, "Invalid or duplicate pair")
         seen.add((case_id, axis))
         case = cases[case_id]
         loaded = {}
         for variant in ("baseline", "candidate"):
-            bundle = load_bundle(pair[variant], projection=axis == "explanation")
+            bundle = load_bundle(pair[variant], projection=axis != "intake")
             require(type(pair[f"{variant}_digest"]) is str and SHA.fullmatch(pair[f"{variant}_digest"])
                     and bundle["digest"] == pair[f"{variant}_digest"], "Sealed artifact changed")
             request = bundle["request"]
@@ -233,6 +252,8 @@ def compare(suite, pairs):
                     "Explanation comparison changed provider/model settings")
             require(old["receipt"].get("compiler_sha256") == new["receipt"].get("compiler_sha256"),
                     "Explanation comparison changed compiler")
+        elif axis == "model":
+            _same_model_harness(old, new)
         else:
             require(old["request"]["reviewer_profile"] == new["request"]["reviewer_profile"]
                     and old["request"]["prompt_version"] == new["request"]["prompt_version"]
@@ -252,6 +273,12 @@ def compare(suite, pairs):
                              for key in ("provider", "model", "reasoning_effort", "executable_sha256")})
                              if "generation" in bundle else None,
                          "compiler_sha256": bundle.get("receipt", {}).get("compiler_sha256"),
+                         "reviewer_runtime_sha256": bundle.get("generation", {}).get("reviewer_runtime_sha256")
+                             if type(bundle.get("generation", {}).get("reviewer_runtime_sha256")) is str
+                             and SHA.fullmatch(bundle["generation"]["reviewer_runtime_sha256"]) else None,
+                         "generation_budget_seconds": bundle.get("generation", {}).get("generation_budget_seconds")
+                             if type(bundle.get("generation", {}).get("generation_budget_seconds")) is int
+                             and 30 <= bundle["generation"]["generation_budget_seconds"] <= 300 else None,
                          "outputs": values})
         for check_id, before in observations["baseline"].items():
             after = observations["candidate"][check_id]

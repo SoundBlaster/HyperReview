@@ -82,3 +82,9 @@ nodes. Future tooling integration must preserve their IDs and status.
 - [Bounded architecture context](27-bounded-architecture-context.md): reviewed
   declarative families, unchanged Hypercode/reference context, selected relationship views
   and concise source-grounded public explanations.
+
+- [Controlled reviewer evaluation](28-controlled-reviewer-evaluation.md): sealed
+  real-PR comparisons and native MLflow/Evidently observations.
+
+- [Review-derived model corpus](29-review-corpus.md): frozen feedback and inputs,
+  separate model/validator cases and comparable model-only experiments.

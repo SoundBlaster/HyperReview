@@ -50,6 +50,9 @@ HyperReview#hyperreview
       WorkflowTrace#traces
     PilotEvaluation#evaluation
       EvaluationCases#cases
+        ReviewCorpus
+          FrozenObservations
+          CuratedCases
       ScorerSet#scorers
       ReviewerFeedback#feedback
       QualityReports#reports

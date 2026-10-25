@@ -1,0 +1,27 @@
+{
+  "schema": "hyperreview.validator-cases.v1",
+  "origin_url": "https://github.com/SoundBlaster/HyperReview/pull/57#discussion_r4370900888",
+  "cases": [
+    {
+      "id": "validator-001",
+      "source": "struct Provider {\n init() {}\n init(_ make: () -> Int) {}\n}\nstruct Outer {\n var body: Any { Provider { 1 } }\n}\nstruct Inner {\n var body: Any { Provider() }\n}\n",
+      "caller": "Outer.body",
+      "target": "Provider",
+      "expected_conflict": false
+    },
+    {
+      "id": "validator-002",
+      "source": "struct Provider<T> {\n init() {}\n init(_ make: () -> T) {}\n}\nstruct Outer {\n var body: Any { Provider<Int>() }\n}\nstruct Inner {\n var body: Provider<Int> { Provider() }\n}\n",
+      "caller": "Outer.body",
+      "target": "Provider",
+      "expected_conflict": false
+    },
+    {
+      "id": "validator-003",
+      "source": "struct Provider {\n init() {}\n init(_ make: () -> Int) {}\n}\nstruct Outer {\n var body: Any { Inner() }\n}\nstruct Inner {\n var body: Any { Provider() }\n}\n",
+      "caller": "Outer.body",
+      "target": "Provider",
+      "expected_conflict": true
+    }
+  ]
+}

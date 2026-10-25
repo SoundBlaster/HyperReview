@@ -20,3 +20,21 @@ When writing or reviewing HyperReview code that uses SpycificationCore's
 
 If these skills are unavailable, follow the pinned Python package API and the
 behavior-preserving policy boundaries above.
+
+# Review-derived evaluation corpus
+
+- When handling a reviewer-quality finding, preserve its pinned preview with
+  `python -m hyperreview.review_corpus capture` before changing the reviewer.
+  Keep the input bytes, generated plan/result, receipts and feedback snapshot.
+- New captures are candidates. Add source-checked criteria and provenance in a
+  new version of the corpus manifest; a model comment is not human approval.
+  Preserve useful positive examples alongside failures. Record omitted raw
+  attempts as unavailable, never reconstruct them from a repaired result.
+- Separate `model_review` cases from reviewer `validator` bugs. Keep every
+  revision of one PR in one split. Cases used during development are not blind
+  holdout; do not tune on a holdout without retiring its holdout designation.
+- For a model-only comparison use axis `model`, with identical frozen requests,
+  prompt/profile, effort, executable, compiler, reviewer runtime and configured
+  time budget. Do not turn missing historical seals into invented lineage.
+- Corpus capture and deterministic evaluation authorize no new inference,
+  GitHub publication, model judge, worker configuration or production gate.

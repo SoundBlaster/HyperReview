@@ -613,3 +613,41 @@ v14 while the updated PR passes normal review and CI.
 
 Next: merge the reviewed candidate and activate it using the existing guarded
 worker-update procedure, then inspect the first automatic architecture review.
+
+### Atomic calls and reduced-input explanation follow-up
+
+Suite v4 freezes SessionMonitor #145 before implementation changes. Exact
+endpoint alternatives prevent a compound callee from satisfying a positive
+witness; the negative witness catches a guessed direct store call when only
+an unqualified wrapper invocation is supplied. Earlier criteria/results stay
+unchanged; the metric version is `review-witnesses-v3`.
+
+Profile v17 / composition-v23 keeps one immediate operation per call endpoint,
+preserves unresolved receivers, explains reduced-input selection/coverage and
+checks visible wiring before declaring it unknown. Obvious endpoint lists and
+a conservative, optional literal-scope contradiction produce targeted bounded
+repairs. Other syntax/formats remain reviewable without this partial guard.
+Bounded navigation now follows the complete request, with unchanged trust and
+source/context budgets. The profile is 16216 bytes; 32K local-provider tests
+still fit without increasing limits.
+
+Four development iterations are retained in native MLflow/Evidently and the
+[sanitized report](evaluations/results/2026-10-25-reviewer-v17.json). The first
+three expose caller-attribution regressions; iteration 001 also lacks a valid
+#793 preview after its bounded repair. They are not silently replaced by the
+final results. Iteration 004 produces four compiled previews, preserves all
+selected baseline witnesses and removes the #145 false direct-call witness.
+#143 shows four actual immediate callers; #107 preserves all authored paths.
+The #145 explanation names latest timestamp ties, reset-boundary witnesses,
+full coverage, batching and fallback, without claiming measured performance.
+Its two exact before-call positives remain unselected, as does #793's
+publish-to-replace witness. Absence is not completeness or semantic approval.
+
+Final validation: 357 offline tests pass with the real compiler enabled; ten
+architecture profiles and the IR diff checks pass. Native metrics/artifacts
+were read back successfully on MLflow 3.16.1 / Evidently 0.7.23. Sources, model
+(installed Codex / Luna Medium), effort and compiler stay fixed within pairs.
+No human acceptance, public review edit or production activation is recorded.
+
+Next: review and merge the improvement, activate through the guarded updater,
+then inspect the first automatic review for source-grounded call attribution.

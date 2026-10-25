@@ -1,0 +1,34 @@
+{
+  "schema": "hyperreview.post-review-revalidation.v1",
+  "model_inference": false,
+  "github_writes": 0,
+  "new_generation": false,
+  "validator_sha256": "103550a596604345d09cbc7eb307983074e2113b61b742bb083c47ff886c4549",
+  "stored_plans": [
+    {
+      "case_id": "case-001",
+      "artifact_digest": "9d74ce3cd1091862b148a1eee928134c426940a8961804591e05211da415408d",
+      "result_digest": "a230ccdda8847bdf32d197a2435ddbc44f2032ca68d07387c1f40f1a35dd45a0",
+      "canonical_result_unchanged": true
+    },
+    {
+      "case_id": "case-002",
+      "artifact_digest": "795a9389c6e3181620bd0988eac7854c7ad13ee905517df76536f2b38d49b15a",
+      "result_digest": "8cff3e86c186d2d8beca64a9163ac8d92e4a119a61bb2c9c41271e2d737e30da",
+      "canonical_result_unchanged": true
+    },
+    {
+      "case_id": "case-003",
+      "artifact_digest": "cc77901fbf192c5bbf89e3c730485fad65aa980281bb8bc248bfecf369afd000",
+      "result_digest": "77aee29b5f5164e3e726b0151760196aa6d3bfb3e88832242b9d7be8b952f4ed",
+      "canonical_result_unchanged": true
+    },
+    {
+      "case_id": "case-004",
+      "artifact_digest": "46e3a060735ba41227dff24704ece223972a31b26318508ced8c1356c0add0fa",
+      "result_digest": "72e5561960247b95ebfb805a7f4c39f88bde8e7d8355a97b8c9cf9b9bcd64e83",
+      "canonical_result_unchanged": true
+    }
+  ],
+  "known_literal_caller_contradiction_retained": true
+}

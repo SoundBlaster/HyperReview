@@ -31,8 +31,12 @@ _ISSUE_CODES = frozenset({
     "graph_cycle", "invalid_identifier", "schema_or_binding", "invalid_plan", "generic_responsibility",
     "verified_binding_target",
     "authored_parent",
+    "call_endpoint_list",
+    "literal_caller",
 })
 _ISSUE_HINTS = {
+    "literal_caller": "Буквальный вызов указанной цели найден в другом именованном блоке. Проверь callsite_hints и исходник: from должен называть ближайшую операцию, содержащую сам вызов, включая вложенные/соседние типы. Имя файла или внешний компонент не является caller. Исправь caller на подтверждённый исходником либо убери неподдержанную строку; не заменяй calls другим kind ради обхода проверки.",
+    "call_endpoint_list": "В source_analysis calls нужны ОДИН вызывающий и ОДНА непосредственно вызываемая операция в строке, без списков через и/and/запятую. Раздели вызовы на строки в пределах шести или выбери существенные и явно укажи пропуски. Не сокращай A -> B -> C до A -> C. Если реализация B не передана, сохрани буквальную цель вызова B без придуманного receiver или делегата.",
     "authored_parent": "Сохрани все промежуточные роли из цитируемой .hc между выбранным корнем и узлом. Не убирай общий owner ради исправления JSON; объяви его с собственным ID и правильными ссылками. Разные карты и неоднозначные имена не устанавливают идентичность.",
     "duplicate_refs": "В каждом refs-массиве ID уникальны.",
     "absent_side": "При type=null также нужны parent=null и refs=[].",
@@ -186,6 +190,10 @@ def _issue_for_error(error):
         code = "authored_parent"
     elif "Verified binding target absent" in message:
         code = "verified_binding_target"
+    elif "Call endpoints must name one operation each" in message:
+        code = "call_endpoint_list"
+    elif "Literal callsite names another enclosing operation" in message:
+        code = "literal_caller"
     elif "generic container" in message:
         code = "generic_responsibility"
     elif "duplicate values" in message:
@@ -291,7 +299,7 @@ def _comparison_content(request):
 def _attempt_payload(config, schema, user_content, issue=None, comparison_content=None):
     payload, post_path = _provider_payload(config, schema, user_content)
     if comparison_content is not None:
-        payload["messages"].insert(1, {"role": "user", "content": comparison_content})
+        payload["messages"].append({"role": "user", "content": comparison_content})
     if issue is not None:
         code, location = issue
         properties = schema["properties"]["nodes"]["items"]["properties"]

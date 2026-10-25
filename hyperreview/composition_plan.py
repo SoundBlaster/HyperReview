@@ -315,6 +315,10 @@ def to_result(plan, request):
         raise
     except relation_plan.BindingEvidenceError as error:
         raise CompositionPlanError("Verified binding target absent from cited side") from error
+    except relation_plan.CallEndpointError as error:
+        raise CompositionPlanError("Call endpoints must name one operation each") from error
+    except relation_plan.LiteralCallerError as error:
+        raise CompositionPlanError("Literal callsite names another enclosing operation") from error
     except ValueError as error:
         raise CompositionPlanError("Invalid source-bound relation plan") from error
     except model_contract.ContractError as error:

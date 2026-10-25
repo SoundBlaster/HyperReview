@@ -154,10 +154,41 @@ class ReviewEvaluationTests(unittest.TestCase):
                 evaluation.validate_suite(suite)
 
     def test_checked_in_suite_is_valid_and_pinned(self):
-        for version in ("v1", "v2", "v3"):
+        for version in ("v1", "v2", "v3", "v4"):
             suite = json.loads((Path(__file__).resolve().parents[1] / f"evaluations/reviewer-{version}.json").read_text())
             evaluation.validate_suite(suite)
-            self.assertEqual(len(suite["cases"]), 3)
+            self.assertEqual(len(suite["cases"]), 4 if version == "v4" else 3)
+
+    def test_exact_relation_does_not_reward_compound_or_guessed_targets(self):
+        case = copy.deepcopy(self.suite["cases"][0])
+        case["checks"] = [{"id": "check-001", "kind": "relation_exact", "side": "after",
+                           "relation_kind": "calls", "from_any": ["Reader.read"],
+                           "to_any": ["snapshot", "self.snapshot"]}]
+        bundle = evaluation.load_bundle(self.baseline, projection=True)
+        for target, expected in (("snapshot", 1), ("self.snapshot", 1), ("Store.snapshot", 0),
+                                 ("snapshot and Store.latestID", 0), ("snapshot, latestID", 0)):
+            with self.subTest(target=target):
+                bundle["result"]["claims"][0]["text"] = f"Reader.read → {target}"
+                values, checks = evaluation.observe(case, bundle, "explanation")
+                self.assertEqual(values["relation_presence"], expected)
+                self.assertEqual(checks[0]["value"], expected)
+        bundle["result"]["claims"][0]["text"] = "Reader.read and Writer.write → snapshot"
+        self.assertEqual(evaluation.observe(case, bundle, "explanation")[0]["relation_presence"], 0)
+
+    def test_exact_relation_schema_stays_bounded_and_unmeasured_on_intake(self):
+        case = self.suite["cases"][0]
+        check = {"id": "check-004", "kind": "relation_exact", "side": "after", "relation_kind": "calls",
+                 "from_any": ["Store.read"], "to_any": ["snapshot", "self.snapshot"]}
+        case["checks"].append(check)
+        evaluation.validate_suite(self.suite)
+        values, checks = evaluation.observe(case, evaluation.load_bundle(self.baseline, projection=False), "intake")
+        self.assertIsNone(values["relation_presence"])
+        self.assertIsNone(checks[-1]["value"])
+        for field, bad in (("from_any", []), ("to_any", ["snapshot"] * 9), ("to_any", "snapshot")):
+            suite = copy.deepcopy(self.suite)
+            suite["cases"][0]["checks"][-1][field] = bad
+            with self.assertRaises(evaluation.ReviewEvaluationError):
+                evaluation.validate_suite(suite)
 
     def test_forbidden_relation_is_separate_from_positive_coverage(self):
         forbidden = copy.deepcopy(self.suite["cases"][0]["checks"][1])

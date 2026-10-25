@@ -343,7 +343,7 @@ class LocalProviderTests(unittest.TestCase):
         messages = json.loads(fixture.requests[0]["body"])["messages"]
 
         self.assertEqual([message["role"] for message in messages], ["system", "user", "user"])
-        comparison = json.loads(messages[1]["content"])
+        comparison = json.loads(messages[2]["content"])
         self.assertEqual(comparison["trust"], "untrusted_source_data")
         self.assertEqual(len(comparison["same_path_diffs"]), 1)
         item = comparison["same_path_diffs"][0]
@@ -353,7 +353,7 @@ class LocalProviderTests(unittest.TestCase):
         self.assertIn("return amount >= 10", item["diff"])
         self.assertIn(malicious, item["diff"])
         self.assertNotIn(malicious, messages[0]["content"])
-        self.assertEqual(messages[2]["content"], intake.encoded(self.request).decode())
+        self.assertEqual(messages[1]["content"], intake.encoded(self.request).decode())
         self.assertLessEqual(len(local_provider._wire_bytes(comparison)), 2048)
 
     def test_comparison_helper_bounds_utf8_diff_and_omits_unmatched_or_ambiguous_sources(self):

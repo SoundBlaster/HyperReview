@@ -112,6 +112,62 @@ struct Inner {
         self.assertEqual(navigation.callsite_hints(request("x" * (navigation.MAX_BYTES + 1))), [])
         self.assertEqual(navigation.callsite_hints(request("def broken(\n", suffix="py")), [])
 
+    def test_literal_scope_contradiction_needs_an_exact_known_caller(self):
+        text = '''struct Provider {
+    init() {}
+}
+struct Outer {
+    var body: View { Inner() }
+}
+struct Inner {
+    var body: View { Provider() }
+}
+'''
+        row = {"from": "Outer.body", "to": "Provider", "source_refs": ["caller"]}
+        self.assertTrue(navigation.conflicting_literal_caller(row, request(text)))
+        self.assertTrue(navigation.conflicting_literal_caller({**row, "to": "Provider.init"}, request(text)))
+        for caller in ("Inner.body", "Unknown.body", "body", "Outer.body(value:)"):
+            self.assertFalse(navigation.conflicting_literal_caller({**row, "from": caller}, request(text)))
+        for target in ("Alias.Provider", "store.read", "Provider(value:)"):
+            self.assertFalse(navigation.conflicting_literal_caller({**row, "to": target}, request(text)))
+        # Several known caller declarations in distinct files are ambiguous.
+        data = request(text)
+        data["sources"].append({**data["sources"][0], "id": "other", "path": "src/Other.swift"})
+        self.assertFalse(navigation.conflicting_literal_caller({**row, "source_refs": ["caller", "other"]}, data))
+
+    def test_literal_scope_guard_declines_incomplete_alias_hidden_and_saturated_inputs(self):
+        text = 'struct Outer {\n var body: View { Inner() }\n}\nstruct Inner {\n var body: View { Provider() }\n}\n'
+        row = {"from": "Outer.body", "to": "Provider", "source_refs": ["caller"]}
+        for extra in ('// Provider()\n', 'typealias Alias = Provider\n', 'let factory = Provider.init\n',
+                      'let value: Provider = .init()\n', '#if FEATURE\n#endif\n', 'let raw = #"raw"#\n'):
+            self.assertFalse(navigation.conflicting_literal_caller(row, request(text + extra)))
+        self.assertFalse(navigation.conflicting_literal_caller(row, request(text, start=3)))
+        self.assertFalse(navigation.conflicting_literal_caller(row, request(text, suffix="rs")))
+        self.assertFalse(navigation.conflicting_literal_caller(row, request(text + 'struct Broken {\n')))
+        many = text + ''.join(f'struct C{i} {{\n var body: View {{ Provider() }}\n}}\n' for i in range(130))
+        self.assertFalse(navigation.conflicting_literal_caller(row, request(many)))
+
+    def test_literal_scope_guard_declines_unindexed_target_forms(self):
+        row = {"from": "Outer.body", "to": "Provider", "source_refs": ["caller"]}
+        for invocation in ("Provider { 1 }", "Provider<Int>()", "Provider\n  { 1 }",
+                           "Provider<Dictionary<String, Int>>()", "(Provider)()", "Module.Provider()",
+                           "`Provider`()", "Provider?()"):
+            with self.subTest(invocation=invocation):
+                text = (f'struct Outer {{\n var body: View {{ {invocation} }}\n}}\n'
+                        'struct Inner {\n var body: View { Provider() }\n}\n')
+                # The partial index sees Inner's ordinary invocation, but that
+                # cannot disprove a supported call form in Outer.
+                self.assertEqual(navigation._swift_sites(text, {"Provider"})[0]["caller"], "Inner.body")
+                self.assertFalse(navigation.conflicting_literal_caller(row, request(text)))
+                self.assertFalse(navigation.conflicting_literal_caller({**row, "to": "Provider.init"}, request(text)))
+
+    def test_hidden_unindexed_invocation_and_reference_ambiguity_decline(self):
+        row = {"from": "Outer.body", "to": "Provider", "source_refs": ["caller"]}
+        for expression in (r'Text("\(Provider { 1 })")', "consume(Provider)"):
+            text = (f'struct Outer {{\n var body: View {{ {expression} }}\n}}\n'
+                    'struct Inner {\n var body: View { Provider() }\n}\n')
+            self.assertFalse(navigation.conflicting_literal_caller(row, request(text)))
+
 
 if __name__ == "__main__":
     unittest.main()

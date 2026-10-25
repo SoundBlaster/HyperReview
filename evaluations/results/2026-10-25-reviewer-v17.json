@@ -1,0 +1,635 @@
+{
+  "assessor_type": "deterministic_witness",
+  "checks": [
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-003",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-001",
+      "check_id": "check-004",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-002",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-002",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 0,
+      "case_id": "case-002",
+      "check_id": "check-003",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-003",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-003",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-003",
+      "check_id": "check-003",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 1,
+      "candidate": 1,
+      "case_id": "case-004",
+      "check_id": "check-001",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 0,
+      "case_id": "case-004",
+      "check_id": "check-002",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 1,
+      "case_id": "case-004",
+      "check_id": "check-003",
+      "regressed": false
+    },
+    {
+      "axis": "explanation",
+      "baseline": 0,
+      "candidate": 0,
+      "case_id": "case-004",
+      "check_id": "check-004",
+      "regressed": false
+    }
+  ],
+  "coverage": {
+    "explanation": {
+      "paired_cases": [
+        "case-001",
+        "case-002",
+        "case-003",
+        "case-004"
+      ],
+      "unpaired_cases": []
+    }
+  },
+  "metric_version": "review-witnesses-v3",
+  "publication_gate": false,
+  "rows": [
+    {
+      "artifact_digest": "97a1f8a10bc63583a6083db5196b49ccaca01a4d9366180f3cb41a5dbdbc9018",
+      "axis": "explanation",
+      "case_id": "case-001",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": 1.0,
+        "relation_presence": 1.0,
+        "source_retention": 1.0
+      },
+      "profile_digest": "8aebb713b5bd08ac0befb58720b3cd9f6396d8d0e957a72dde83b6a549120658",
+      "request_digest": "905324f5553e61606fd2a5644c0718c41633f6ea9dc4c397de3390dd2166cabf",
+      "source_digest": "587b794453b796ade9c4911624dd0309c0ee99dc328eef492b3c74d96b5b2098",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "9d74ce3cd1091862b148a1eee928134c426940a8961804591e05211da415408d",
+      "axis": "explanation",
+      "case_id": "case-001",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": 1.0,
+        "relation_presence": 1.0,
+        "source_retention": 1.0
+      },
+      "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa",
+      "request_digest": "a21695da8a09953603d2899ce0c06d85c77624f59421ab233e397e68337e8ffb",
+      "source_digest": "587b794453b796ade9c4911624dd0309c0ee99dc328eef492b3c74d96b5b2098",
+      "variant": "candidate"
+    },
+    {
+      "artifact_digest": "4349326b5d1a4203f7e6ee8201ff1b490e2d337c285173eca79c17b78355ab02",
+      "axis": "explanation",
+      "case_id": "case-002",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": null,
+        "relation_presence": 0.5,
+        "source_retention": 1.0
+      },
+      "profile_digest": "8aebb713b5bd08ac0befb58720b3cd9f6396d8d0e957a72dde83b6a549120658",
+      "request_digest": "21c2a88f3e48f34b655eb2f8edb660b4d75b9bdbcebe95fa14ce47a3c56f2b7c",
+      "source_digest": "6523137c2fba1befaf21b5cf71f334f7da86ef67cbb6be386ef372caa3d0c238",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "795a9389c6e3181620bd0988eac7854c7ad13ee905517df76536f2b38d49b15a",
+      "axis": "explanation",
+      "case_id": "case-002",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": null,
+        "relation_presence": 0.5,
+        "source_retention": 1.0
+      },
+      "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa",
+      "request_digest": "e10ad0d0871769b0374cbf1adf540e7c213324717344f7e5d87bffb334b63ebb",
+      "source_digest": "6523137c2fba1befaf21b5cf71f334f7da86ef67cbb6be386ef372caa3d0c238",
+      "variant": "candidate"
+    },
+    {
+      "artifact_digest": "1276373e18a1c6ca1347bc9cf9cef5b1f9144846c617d0a06af79aa97aa9d529",
+      "axis": "explanation",
+      "case_id": "case-003",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": 1.0,
+        "forbidden_relation_absent": null,
+        "relation_presence": null,
+        "source_retention": null
+      },
+      "profile_digest": "8aebb713b5bd08ac0befb58720b3cd9f6396d8d0e957a72dde83b6a549120658",
+      "request_digest": "398f3d7f1cce4624f03aeb154d7c169e3f9440eb50a023f09ae6574a83761e4f",
+      "source_digest": "a1add15b344b5905b3f4e7e3dde5f9f1d48d1b3ddc071a3bdda244ec3157a17f",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "cc77901fbf192c5bbf89e3c730485fad65aa980281bb8bc248bfecf369afd000",
+      "axis": "explanation",
+      "case_id": "case-003",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": 1.0,
+        "forbidden_relation_absent": null,
+        "relation_presence": null,
+        "source_retention": null
+      },
+      "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa",
+      "request_digest": "54666bb4125a5aea8183f2e28749e998dd51db55133adea97f9834eac2e0b238",
+      "source_digest": "a1add15b344b5905b3f4e7e3dde5f9f1d48d1b3ddc071a3bdda244ec3157a17f",
+      "variant": "candidate"
+    },
+    {
+      "artifact_digest": "8287c91fee2aaab5ebcd965a1f48a5b943af8938ef2dc80ec4dc92e9f88c8e8d",
+      "axis": "explanation",
+      "case_id": "case-004",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": 0.0,
+        "relation_presence": 0.0,
+        "source_retention": 1.0
+      },
+      "profile_digest": "8aebb713b5bd08ac0befb58720b3cd9f6396d8d0e957a72dde83b6a549120658",
+      "request_digest": "9fafa4f0103dfa3371a0982e36b5ba77d1705ba3fc1059dfb3de8fd84f8c36e7",
+      "source_digest": "eb77dec3acd2911736338e28ca3b4e8d744cf8a4bd22a5310f9dd9dc68cb8032",
+      "variant": "baseline"
+    },
+    {
+      "artifact_digest": "46e3a060735ba41227dff24704ece223972a31b26318508ced8c1356c0add0fa",
+      "axis": "explanation",
+      "case_id": "case-004",
+      "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+      "model_settings_digest": "c281172e72b9cca657a1fd9423c299befb74f5558429239bfbcd7e3ac0a5e45a",
+      "outputs": {
+        "compiler_receipt_consistent": 1.0,
+        "containment_preserved": null,
+        "forbidden_relation_absent": 1.0,
+        "relation_presence": 0.0,
+        "source_retention": 1.0
+      },
+      "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa",
+      "request_digest": "47acdc9b861a4e9d2209a74ae24188c17d5c522a947f894668750e463ca04d10",
+      "source_digest": "eb77dec3acd2911736338e28ca3b4e8d744cf8a4bd22a5310f9dd9dc68cb8032",
+      "variant": "candidate"
+    }
+  ],
+  "schema": "hyperreview.review-comparison.v1",
+  "semantic_assessment": "pending",
+  "suite_digest": "f0a79e668ea3c23d698e4e1bf4e371c5b6749165d605a60ffc5952cbade73edf",
+  "native_runs": [
+    {
+      "axis": "explanation",
+      "run_id": "1478f907705347b5a209ba96f03d3706",
+      "variant": "baseline"
+    },
+    {
+      "axis": "explanation",
+      "run_id": "72140dbcc85b412883370831eaa3225d",
+      "variant": "candidate"
+    }
+  ],
+  "replay_outcomes": [
+    {
+      "case_id": "case-001",
+      "status": "preview_ready",
+      "provider_attempts": 1
+    },
+    {
+      "case_id": "case-002",
+      "status": "preview_ready",
+      "provider_attempts": 1
+    },
+    {
+      "case_id": "case-003",
+      "status": "preview_ready",
+      "provider_attempts": 2
+    },
+    {
+      "case_id": "case-004",
+      "status": "preview_ready",
+      "provider_attempts": 1
+    }
+  ],
+  "implementation_digest": "81319ef60cb6285c33660676b35b42284637b4f4d52c5e61317c38a982ffb0c9",
+  "implementation_revision": "2d98120d867e1e72ae7d582d66ffa7717353f6f8",
+  "development_iterations": [
+    {
+      "id": "iteration-001",
+      "coverage": {
+        "explanation": {
+          "paired_cases": [
+            "case-001",
+            "case-003",
+            "case-004"
+          ],
+          "unpaired_cases": [
+            "case-002"
+          ]
+        }
+      },
+      "regressions": [
+        {
+          "case_id": "case-001",
+          "check_id": "check-003"
+        },
+        {
+          "case_id": "case-001",
+          "check_id": "check-004"
+        }
+      ],
+      "outcomes": [
+        {
+          "case_id": "case-001",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        },
+        {
+          "case_id": "case-002",
+          "status": "failed",
+          "failure": "codex_plan_rejected_both_sides_absent_call_endpoint_list"
+        },
+        {
+          "case_id": "case-003",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        },
+        {
+          "case_id": "case-004",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        }
+      ],
+      "native_runs": [
+        {
+          "axis": "explanation",
+          "run_id": "cde2e8d98a1e42d98f9c31e9ff886863",
+          "variant": "baseline"
+        },
+        {
+          "axis": "explanation",
+          "run_id": "0215d43c9940446b94438cee5208549f",
+          "variant": "candidate"
+        }
+      ],
+      "candidate_artifacts": [
+        {
+          "case_id": "case-001",
+          "artifact_digest": "539478535fbffcd896672b8464c58f41607a884dda29bcc08b5d4c317f55eda1",
+          "profile_digest": "c8e22146328296c55ff8efc69986005b36bb73fe7a150913ad15417762694d2d"
+        },
+        {
+          "case_id": "case-003",
+          "artifact_digest": "7f1a368911d315567c8c88786b12c4b252f75b076a5ab6eb6195c08ce15a447e",
+          "profile_digest": "c8e22146328296c55ff8efc69986005b36bb73fe7a150913ad15417762694d2d"
+        },
+        {
+          "case_id": "case-004",
+          "artifact_digest": "acc45780cbb8f7278d0ad73783cd80abb59f629b53b4a58288caec22ca81664c",
+          "profile_digest": "c8e22146328296c55ff8efc69986005b36bb73fe7a150913ad15417762694d2d"
+        }
+      ]
+    },
+    {
+      "id": "iteration-002",
+      "coverage": {
+        "explanation": {
+          "paired_cases": [
+            "case-001",
+            "case-002",
+            "case-003",
+            "case-004"
+          ],
+          "unpaired_cases": []
+        }
+      },
+      "regressions": [
+        {
+          "case_id": "case-001",
+          "check_id": "check-003"
+        },
+        {
+          "case_id": "case-001",
+          "check_id": "check-004"
+        }
+      ],
+      "outcomes": [
+        {
+          "case_id": "case-001",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        },
+        {
+          "case_id": "case-002",
+          "status": "preview_ready",
+          "provider_attempts": 2
+        },
+        {
+          "case_id": "case-003",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        },
+        {
+          "case_id": "case-004",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        }
+      ],
+      "native_runs": [
+        {
+          "axis": "explanation",
+          "run_id": "11e3c5006ca5492aa646b3ff612203a4",
+          "variant": "baseline"
+        },
+        {
+          "axis": "explanation",
+          "run_id": "007869ca51f94376b6ad2db57f0f4881",
+          "variant": "candidate"
+        }
+      ],
+      "candidate_artifacts": [
+        {
+          "case_id": "case-001",
+          "artifact_digest": "e47c209f0a934709f96fec2ec27b83bc82137e7dc8d1c0c3576436dfb15ebbea",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        },
+        {
+          "case_id": "case-002",
+          "artifact_digest": "0a829e5a3c8a26fe55754b5c53d20364ac5c168cc4d37725d38d9525f018fea5",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        },
+        {
+          "case_id": "case-003",
+          "artifact_digest": "02354ae64575f2197be119ebe3d53417bcee49f6211e8871e5db924e36e3a586",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        },
+        {
+          "case_id": "case-004",
+          "artifact_digest": "e855c8f8c12651c99f437bbe0bd50e4f4e79c47bfaeaf79e52c58f5427e12925",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        }
+      ]
+    },
+    {
+      "id": "iteration-003",
+      "coverage": {
+        "explanation": {
+          "paired_cases": [
+            "case-001",
+            "case-002",
+            "case-003",
+            "case-004"
+          ],
+          "unpaired_cases": []
+        }
+      },
+      "regressions": [
+        {
+          "case_id": "case-001",
+          "check_id": "check-003"
+        },
+        {
+          "case_id": "case-001",
+          "check_id": "check-004"
+        },
+        {
+          "case_id": "case-002",
+          "check_id": "check-002"
+        }
+      ],
+      "outcomes": [
+        {
+          "case_id": "case-001",
+          "status": "preview_ready",
+          "provider_attempts": 2
+        },
+        {
+          "case_id": "case-002",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        },
+        {
+          "case_id": "case-003",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        },
+        {
+          "case_id": "case-004",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        }
+      ],
+      "native_runs": [
+        {
+          "axis": "explanation",
+          "run_id": "e1ea57bf109d48d09d01787c7cb44ce4",
+          "variant": "baseline"
+        },
+        {
+          "axis": "explanation",
+          "run_id": "de7dfc14cb294791a9e8c36bfbc57c9a",
+          "variant": "candidate"
+        }
+      ],
+      "candidate_artifacts": [
+        {
+          "case_id": "case-001",
+          "artifact_digest": "0d55be5b7ec5167ab892bc427187c72d6b106a965cf45c845490bf50d7372bc3",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        },
+        {
+          "case_id": "case-002",
+          "artifact_digest": "d9b3c481d3b36c8eab8a93b63b1138e8ba6c3b77da3fe383498333c53d2076ac",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        },
+        {
+          "case_id": "case-003",
+          "artifact_digest": "5f97c845e7e4fec970022e198b8dc0e7da7432a7f441a104e851c10160fb1173",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        },
+        {
+          "case_id": "case-004",
+          "artifact_digest": "6646d2f2a2dbd86c2e654689cc2865eacbad45347ea26056183f8fd7c5fdd7f7",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        }
+      ]
+    },
+    {
+      "id": "iteration-004",
+      "coverage": {
+        "explanation": {
+          "paired_cases": [
+            "case-001",
+            "case-002",
+            "case-003",
+            "case-004"
+          ],
+          "unpaired_cases": []
+        }
+      },
+      "regressions": [],
+      "outcomes": [
+        {
+          "case_id": "case-001",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        },
+        {
+          "case_id": "case-002",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        },
+        {
+          "case_id": "case-003",
+          "status": "preview_ready",
+          "provider_attempts": 2
+        },
+        {
+          "case_id": "case-004",
+          "status": "preview_ready",
+          "provider_attempts": 1
+        }
+      ],
+      "native_runs": [
+        {
+          "axis": "explanation",
+          "run_id": "1478f907705347b5a209ba96f03d3706",
+          "variant": "baseline"
+        },
+        {
+          "axis": "explanation",
+          "run_id": "72140dbcc85b412883370831eaa3225d",
+          "variant": "candidate"
+        }
+      ],
+      "candidate_artifacts": [
+        {
+          "case_id": "case-001",
+          "artifact_digest": "9d74ce3cd1091862b148a1eee928134c426940a8961804591e05211da415408d",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        },
+        {
+          "case_id": "case-002",
+          "artifact_digest": "795a9389c6e3181620bd0988eac7854c7ad13ee905517df76536f2b38d49b15a",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        },
+        {
+          "case_id": "case-003",
+          "artifact_digest": "cc77901fbf192c5bbf89e3c730485fad65aa980281bb8bc248bfecf369afd000",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        },
+        {
+          "case_id": "case-004",
+          "artifact_digest": "46e3a060735ba41227dff24704ece223972a31b26318508ced8c1356c0add0fa",
+          "profile_digest": "a4d807b6c206aa28c17bb9949684a144b41ad07ee9f3e21ee143023287b04caa"
+        }
+      ]
+    }
+  ],
+  "baseline_note": "All four sealed baselines predate behavior changes; cases 001-003 are the retained v16 candidates, and case 004 is the published v16 review. Exact source bytes/order and model/compiler settings are identical within every pair. Criteria were frozen in a separate commit.",
+  "limitations": [
+    "Single selected candidate per case per development iteration; no statistical reliability claim.",
+    "Case 004 exact before-call positives remain unselected; removing a forbidden shortcut does not establish complete call coverage.",
+    "Case 002 publish-to-replace witness remains unselected.",
+    "Deterministic witnesses and lexical scope guards do not establish semantic correctness, binding or execution; no human acceptance was recorded."
+  ]
+}

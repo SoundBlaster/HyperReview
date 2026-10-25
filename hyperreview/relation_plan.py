@@ -7,6 +7,8 @@ integrity, never that an edge is true or that a workflow actually ran.
 
 import re
 
+from . import callsite_navigation
+
 
 MAX_RELATIONS = 6
 EMPTY_PREFIX = "Связи не сформированы: "
@@ -37,6 +39,42 @@ class BindingEvidenceError(ValueError):
     """An exact verification target is absent from its cited declaration side."""
 
 
+class CallEndpointError(ValueError):
+    """An invocation endpoint visibly lists several operations."""
+
+
+class LiteralCallerError(ValueError):
+    """The indexed literal invocation is in a different named operation."""
+
+
+def compound_call_endpoint(value):
+    """Recognize explicit lists outside signatures, not semantic call binding.
+
+    This narrow formatting check leaves arguments, generic parameters and
+    quoted identifiers alone. Passing it does not establish a real call.
+    """
+    stack, quote, escaped, surface = [], None, False, []
+    pairs = {"(": ")", "[": "]", "{": "}", "<": ">"}
+    for char in value:
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in "\"'`":
+            quote = char
+        elif char in pairs:
+            stack.append(pairs[char])
+        elif stack and char == stack[-1]:
+            stack.pop()
+        elif not stack:
+            surface.append(char)
+    return bool(re.search(r"[,;\n\r→]|\s+(?:and|or|и|или)\s+", "".join(surface)))
+
+
 def schema(request):
     refs = sorted(source["id"] for source in request["sources"])
     label = {"type": "string", "minLength": 1, "maxLength": 160}
@@ -44,14 +82,11 @@ def schema(request):
         "type": "array", "maxItems": MAX_RELATIONS,
         "description": (
             "Up to six important source-supported relationships, separate from the .hc tree. "
-            "Explain dependencies, operation calls, shared data contracts, data flow, boundary obligations and availability conditions across any stack. Use reuses_rule only for one actual rule with multiple application sites, not a shared type. "
-            "Use verified_by for a declared obligation-to-check binding, never proof the check passed. A complete declared test-file path or check ID is valid; file::symbol is not required. Preserve declaration granularity and do not invent a symbol. "
-            "On an attribute-only change keep the same .hc composition and describe before/after properties. "
-            "Endpoints can name an obligation or source-established symbol without adding tree nodes. "
-            "Ground each edge's direction and kind, not just its endpoints. Coexistence, containment or optional availability does not establish a dependency or integration. "
-            "A source_analysis calls row is one immediate invocation. Preserve A -> helper B -> policy C as separate supported steps, never a fabricated direct A -> C call. Intermediate endpoints need not be .hc nodes. "
-            "For shared_contract identify an actual common interface/result/schema and its inspected sharing sites. Omit an unsupported edge instead of excusing it with a disclaimer. "
-            "Use [] if no relationship has evidence; never invent execution or claim runtime observation."
+            "Ground direction and kind, not just endpoints; containment/coexistence is not integration. "
+            "calls: ONE caller -> ONE immediate callee, no lists or hidden-helper shortcuts; retain unresolved literal targets. "
+            "shared_contract needs an inspected common interface/schema and sharing sites; reuses_rule needs one actual rule at multiple sites. "
+            "verified_by is a declared binding, not a passed check; preserve an exact file/check target without inventing a symbol. "
+            "Endpoints need no tree nodes. Attribute-only changes retain composition. Omit unsupported edges; [] is valid. Never claim runtime observation."
         ),
         "items": {
             "type": "object", "additionalProperties": False,
@@ -61,7 +96,7 @@ def schema(request):
                              "maxLength": 81,
                              "description": "# plus the exact id of a declared node present on this side. Its generated .hcs properties carry this relationship; choose the responsible owner, not a new node just for the edge."},
                 "from": {**label, "description": "Source-established responsibility, caller, producer, contract or rule. For source_analysis calls: the actual immediate invoking operation visible at the cited callsite, not its upstream caller or an invented Owner::operation label. For depends_on: the actual dependent, not an unrelated portable alternative. For available_when: the gated capability/operation. For reuses_rule: ONE shared rule."},
-                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For depends_on identify what the from endpoint actually depends on, retaining relevant conditions in explanation; optional availability alone is insufficient. For available_when name the actual availability predicate including relevant platform/feature conditions; A enabling B does not imply A is available when B is independently enabled. For shared_contract name an actual common interface/result/schema with inspected sharing sites; a shown producer and consumer suffice. For reuses_rule: several named sites, marking indirect paths. For verified_by: ONE exact verbatim target from the cited side, without truncation, concatenation or explanation. Use separate rows for separate targets. Never copy a newly added target into before."},
+                "to": {**label, "description": "Dependency, invoked operation (function/service/syscall/policy), consumer, contract, obligation or availability condition. For calls: ONE immediate callee; separate rows for multiple operations. Preserve the literal receiver/unqualified target unless supplied source establishes binding; never infer a hidden wrapper's delegate from a similar operation elsewhere. For depends_on identify what the from endpoint actually depends on, retaining relevant conditions in explanation; optional availability alone is insufficient. For available_when name the actual availability predicate including relevant platform/feature conditions; A enabling B does not imply A is available when B is independently enabled. For shared_contract name an actual common interface/result/schema with inspected sharing sites; a shown producer and consumer suffice. For reuses_rule: several named sites, marking indirect paths. For verified_by: ONE exact verbatim target from the cited side, without truncation, concatenation or explanation. Use separate rows for separate targets. Never copy a newly added target into before."},
                 "kind": {"type": "string", "enum": list(KINDS)},
                 "side": {"type": "string", "enum": ["before", "after"]},
                 "basis": {"type": "string", "enum": list(_BASES),
@@ -102,6 +137,11 @@ def to_claims(rows, request, identities, *, legacy=False):
                 or any(type(ref) is not str or sources.get(ref) != row["side"] for ref in refs)
                 or len(refs) != len(set(refs))):
             raise ValueError("Relation requires unique supplied same-side source references")
+        if not legacy and row["kind"] == "calls" and row["basis"] == "source_analysis":
+            if any(compound_call_endpoint(row[field]) for field in ("from", "to")):
+                raise CallEndpointError("Call endpoints must name one operation each")
+            if callsite_navigation.conflicting_literal_caller(row, request):
+                raise LiteralCallerError("Literal callsite names another enclosing operation")
         if not legacy and row["kind"] == "verified_by" and row["basis"] == "declaration":
             # Literal presence is only a necessary evidence condition. Token
             # boundaries reject shortened identifiers; a complete test body

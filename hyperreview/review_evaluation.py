@@ -15,7 +15,7 @@ from .storage import read_json
 SUITE_SCHEMA = "hyperreview.review-suite.v1"
 PAIR_SCHEMA = "hyperreview.review-pairs.v1"
 REPORT_SCHEMA = "hyperreview.review-comparison.v1"
-METRIC_VERSION = "review-witnesses-v2"
+METRIC_VERSION = "review-witnesses-v3"
 METRICS = ("source_retention", "relation_presence", "containment_preserved", "compiler_receipt_consistent",
            "forbidden_relation_absent")
 ID = re.compile(r"case-[0-9]{3}\Z")
@@ -66,10 +66,11 @@ def validate_suite(suite):
             if check.get("kind") == "source":
                 require(set(check) == base | {"path"} and _text(check["path"])
                         and intake._source_exclusion(check["path"]) is None, "Invalid expected source")
-            elif check.get("kind") in ("relation", "relation_absence"):
-                require(set(check) == base | {"relation_kind", "from_contains", "to_contains"}
+            elif check.get("kind") in ("relation", "relation_absence", "relation_exact"):
+                endpoints = ("from_any", "to_any") if check["kind"] == "relation_exact" else ("from_contains", "to_contains")
+                require(set(check) == base | {"relation_kind", *endpoints}
                         and check["relation_kind"] in KINDS, "Invalid expected relation")
-                for field in ("from_contains", "to_contains"):
+                for field in endpoints:
                     require(type(check[field]) is list and 1 <= len(check[field]) <= 8
                             and all(_text(value, 160) for value in check[field]), "Invalid endpoint tokens")
             elif check.get("kind") == "containment":
@@ -157,7 +158,13 @@ def _relation_witness(result, check):
         if not claim["scope"].startswith("До;" if check["side"] == "before" else "После;"):
             continue
         parts = claim["text"].split(" → ")
-        if len(parts) == 2 and _contains(parts[0], check["from_contains"]) and _contains(parts[1], check["to_contains"]):
+        if len(parts) != 2:
+            continue
+        if check["kind"] == "relation_exact":
+            matched = parts[0] in check["from_any"] and parts[1] in check["to_any"]
+        else:
+            matched = _contains(parts[0], check["from_contains"]) and _contains(parts[1], check["to_contains"])
+        if matched:
             return True
     return False
 
@@ -175,9 +182,9 @@ def observe(case, bundle, axis):
         elif result is None:
             checks.append({"id": check["id"], "value": None})
             continue
-        elif kind in ("relation", "relation_absence"):
+        elif kind in ("relation", "relation_absence", "relation_exact"):
             present = _relation_witness(result, check)
-            value, metric = ((present, "relation_presence") if kind == "relation" else
+            value, metric = ((present, "relation_presence") if kind != "relation_absence" else
                              (not present, "forbidden_relation_absent"))
         else:
             hc = result[f"{check['side']}_hc"]

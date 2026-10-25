@@ -651,3 +651,13 @@ No human acceptance, public review edit or production activation is recorded.
 
 Next: review and merge the improvement, activate through the guarded updater,
 then inspect the first automatic review for source-grounded call attribution.
+
+Review #57 found a false rejection when a valid trailing-closure or explicit
+generic invocation coexists with an indexed `Provider()` in another scope.
+The guard now declines any non-declaration target mention outside its indexed
+bare-call form, including qualified/escaped/callable references and hidden
+interpolation. Regression tests retain these supported relations and preserve
+the original known caller contradiction. Swift type-checking confirms both
+reported invocation forms. All four stored final plans revalidate to identical
+canonical results; [post-review receipt](evaluations/results/2026-10-25-reviewer-v17-post-review.json)
+records this without new model inference or rewriting earlier evaluation runs.

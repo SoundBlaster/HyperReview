@@ -85,7 +85,9 @@ contradiction: a bare literal target (or its `.init` spelling) has indexed
 invocations, the claimed qualified caller is an exactly indexed named scope
 in one cited file, and none of those invocations is in that scope. It declines
 qualified member targets, aliases/constructor references, shorthand `.init`,
-masked occurrences, ambiguous duplicate callers, incomplete/unsupported input
+masked occurrences, non-declaration target mentions outside the indexed
+`name(...)` form (including trailing closures, explicit generics and callable
+references), ambiguous duplicate callers, incomplete/unsupported input
 and saturated indexes. Other formats continue without this guard. It does not
 resolve aliases, types, reachability or behavior, and passing it is not semantic
 approval. Optional hints themselves remain untrusted navigation data.

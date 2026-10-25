@@ -60,6 +60,15 @@ class CallEndpointTests(unittest.TestCase):
             "Literal callsite names another enclosing operation")), ("literal_caller", ""))
         self.assertEqual(len(relation_plan.to_claims([{**row, "from": "Inner.body"}], data, self.identities)), 1)
 
+    def test_unindexed_invocation_is_retained_without_literal_caller_error(self):
+        for invocation in ("Provider { 1 }", "Provider<Int>()"):
+            data = navigation_request(f'struct Outer {{\n var body: View {{ {invocation} }}\n}}\n'
+                                      'struct Inner {\n var body: View { Provider() }\n}\n')
+            row = {**self.row, "from": "Outer.body", "to": "Provider", "source_refs": ["caller"]}
+            with self.subTest(invocation=invocation):
+                claims = relation_plan.to_claims([row], data, self.identities)
+                self.assertEqual(claims[0]["text"], "Outer.body → Provider")
+
 
 if __name__ == "__main__":
     unittest.main()

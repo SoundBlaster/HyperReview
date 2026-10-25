@@ -161,7 +161,8 @@ def conflicting_literal_caller(row, request):
         return False
     refs = set(row["source_refs"])
     relevant = []
-    pattern = re.compile(r"(?<![\w.])" + re.escape(name) + r"\s*\(")
+    mentions = re.compile(r"(?<!\w)" + re.escape(name) + r"(?!\w)")
+    opening = re.compile(r"\s*\(")
     for source in request["sources"]:
         if source["id"] not in refs:
             continue
@@ -178,11 +179,19 @@ def conflicting_literal_caller(row, request):
             return False
         code, scopes = indexed
         if (re.search(r"\btypealias\b|(?<!\w)\.init\s*\(", code)
-                or re.search(r"\b" + re.escape(name) + r"\s*\.\s*(?:init|self)\b", code)):
+                or re.search(r"\b" + re.escape(name) + r"\s*\.\s*(?:init|self)\b", code)
+                or re.search(r"[.#]\s*" + re.escape(name) + r"(?!\w)", code)):
             return False
-        # Masked string/interpolation/comment occurrences could hide a real
-        # invocation or ambiguity: decline instead of using absence as proof.
-        if len(pattern.findall(content)) != len(pattern.findall(code)):
+        # A partial index recognizes only bare name(...). Every other target
+        # use (including name { ... }, name<T>(...), callable references or
+        # hidden interpolation) could be a call it misses. Declaration names
+        # are not uses; leave every other unindexed form to ordinary review.
+        if len(mentions.findall(content)) != len(mentions.findall(code)):
+            return False
+        declarations = {declaration.span(2) for declaration in _DECL.finditer(code)
+                        if declaration[2] == name}
+        if any(mention.span() not in declarations and opening.match(code, mention.end()) is None
+               for mention in mentions.finditer(code)):
             return False
         known = set()
         for scope in scopes:

@@ -6,7 +6,7 @@ boundary pilot. Neither evaluation is a publication gate.
 
 ## Freeze before changing behavior
 
-The versioned [review suite](../evaluations/reviewer-v3.json) pins real PR
+The versioned [review suite](../evaluations/reviewer-v4.json) pins real PR
 revisions, narrow deterministic witnesses and a short local human rubric. Keep
 baseline artifacts and their digests before editing a prompt, selector or
 renderer. Commit changes to criteria separately from the change being assessed;
@@ -43,7 +43,7 @@ custom code scorers. No `predict_fn`, model judge or inference runs in evaluatio
 | Witness | Establishes | Does not establish |
 | --- | --- | --- |
 | `source_retention` | Named same-side source was supplied | Source was understood |
-| `relation_presence` | A selected kind and endpoint tokens occur in a same-side structured relation | Correct binding, meaning, execution or completeness |
+| `relation_presence` | A selected kind and endpoint tokens (`relation`) or exact curated endpoint alternatives (`relation_exact`) occur in a same-side structured relation | Correct binding, meaning, execution or completeness |
 | `forbidden_relation_absent` | A curated, source-reviewed incorrect relation is absent | Other relations are correct, or necessary relations are present |
 | `containment_preserved` | The positive unambiguous literal role path is retained | Entire projection matches architecture |
 | `compiler_receipt_consistent` | Stored projection/IR hashes agree with a successful compiler receipt | Fresh compilation, authenticity or behavioral correctness |
@@ -60,6 +60,44 @@ but loses positive coverage. The metric definition advances to
 `review-witnesses-v2`; previous suite versions, results and fingerprints stay
 unchanged. This checks the known outer-component error, not arbitrary semantic
 precision or every possible incorrect caller name.
+
+V4 retains the three cases and adds SessionMonitor #145 at its reviewed base/head.
+It pairs exact positive endpoints with a negative witness for a fabricated direct
+`SessionMonitor.agentStatus -> UsageStore.snapshot` call. The supplied caller
+invokes unqualified `snapshot(query:)`; its wrapper definition is not supplied.
+The exact alternatives accept that literal target, `self.snapshot` or the
+enclosing-type spelling, but not a compound target containing both calls. This
+advances the metric definition to `review-witnesses-v3`; old suite files and
+published results are unchanged. Exact witnesses are intentionally sensitive
+to endpoint spelling and selected edges. They cannot prove arbitrary binding;
+an absent selected edge is a coverage observation, not a semantic verdict.
+
+Profile v17 / composition-v23 explicitly preserves unresolved receivers and
+explains reduced input through its selection invariant, retained metadata and
+fallback. It checks visible registration before declaring wiring unavailable.
+The local converter rejects obvious lists in either `source_analysis calls`
+endpoint and requests one bounded repair with `call_endpoint_list`. This is a
+format check outside argument/generic/quoted regions, not a call resolver or
+new evaluation/publication gate. Other relationship kinds may legitimately
+describe several application sites; historical legacy plans remain readable.
+An additional `literal_caller` repair detects only a narrow Swift lexical
+contradiction: a bare literal target (or its `.init` spelling) has indexed
+invocations, the claimed qualified caller is an exactly indexed named scope
+in one cited file, and none of those invocations is in that scope. It declines
+qualified member targets, aliases/constructor references, shorthand `.init`,
+masked occurrences, ambiguous duplicate callers, incomplete/unsupported input
+and saturated indexes. Other formats continue without this guard. It does not
+resolve aliases, types, reachability or behavior, and passing it is not semantic
+approval. Optional hints themselves remain untrusted navigation data.
+The #145 rubric separately asks whether the explanation covers timestamp ties,
+reset witnesses and full coverage rather than an arbitrary row limit. No
+keyword score substitutes for reading that mechanism or the omission caveats.
+Bounded comparison/callsite navigation follows the full source request, so the
+small index remains close to the output decision. It stays in an untrusted
+data block/user message, outside the trusted reviewer profile. Codex ends with
+a short trusted call audit; no source-derived text is promoted into it. The
+source records, optional 6144-byte navigation budget and context limits stay
+unchanged. The packaged v17 profile is 16216 bytes.
 
 Profile v16 / composition-v22 distinguishes architecture ownership from the
 named operation containing a call. Optional `callsite_hints` provide up to four
@@ -113,7 +151,7 @@ local integrity checks, not signatures or attestations.
 
 ```sh
 ~/.local/share/hyperreview/evaluation-runtime/bin/python -m hyperreview.review_evaluation_sdk \
-  --suite /absolute/trusted/evaluations/reviewer-v3.json \
+  --suite /absolute/trusted/evaluations/reviewer-v4.json \
   --pairs /absolute/private/pairs.json \
   --database /absolute/private/evaluation/tracking.sqlite \
   --artifacts-root /absolute/private/evaluation/artifacts \

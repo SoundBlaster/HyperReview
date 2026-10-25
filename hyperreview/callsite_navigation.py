@@ -85,20 +85,20 @@ def _swift_mask(content):
     return "".join(masked)
 
 
-def _swift_sites(content, names):
+def _swift_scopes(content):
     code = _swift_mask(content)
     if code is None or re.search(r"(?m)^\s*#", code):
-        return []  # Conditional compilation/macros need a proper language adapter.
+        return None  # Conditional compilation/macros need a proper language adapter.
     stack, ends = [], {}
     for index, char in enumerate(code):
         if char == "{":
             stack.append(index)
         elif char == "}":
             if not stack:
-                return []
+                return None
             ends[stack.pop()] = index
     if stack:
-        return []
+        return None
     scopes = []
     declarations = list(_DECL.finditer(code))
     for number, declaration in enumerate(declarations):
@@ -121,6 +121,14 @@ def _swift_sites(content, names):
             if char == "{" and parentheses:
                 index = ends[index]  # Default-argument closure, outside the function body.
             index += 1
+    return code, scopes
+
+
+def _swift_sites(content, names):
+    indexed = _swift_scopes(content)
+    if indexed is None:
+        return []
+    code, scopes = indexed
     sites = []
     pattern = re.compile(r"(?<![\w.])(" + "|".join(re.escape(n) for n in sorted(names)) + r")\s*\(")
     for call in pattern.finditer(code):
@@ -136,6 +144,61 @@ def _swift_sites(content, names):
         if len(sites) == MAX_SITES:
             break
     return sites
+
+
+def conflicting_literal_caller(row, request):
+    """Recognize a narrow lexical contradiction, never resolve a call graph.
+
+    Only a bare literal target (or its .init spelling) and an exactly indexed
+    named caller qualify. Aliases, qualified member calls, unknown syntax,
+    windows, hidden occurrences and truncated indexes yield no conclusion.
+    """
+    target = re.fullmatch(r"(" + _NAME + r")(?:\.init)?", row["to"])
+    if target is None:
+        return False
+    name, caller = target[1], row["from"]
+    if re.fullmatch(_NAME + r"(?:\." + _NAME + r")+", caller) is None:
+        return False
+    refs = set(row["source_refs"])
+    relevant = []
+    pattern = re.compile(r"(?<![\w.])" + re.escape(name) + r"\s*\(")
+    for source in request["sources"]:
+        if source["id"] not in refs:
+            continue
+        # This guard intentionally uses only the bounded Swift lexical index.
+        # Other formats remain reviewable with no mandatory parser.
+        if PurePosixPath(source["path"]).suffix != ".swift":
+            continue
+        content = source["content"]
+        if (source.get("line_start") != 1 or len(content.encode()) > MAX_BYTES
+                or len(content.splitlines()) != source.get("line_end")):
+            return False
+        indexed = _swift_scopes(content)
+        if indexed is None:
+            return False
+        code, scopes = indexed
+        if (re.search(r"\btypealias\b|(?<!\w)\.init\s*\(", code)
+                or re.search(r"\b" + re.escape(name) + r"\s*\.\s*(?:init|self)\b", code)):
+            return False
+        # Masked string/interpolation/comment occurrences could hide a real
+        # invocation or ambiguity: decline instead of using absence as proof.
+        if len(pattern.findall(content)) != len(pattern.findall(code)):
+            return False
+        known = set()
+        for scope in scopes:
+            if scope[3] not in ("func", "var"):
+                continue
+            parents = sorted((s for s in scopes if s[1] < scope[1] < s[2]), key=lambda s: s[1])
+            known.add(".".join(s[4] for s in parents + [scope]))
+        sites = _swift_sites(content, {name})
+        if len(sites) >= MAX_SITES:
+            return False
+        if any(site["caller"] == caller for site in sites):
+            return False
+        if caller in known:
+            relevant.append(sites)
+    # Identical caller names in several cited files do not establish identity.
+    return len(relevant) == 1 and bool(relevant[0])
 
 
 def _python_sites(content, names):

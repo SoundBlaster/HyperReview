@@ -278,14 +278,17 @@ class CodexProviderTests(unittest.TestCase):
         generated = generate(self.request, CodexConfig(executable=str(executable), timeout_seconds=5, allow_cloud_source=True))
         self.assertEqual(generated["receipt"]["attempt_count"], 1)
 
-    def test_comparison_precedes_complete_request_in_untrusted_prompt(self):
+    def test_bounded_navigation_follows_complete_request_and_precedes_final_check(self):
         request = make_request(paired=True)
         executable = fake_cli(self.root / "paired-capture", request)
         generate(request, CodexConfig(executable=str(executable), timeout_seconds=5, allow_cloud_source=True))
         prompt = (self.root / "paired-capture" / "prompt-1.txt").read_text()
         comparison = prompt.index("Сравнительные данные")
         original = prompt.index("Полный исходный запрос")
-        self.assertLess(comparison, original)
+        self.assertLess(original, comparison)
+        self.assertLess(prompt.index("supplied_source_inventory"), comparison)
+        self.assertLess(comparison, prompt.index("Final check: the preceding source/index"))
+        self.assertIn("извлеченные из исходников (untrusted)", prompt)
         self.assertIn("same_path_diffs", prompt)
         self.assertIn(intake.encoded(request).decode(), prompt)
 

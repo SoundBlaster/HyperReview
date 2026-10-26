@@ -223,15 +223,24 @@ def _repair_schema(schema, request, candidate, code):
         return schema
     narrowed = deepcopy(schema)
     paths = _authored_owner_paths(request, candidate)
+    scopes = {}
+    for side in ("before", "after"):
+        scopes[side] = {n[f"{side}_type"] for n in candidate["nodes"] if n[f"{side}_type"] is not None}
+        scopes[side].update(role for path in paths if path["side"] == side for role in path["role_path"])
+    variants = []
     for variant in narrowed["properties"]["nodes"]["items"]["anyOf"]:
+        permitted = True
         for side in ("before", "after"):
             role_schema = variant["properties"][f"{side}_type"]
             if role_schema.get("type") == "null":
                 continue
-            roles = {n[f"{side}_type"] for n in candidate["nodes"] if n[f"{side}_type"] is not None}
-            roles.update(role for path in paths if path["side"] == side for role in path["role_path"])
-            if roles:
-                role_schema["enum"] = sorted(roles)
+            if not scopes[side]:
+                permitted = False
+                break
+            role_schema["enum"] = sorted(scopes[side])
+        if permitted:
+            variants.append(variant)
+    narrowed["properties"]["nodes"]["items"]["anyOf"] = variants
     return narrowed
 
 
@@ -241,9 +250,12 @@ def _check_repair_scope(candidate, schema):
         return  # The canonical converter diagnoses malformed structure.
     for side in ("before", "after"):
         roles = set()
-        for variant in schema["properties"]["nodes"]["items"]["anyOf"]:
-            roles.update(variant["properties"][f"{side}_type"].get("enum", []))
-        if not roles:
+        role_schemas = [variant["properties"][f"{side}_type"]
+                        for variant in schema["properties"]["nodes"]["items"]["anyOf"]]
+        for role_schema in role_schemas:
+            roles.update(role_schema.get("enum", []))
+        closed_empty = bool(role_schemas) and all(value.get("type") == "null" for value in role_schemas)
+        if not roles and not closed_empty:
             continue
         for index, node in enumerate(nodes):
             role = node.get(f"{side}_type") if type(node) is dict else None

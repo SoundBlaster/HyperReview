@@ -176,3 +176,31 @@ class PlanRepairTests(unittest.TestCase):
                 with self.assertRaises(composition_plan.CompositionPlanError) as caught:
                     composition_plan.to_result(plan, request)
                 self.assertEqual(_issue_for_error(caught.exception), (case['expected_code'], case['location']))
+
+    def test_authored_repair_cannot_populate_an_originally_empty_side(self):
+        from copy import deepcopy
+        from jsonschema import Draft202012Validator
+        for absent in ('before', 'after'):
+            with self.subTest(absent=absent):
+                present = 'after' if absent == 'before' else 'before'
+                plan = make_plan(self.request)
+                for node in plan['nodes']:
+                    node.update({absent+'_type': None, absent+'_parent': None, absent+'_refs': []})
+                schema = codex_provider._repair_schema(codex_provider._codex_schema(self.request),
+                                                        self.request, plan, 'authored_parent')
+                validator = Draft202012Validator(schema)
+                validator.check_schema(schema)
+                self.assertTrue(validator.is_valid(plan))
+                codex_provider._check_repair_scope(plan, schema)
+                expanded = deepcopy(plan)
+                expanded['nodes'].append({'id': 'unrelated', absent+'_type': 'OtherProduct',
+                                          present+'_type': None, 'before_parent': None, 'after_parent': None,
+                                          absent+'_refs': [s['id'] for s in self.request['sources'] if s['side'] == absent],
+                                          present+'_refs': [], 'reason': 'Synthetic scope expansion control.'})
+                # The ordinary converter accepts this otherwise valid new tree.
+                composition_plan.to_result(expanded, self.request)
+                self.assertFalse(validator.is_valid(expanded))
+                with self.assertRaises(composition_plan.CompositionPlanError) as caught:
+                    codex_provider._check_repair_scope(expanded, schema)
+                self.assertEqual(_issue_for_error(caught.exception),
+                                 ('repair_scope', f' at nodes[1].{absent}_type'))

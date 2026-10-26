@@ -72,6 +72,8 @@ unambiguous owner paths in cited same-side `.hc` records. These paths accompany
 the rejected plan as untrusted navigation data. A local scope check also rejects
 roles outside that set; the converter still validates all parents and roots.
 This permits restoring omitted owners without introducing unrelated map trees.
+An empty candidate side stays empty even when the request supplies sources for
+that side; both the provider grammar and local guard enforce this boundary.
 It establishes no cross-map identity and does not disambiguate repeated roles.
 No extra retry or automatic normalization of refs, parents or names is introduced.
 

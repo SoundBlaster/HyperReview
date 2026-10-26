@@ -1,0 +1,63 @@
+{
+  "schema": "hyperreview.absent-side-regression-receipt.v1",
+  "repository": "0al-spec/SpecGraph",
+  "pr": 804,
+  "head_sha": "f97463498b51d25c16701cc9164299a86f1af08f",
+  "original_failure_code": "codex_plan_rejected_absent_side_absent_side",
+  "original_raw_attempts": "unavailable",
+  "historical_failure_reproduced": false,
+  "baseline_live_replay": "completed_first_attempt",
+  "candidate_final_live_replay": "completed_first_attempt",
+  "model": "gpt-6-luna",
+  "reasoning_effort": "medium",
+  "request_digest": "5d898ed841d0a5969b220d24a12d3a7003b46ac5cc21ef0ddb94058a855ce4cd",
+  "reviewer_runtime_sha256": "428e6358b1582bfab2a29fad26444446831f6961b927fde15a57b3671102d690",
+  "provider_schema_sha256": "5dd823e1e33759cf5ed92c5de02cc34f16ce378314dbf426c9985d0f480a7161",
+  "compiler_sha256": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+  "local_tests": {
+    "run": 379,
+    "skipped": 4,
+    "failed": 0
+  },
+  "historical_valid_outputs_accepted": 47,
+  "fixture": {
+    "path": "evaluations/fixtures/node-presence-v1.json",
+    "sha256": "b71e2d1015cced3a49243368a2e56ed4cbd94f0334702f6780791ada76acf0c8",
+    "positive_controls": 3,
+    "invalid_shapes": 7,
+    "baseline_invalid_rejected": 0,
+    "candidate_invalid_rejected": 7
+  },
+  "corpus_version": "review-corpus-v2",
+  "new_record_digest": "f90d1733727812e28a34d1cd5ce0056fc3376e7e9339001e4bc470fb114884bc",
+  "native_evaluation": {
+    "schema": "hyperreview.node-presence-evaluation.v1",
+    "parent_run_id": "0095716f93e441a29295907b097d88a7",
+    "experiment_id": "4",
+    "runs": [
+      {
+        "variant": "baseline",
+        "run_id": "777183942e814f3f81b2c440e8920b0c"
+      },
+      {
+        "variant": "candidate",
+        "run_id": "de1ce3e6339a4404a829f1c2734bd5f7"
+      }
+    ],
+    "positive_controls": 3,
+    "invalid_cases": 7,
+    "baseline_invalid_rejected": 0,
+    "candidate_invalid_rejected": 7,
+    "metric_and_artifact_readback": true,
+    "original_raw_attempts": "unavailable",
+    "semantic_assessment": "not_evaluated",
+    "production_changed": false,
+    "prior_delivery_failure_runs": [
+      "909c67da0635456881771fb79fd017ac",
+      "16b013f0f93b466e85a1e260e3fdeefd"
+    ]
+  },
+  "github_review_publication": false,
+  "production_activation": false,
+  "semantic_acceptance": false
+}

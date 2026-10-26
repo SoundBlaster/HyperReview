@@ -143,6 +143,30 @@ def _verify_executable(path, expected_sha256, deadline, isolate_process=False):
 
 def _codex_schema(request):
     schema = deepcopy(plan_schema(request, include_relations=True))
+    node_schema = schema["properties"]["nodes"]["items"]
+    available = {side: any(source["side"] == side for source in request["sources"])
+                 for side in ("before", "after")}
+    variants = []
+    # Couple type/parent/refs in the provider grammar, rather than asking a
+    # repair turn to rediscover a cross-field constraint. Every branch keeps
+    # the same flat plan fields; the canonical converter remains unchanged.
+    for before, after in ((True, True), (False, True), (True, False)):
+        if (before and not available["before"]) or (after and not available["after"]):
+            continue
+        variant = deepcopy(node_schema)
+        for side, present in (("before", before), ("after", after)):
+            properties = variant["properties"]
+            if present:
+                role = properties[f"{side}_type"]
+                properties[f"{side}_type"] = {
+                    **role["anyOf"][0], "description": role["description"]}
+                properties[f"{side}_refs"]["minItems"] = 1
+            else:
+                properties[f"{side}_type"] = {"type": "null"}
+                properties[f"{side}_parent"] = {"type": "null"}
+                properties[f"{side}_refs"]["maxItems"] = 0
+        variants.append(variant)
+    schema["properties"]["nodes"]["items"] = {"anyOf": variants}
 
     def visit(value):
         if type(value) is dict:
@@ -185,13 +209,10 @@ def _prompt(request, comparison_content, issue=None):
                  "do not substitute the surrounding component or file name. Unseen helpers do not "
                  "justify guessed receivers or shortcut edges. Omit unsupported rows, not uncertainty.")
     if issue is not None:
-        code, location, schema = issue
-        properties = schema["properties"]["nodes"]["items"]["properties"]
-        source_ids = {}
-        for side in ("before", "after"):
-            values = properties[f"{side}_refs"]["items"].get("enum", [])
-            source_ids[side] = [value for value in values if type(value) is str
-                                and re.fullmatch(r"src_[0-9a-f]{64}", value)]
+        code, location, _schema = issue
+        source_ids = {side: sorted({source["id"] for source in request["sources"]
+                                   if source["side"] == side})
+                      for side in ("before", "after")}
         parts.extend(("\n\n", _REPAIR_PROMPT.format(
             code=code, location=location, hint=_ISSUE_HINTS.get(code, _ISSUE_HINTS["invalid_plan"]),
             before_ids=", ".join(source_ids["before"]),

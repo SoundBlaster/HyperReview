@@ -1,0 +1,134 @@
+{
+  "schema": "hyperreview.node-presence-cases.v1",
+  "origin_url": "https://github.com/0al-spec/SpecGraph/pull/804#discussion_r4380503697",
+  "head_sha": "f97463498b51d25c16701cc9164299a86f1af08f",
+  "failure_code": "codex_plan_rejected_absent_side_absent_side",
+  "provenance": "synthetic_grammar_witnesses_for_observed_failure_class",
+  "original_raw_attempts": "unavailable",
+  "cases": [
+    {
+      "id": "added",
+      "before_type": null,
+      "after_type": "Preview",
+      "before_parent": null,
+      "after_parent": null,
+      "before_refs": [],
+      "after_refs": [
+        "after"
+      ],
+      "expected_valid": true
+    },
+    {
+      "id": "removed",
+      "before_type": "Preview",
+      "after_type": null,
+      "before_parent": null,
+      "after_parent": null,
+      "before_refs": [
+        "before"
+      ],
+      "after_refs": [],
+      "expected_valid": true
+    },
+    {
+      "id": "retained",
+      "before_type": "Preview",
+      "after_type": "Preview",
+      "before_parent": null,
+      "after_parent": null,
+      "before_refs": [
+        "before"
+      ],
+      "after_refs": [
+        "after"
+      ],
+      "expected_valid": true
+    },
+    {
+      "id": "absent_before_parent",
+      "before_type": null,
+      "after_type": "Preview",
+      "before_parent": "owner",
+      "after_parent": null,
+      "before_refs": [],
+      "after_refs": [
+        "after"
+      ],
+      "expected_valid": false
+    },
+    {
+      "id": "absent_after_parent",
+      "before_type": "Preview",
+      "after_type": null,
+      "before_parent": null,
+      "after_parent": "owner",
+      "before_refs": [
+        "before"
+      ],
+      "after_refs": [],
+      "expected_valid": false
+    },
+    {
+      "id": "absent_before_refs",
+      "before_type": null,
+      "after_type": "Preview",
+      "before_parent": null,
+      "after_parent": null,
+      "before_refs": [
+        "before"
+      ],
+      "after_refs": [
+        "after"
+      ],
+      "expected_valid": false
+    },
+    {
+      "id": "absent_after_refs",
+      "before_type": "Preview",
+      "after_type": null,
+      "before_parent": null,
+      "after_parent": null,
+      "before_refs": [
+        "before"
+      ],
+      "after_refs": [
+        "after"
+      ],
+      "expected_valid": false
+    },
+    {
+      "id": "present_before_without_refs",
+      "before_type": "Preview",
+      "after_type": "Preview",
+      "before_parent": null,
+      "after_parent": null,
+      "before_refs": [],
+      "after_refs": [
+        "after"
+      ],
+      "expected_valid": false
+    },
+    {
+      "id": "present_after_without_refs",
+      "before_type": "Preview",
+      "after_type": "Preview",
+      "before_parent": null,
+      "after_parent": null,
+      "before_refs": [
+        "before"
+      ],
+      "after_refs": [],
+      "expected_valid": false
+    },
+    {
+      "id": "both_absent",
+      "before_type": null,
+      "after_type": null,
+      "before_parent": null,
+      "after_parent": null,
+      "before_refs": [],
+      "after_refs": [],
+      "expected_valid": false
+    }
+  ]
+}

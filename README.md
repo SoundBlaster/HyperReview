@@ -137,11 +137,18 @@ needed. See [the intake milestone contract](SPECS/08-intake-milestone.md).
 Run the offline intake checks:
 
 ```sh
+python3 -m pip install '.[test]'
 python3 -m unittest discover -s tests -v
 ```
 
 [Intake CI](.github/workflows/intake-validation.yml) runs these fixtures without
 GitHub credentials, real PR reads, or model calls.
+
+The Codex output grammar couples each node's type, parent and source references:
+an absent side has a null type/parent and no references, while a present side
+requires references from that side. Added, removed and retained responsibilities
+keep the same flat plan format. Offline schema tests use the pinned test extra;
+the runtime converter still checks the complete tree and provenance.
 
 ## Prepare a model request
 
@@ -486,6 +493,9 @@ source-bearing observations before reviewer changes. Its [v1 manifest](evaluatio
 contains four development model cases and a separate validator group; private
 packets retain actual bytes, not live source paths. `review_corpus capture`
 creates candidates, and `review_corpus suite` exports curated model cases.
+The [v2 manifest](evaluations/review-corpus-v2.json) adds a separate
+provider-grammar regression from SpecGraph #804; its synthetic witnesses are
+not reconstructed model responses.
 Use comparison axis `model` to vary model identity under an identical sealed
 request, profile, effort, runtime, compiler and configured budget. Historical
 Luna output is useful evidence, but cannot serve as a model-only baseline for

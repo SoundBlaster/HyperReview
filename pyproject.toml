@@ -13,6 +13,9 @@ dependencies = [
   "specification-core @ git+https://github.com/SoundBlaster/SpycificationCore.git@582a77a7e1c7f144f5809558605fc9fc822d8787",
 ]
 
+[project.optional-dependencies]
+test = ["jsonschema==4.25.1"]
+
 [tool.setuptools.packages.find]
 include = ["hyperreview*"]
 

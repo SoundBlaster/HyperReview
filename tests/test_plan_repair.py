@@ -128,6 +128,27 @@ class PlanRepairTests(unittest.TestCase):
                           'before_refs': list(refs['before']), 'after_refs': list(refs['after']), 'reason': 'Synthetic control.'}
                          for i, role in enumerate(('Runtime', 'Shared', 'Policy', 'Leaf', 'Work'))]
         composition_plan.to_result(base, request)
+        invalid_parent = deepcopy(base)
+        invalid_parent['nodes'][4]['after_parent'] = 'n0'
+        narrow_schema = codex_provider._repair_schema(
+            codex_provider._codex_schema(request), request, invalid_parent, 'authored_parent')
+        narrowed = Draft202012Validator(narrow_schema)
+        self.assertTrue(narrowed.is_valid(base))
+        unrelated = deepcopy(base)
+        unrelated['nodes'].append({**base['nodes'][0], 'id': 'other',
+                                   'before_type': 'OtherProduct', 'after_type': 'OtherProduct'})
+        self.assertFalse(narrowed.is_valid(unrelated))
+        with self.assertRaises(composition_plan.CompositionPlanError) as expanded:
+            codex_provider._check_repair_scope(unrelated, narrow_schema)
+        self.assertEqual(_issue_for_error(expanded.exception), ('repair_scope', ' at nodes[5].before_type'))
+        codex_provider._check_repair_scope(base, narrow_schema)
+        # Missing authored owners can still be restored under the narrowed grammar.
+        missing_owner = deepcopy(base)
+        missing_owner['nodes'].pop(1)
+        missing_owner['nodes'][1]['before_parent'] = missing_owner['nodes'][1]['after_parent'] = 'n0'
+        owner_schema = codex_provider._repair_schema(codex_provider._codex_schema(request),
+                                                     request, missing_owner, 'authored_parent')
+        self.assertTrue(Draft202012Validator(owner_schema).is_valid(base))
         schema = Draft202012Validator(codex_provider._codex_schema(request))
         for case in json.loads(fixture_path.read_text())['cases']:
             plan = deepcopy(base)

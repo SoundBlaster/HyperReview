@@ -66,8 +66,14 @@ deadline. The next prompt contains that exact rejected candidate in an explicit
 relation field address, and the source-ID catalog. Trusted instructions ask the
 model to preserve supported content outside the correction. The response is a
 full replacement plan and undergoes every original check; minimal edits are a
-request to the model, not a semantic guarantee. No extra retry or automatic
-normalization of refs, parents or names is introduced.
+request to the model, not a semantic guarantee. For `authored_parent`, the repair
+schema limits role alternatives to existing candidate roles and their positive,
+unambiguous owner paths in cited same-side `.hc` records. These paths accompany
+the rejected plan as untrusted navigation data. A local scope check also rejects
+roles outside that set; the converter still validates all parents and roots.
+This permits restoring omitted owners without introducing unrelated map trees.
+It establishes no cross-map identity and does not disambiguate repeated roles.
+No extra retry or automatic normalization of refs, parents or names is introduced.
 
 Relation owner, duplicate-ref and wrong-side-ref errors retain their row/field
 address instead of collapsing into `invalid_plan`. The Codex grammar couples

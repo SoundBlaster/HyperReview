@@ -38,12 +38,13 @@ class Capture:
             stream.flush()
             os.fsync(stream.fileno())
 
-    def candidate(self, candidate, tokens):
+    def candidate(self, candidate, tokens, schema_digest=None):
         index = len(self.attempts) + 1
         if index > 2:
             raise StorageError("Generation diagnostic attempt limit")
         self._write(f"candidate-{index}.json", candidate)
         self.attempts.append({"index": index, "plan_digest": intake.digest(candidate),
+                              "provider_schema_sha256": schema_digest,
                               "input_tokens": tokens[0] if tokens else None,
                               "output_tokens": tokens[1] if tokens else None})
         self.finish("candidate_received")

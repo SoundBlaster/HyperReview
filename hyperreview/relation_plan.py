@@ -47,6 +47,15 @@ class LiteralCallerError(ValueError):
     """The indexed literal invocation is in a different named operation."""
 
 
+class RelationValidationError(ValueError):
+    """A closed diagnostic with an application-generated row/field address."""
+
+    def __init__(self, message, code, index, field):
+        super().__init__(message)
+        self.issue_code = code
+        self.issue_location = f" at relations[{index}].{field}"
+
+
 def compound_call_endpoint(value):
     """Recognize explicit lists outside signatures, not semantic call binding.
 
@@ -131,12 +140,18 @@ def to_claims(rows, request, identities, *, legacy=False):
         owner = row["owner_id"]
         if (type(owner) is not str or owner not in owners
                 or owners[owner][f"{row['side']}_role"] is None):
-            raise ValueError("Relation owner must be a declared responsibility on its side")
+            raise RelationValidationError("Relation owner must be a declared responsibility on its side",
+                                          "relation_owner", index, "owner_id")
         refs = row["source_refs"]
-        if (type(refs) is not list or not 1 <= len(refs) <= 8
-                or any(type(ref) is not str or sources.get(ref) != row["side"] for ref in refs)
-                or len(refs) != len(set(refs))):
-            raise ValueError("Relation requires unique supplied same-side source references")
+        if type(refs) is not list or not 1 <= len(refs) <= 8 or any(type(ref) is not str for ref in refs):
+            raise RelationValidationError("Relation requires bounded source references",
+                                          "missing_refs", index, "source_refs")
+        if len(refs) != len(set(refs)):
+            raise RelationValidationError("Relation source_refs contains duplicate values",
+                                          "duplicate_refs", index, "source_refs")
+        if any(sources.get(ref) != row["side"] for ref in refs):
+            raise RelationValidationError("Relation requires supplied same-side source references",
+                                          "unknown_wrongside_ref", index, "source_refs")
         if not legacy and row["kind"] == "calls" and row["basis"] == "source_analysis":
             if any(compound_call_endpoint(row[field]) for field in ("from", "to")):
                 raise CallEndpointError("Call endpoints must name one operation each")

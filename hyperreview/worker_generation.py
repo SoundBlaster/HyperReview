@@ -34,6 +34,7 @@ _FINGERPRINT_FILES = (
     "hyperreview/local_provider.py",
     "hyperreview/storage.py",
     "hyperreview/codex_provider.py",
+    "hyperreview/generation_diagnostics.py",
     "hyperreview/codex_isolation.py",
     "hyperreview/egress_proxy.py",
     "hyperreview/model_contract.py",
@@ -244,7 +245,24 @@ def _validate_native_codex(options, deadline):
         _fail("codex_preflight_failed")
 
 
-def run(evidence, request, options):
+def run(evidence, request, options, *, diagnostics=None):
+    """Retain local candidates independently from publication/tracking bundles."""
+    try:
+        result = _run(evidence, request, options, diagnostics=diagnostics)
+    except PreviewJobError as error:
+        if diagnostics is not None:
+            diagnostics.finish("failed", error.code)
+        raise
+    except Exception:
+        if diagnostics is not None:
+            diagnostics.finish("failed", "generation_failed")
+        raise
+    if diagnostics is not None:
+        diagnostics.finish("projections_validated")
+    return result
+
+
+def _run(evidence, request, options, *, diagnostics=None):
     """Generate and compile one preview; return bytes and never persist them."""
     validate_options(options)
     started = time.monotonic()
@@ -281,7 +299,7 @@ def run(evidence, request, options):
     try:
         from .codex_provider import CodexError, generate
         runtime_before = runtime_fingerprint()
-        generated = generate(request, codex_config)
+        generated = generate(request, codex_config, **({"diagnostics": diagnostics} if diagnostics is not None else {}))
     except Exception as error:
         # Provider diagnostics can contain request material; expose only a stable code.
         if isinstance(error, PreviewJobError):

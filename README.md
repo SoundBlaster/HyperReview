@@ -240,8 +240,13 @@ and Ollama. Its version and SHA-256 are pinned in each prepared request and
 generation receipt so previews can be traced to the exact guidance used.
 For gpt-oss on LM Studio, use `--instruction-role developer` explicitly; the
 role is retained in the receipt. A locally invalid composition plan gets one
-bounded regeneration with a fixed error code; transport and envelope failures
-are terminal. Both attempts share the timeout and retain per-attempt metadata.
+bounded repair with a safe error code and field address; Codex receives the
+rejected candidate as untrusted data. Transport and envelope failures are
+terminal. Both attempts share the timeout. The worker retains up to two exact
+candidates and their pinned inputs in separate private diagnostic bundles for
+seven days, including on failure. `worker-status` exposes their paths; raw
+candidates are excluded from publication and ordinary MLflow exports. See the
+[repair controls](evaluations/review-corpus-repair-v1.json).
 Prepare a fresh request after a prompt-version change. The four-file smoke selection was run with a
 loaded context of 32768 and an output limit of 3072; the conservative byte-budget
 preflight can require more context than the source text's tokenizer count.

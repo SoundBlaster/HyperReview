@@ -72,7 +72,7 @@ class WorkerPreviewTests(unittest.TestCase):
     def test_change_during_generation_discards_preview_and_does_not_replay(self):
         self.tick()
         api = WorkerGitHub()
-        def generated(*args):
+        def generated(*args, **kwargs):
             api.revision_changed = True
             return self.completed()
         with patch("hyperreview.worker_generation.run", side_effect=generated) as run:
@@ -98,7 +98,7 @@ class WorkerPreviewTests(unittest.TestCase):
             client = DeadlineGitHub()
             clients.append(client)
             return client
-        def generated(*args):
+        def generated(*args, **kwargs):
             clock[0] += 301
             return self.completed()
         with patch("hyperreview.worker.intake.GitHub", side_effect=factory), \

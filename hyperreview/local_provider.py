@@ -33,8 +33,10 @@ _ISSUE_CODES = frozenset({
     "authored_parent",
     "call_endpoint_list",
     "literal_caller",
+    "relation_owner",
 })
 _ISSUE_HINTS = {
+    "relation_owner": "owner_id должен указывать на #id объявленного узла, присутствующего на стороне связи. Исправь адрес владельца по исходному плану; не придумывай новую ответственность ради ссылки.",
     "literal_caller": "Буквальный вызов указанной цели найден в другом именованном блоке. Проверь callsite_hints и исходник: from должен называть ближайшую операцию, содержащую сам вызов, включая вложенные/соседние типы. Имя файла или внешний компонент не является caller. Исправь caller на подтверждённый исходником либо убери неподдержанную строку; не заменяй calls другим kind ради обхода проверки.",
     "call_endpoint_list": "В source_analysis calls нужны ОДИН вызывающий и ОДНА непосредственно вызываемая операция в строке, без списков через и/and/запятую. Раздели вызовы на строки в пределах шести или выбери существенные и явно укажи пропуски. Не сокращай A -> B -> C до A -> C. Если реализация B не передана, сохрани буквальную цель вызова B без придуманного receiver или делегата.",
     "authored_parent": "Сохрани все промежуточные роли из цитируемой .hc между выбранным корнем и узлом. Не убирай общий owner ради исправления JSON; объяви его с собственным ID и правильными ссылками. Разные карты и неоднозначные имена не устанавливают идентичность.",
@@ -179,9 +181,18 @@ def _preflight(payload, schema, config):
     return body
 
 
+def _safe_issue(code, location):
+    code = code if type(code) is str and code in _ISSUE_CODES else "invalid_plan"
+    pattern = (r" at (?:nodes\[[0-9]{1,3}\]\.(?:before|after)_(?:type|parent|refs)"
+               r"|relations\[[0-9]{1,3}\]\.(?:owner_id|source_refs|side|basis|kind|from|to))")
+    return code, location if type(location) is str and re.fullmatch(pattern, location) else ""
+
+
 def _issue_for_error(error):
     """Map local validator text to a small safe code and optional safe location."""
     message = str(error)
+    if getattr(error, "issue_code", None) is not None:
+        return _safe_issue(error.issue_code, getattr(error, "issue_location", ""))
     location = ""
     match = re.search(r"nodes\[(\d{1,3})\]\.(before|after)_(type|parent|refs)", message)
     if match:
@@ -223,7 +234,7 @@ def _issue_for_error(error):
         code = "schema_or_binding"
     else:
         code = "invalid_plan"
-    return code if code in _ISSUE_CODES else "invalid_plan", location
+    return _safe_issue(code, location)
 
 
 def _comparison_content(request):

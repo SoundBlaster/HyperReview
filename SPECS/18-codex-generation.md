@@ -60,10 +60,29 @@ source sides, request binding, absent-side fields, identities and graph shape.
 It also applies the compact responsibility naming filter. Canonical JSON and
 the provider-neutral result schema are unchanged.
 
-A locally invalid plan may be regenerated once with the fixed code, safe
-location/hint and source-ID catalog. CLI/event/transport errors are terminal.
-Accepted output is model authored and fully revalidated; the adapter does not
-repair source references or rename nodes itself.
+A locally invalid Codex plan gets one bounded repair under the original shared
+deadline. The next prompt contains that exact rejected candidate in an explicit
+`untrusted_rejected_plan` data block, a closed error code, a sanitized node or
+relation field address, and the source-ID catalog. Trusted instructions ask the
+model to preserve supported content outside the correction. The response is a
+full replacement plan and undergoes every original check; minimal edits are a
+request to the model, not a semantic guarantee. No extra retry or automatic
+normalization of refs, parents or names is introduced.
+
+Relation owner, duplicate-ref and wrong-side-ref errors retain their row/field
+address instead of collapsing into `invalid_plan`. The Codex grammar couples
+relation side and its source-ID alternatives. Uniqueness and graph constraints
+still require the converter. CLI/event/transport errors remain terminal.
+
+The worker captures candidates before validation in a separate private diagnostic
+bundle; see the [worker retention contract](23-worker-private-preview.md).
+These source-bearing files never enter publication or ordinary MLflow tracking.
+The [synthetic repair controls](../evaluations/fixtures/plan-repair-v1.json)
+are a separate [validator corpus](../evaluations/review-corpus-repair-v1.json).
+The [offline replay receipt](../evaluations/results/2026-10-27-targeted-plan-repair-v1.json)
+records six controls with no model calls and unchanged compiled IR.
+Original failed #121 response bytes remain unavailable; controls do not recreate
+them or establish model quality.
 
 ## Receipts and downstream stages
 

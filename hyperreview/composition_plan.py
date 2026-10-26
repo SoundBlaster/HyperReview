@@ -23,6 +23,11 @@ _PLAN_FIELDS = ("schema", "request_digest", "nodes", "summary", "limitations")
 class CompositionPlanError(Exception):
     """Raised when a composition plan is malformed or cannot form a tree."""
 
+    def __init__(self, message, *, code=None, location=""):
+        super().__init__(message)
+        self.issue_code = code
+        self.issue_location = location
+
 
 def _require(condition, message):
     if not condition:
@@ -114,7 +119,7 @@ def _validate_plan(plan, request):
 
     children = {side: {node_id: [] for node_id in order} for side in ("before", "after")}
     roots = {side: [] for side in ("before", "after")}
-    for node_id in order:
+    for index, node_id in enumerate(order):
         node = by_id[node_id]
         for side in ("before", "after"):
             if node[f"{side}_type"] is None:
@@ -123,9 +128,9 @@ def _validate_plan(plan, request):
             if parent is None:
                 roots[side].append(node_id)
             else:
-                _require(parent in by_id, f"{side} parent {parent} is missing")
+                _require(parent in by_id, f"{side} parent {parent} is missing at nodes[{index}].{side}_parent")
                 _require(by_id[parent][f"{side}_type"] is not None,
-                         f"{side} parent {parent} is absent on that side")
+                         f"{side} parent {parent} is absent on that side at nodes[{index}].{side}_parent")
                 _require(parent != node_id, "A node cannot parent itself")
                 children[side][parent].append(node_id)
 
@@ -319,6 +324,9 @@ def to_result(plan, request):
         raise CompositionPlanError("Call endpoints must name one operation each") from error
     except relation_plan.LiteralCallerError as error:
         raise CompositionPlanError("Literal callsite names another enclosing operation") from error
+    except relation_plan.RelationValidationError as error:
+        raise CompositionPlanError(str(error), code=error.issue_code,
+                                   location=error.issue_location) from error
     except ValueError as error:
         raise CompositionPlanError("Invalid source-bound relation plan") from error
     except model_contract.ContractError as error:

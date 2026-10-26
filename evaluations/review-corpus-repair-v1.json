@@ -1,0 +1,33 @@
+{
+  "schema": "hyperreview.review-corpus.v1",
+  "version": "review-corpus-repair-v1",
+  "entries": [
+    {
+      "id": "sample-007",
+      "kind": "validator",
+      "split": "development",
+      "group": "SoundBlaster/BuildHunter#121",
+      "used_for_tuning": true,
+      "case": null,
+      "fixture": {
+        "path": "evaluations/fixtures/plan-repair-v1.json",
+        "sha256": "2f46831ff7a9cf99ce8a9b79dd9af6c1316c7f466d49d74436495b6073dab859"
+      },
+      "records": [
+        "079332507e702d4b9fe76dd8e774e860ac92d91d8e092f595f3d3a777375ff8e"
+      ],
+      "adjudication": {
+        "status": "source_checked",
+        "assessor_kind": "agent",
+        "rationale": "Synthetic integrity and repair controls, separated from model quality. Exact original failed candidates were deleted and remain unavailable. A later frozen-input diagnostic replay succeeded with the unchanged model."
+      },
+      "tags": [
+        "plan_repair",
+        "validator_diagnostics"
+      ],
+      "origin_urls": [
+        "https://github.com/SoundBlaster/BuildHunter/pull/121"
+      ]
+    }
+  ]
+}

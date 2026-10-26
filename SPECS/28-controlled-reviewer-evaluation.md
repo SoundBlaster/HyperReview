@@ -79,6 +79,35 @@ published results are unchanged. Exact witnesses are intentionally sensitive
 to endpoint spelling and selected edges. They cannot prove arbitrary binding;
 an absent selected edge is a coverage observation, not a semantic verdict.
 
+### Caller spelling correction (metric v4)
+
+`review-witnesses-v4` keeps the curated checks unchanged and adds a conservative
+fallback for abbreviated `calls` callers. A unique lexical declaration in cited,
+same-side Python or Swift source can qualify a short name, signature spelling or
+callback label. The supplied bytes must cover the complete file, match its
+content hash and match the Git blob recorded in the sealed intake evidence.
+The named scope must contain an immediate invocation of the literal target name.
+A cited complete callee file without that caller name need not parse; a file
+containing the name must parse and participate in ambiguity checks.
+
+Ambiguous declarations, overloads, missing references, partial files, unsupported
+syntax and conflicting owner names supply no extra witness. Only Python/Swift
+files establish identities; other cited formats do not. Callee spellings remain
+unchanged: this does not resolve receivers, aliases, types or transitive calls.
+Existing token checks remain partial witnesses, including for forbidden edges;
+exact checks still require one of the curated literal target alternatives.
+
+The metric fingerprint covers the normalizer, lexical helper, source analysis,
+intake and metric implementation. Frozen v3 scores and suites remain intact;
+re-scoring saved outputs creates new v4 runs without generation or a model judge.
+A changed score corrects the measurement, not the model output. The
+[caller identity regression](../evaluations/fixtures/caller-identity-v1.json)
+is a synthetic evaluator control in the
+[v3 corpus](../evaluations/review-corpus-v3.json), separate from model cases.
+The [rescore receipt](../evaluations/results/2026-10-26-caller-identity-v1.json)
+records the frozen population and native runs. Full source bundles remain local;
+only numeric observations and opaque digests reach MLflow and Evidently.
+
 Profile v17 / composition-v23 explicitly preserves unresolved receivers and
 explains reduced input through its selection invariant, retained metadata and
 fallback. It checks visible registration before declaring wiring unavailable.

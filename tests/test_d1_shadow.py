@@ -106,6 +106,37 @@ class ShadowTests(unittest.TestCase):
             self.assertEqual(result['failure_code'], 'invalid_or_stale_input')
             self.assertEqual(list((root / 'out' / 'results').iterdir()), [])
 
+    def test_pending_scan_advances_past_claimed_first_page_with_equal_timestamps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); path = root / 'journal.sqlite3'
+            with sqlite3.connect(path) as db:
+                db.executescript('''CREATE TABLE tasks (candidate TEXT, state TEXT, artifact TEXT, repository TEXT);
+                    CREATE TABLE preview_jobs (candidate TEXT, job TEXT, state TEXT, artifact TEXT, bundle_digest TEXT, updated_at INTEGER);''')
+                for i in range(70):
+                    candidate = f'{i:064x}'
+                    db.execute('INSERT INTO tasks VALUES (?,?,?,?)', (candidate, 'request_prepared', 'input', 'SoundBlaster/Hunter'))
+                    db.execute('INSERT INTO preview_jobs VALUES (?,?,?,?,?,?)', (candidate, candidate, 'preview_ready', 'preview', 'digest', 77))
+            os.chmod(path, 0o600)
+            with sqlite3.connect(':memory:') as own:
+                own.execute('CREATE TABLE observations (job TEXT PRIMARY KEY)')
+                own.executemany('INSERT INTO observations VALUES (?)', [(f'{i:064x}',) for i in range(64)])
+                pending = list(d1_shadow._pending_rows(root, 0, own))
+            self.assertEqual([r['job'] for r in pending], [f'{i:064x}' for i in range(64, 70)])
+
+    def test_input_and_output_roots_must_be_disjoint_before_any_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory); inp = parent / 'input'; inp.mkdir(mode=0o700)
+            journal = inp / 'journal.sqlite3'
+            with sqlite3.connect(journal) as db:
+                db.execute('CREATE TABLE sentinel (value TEXT)')
+            os.chmod(journal, 0o600)
+            before = journal.read_bytes()
+            for output in (inp, inp / 'nested', parent):
+                with self.subTest(output=output), self.assertRaises(ValueError):
+                    d1_shadow.run({'input_root':str(inp), 'output_root':str(output), 'not_before':0})
+                self.assertEqual(journal.read_bytes(), before)
+            self.assertFalse((inp / 'results').exists())
+
 
 if __name__ == '__main__':
     unittest.main()

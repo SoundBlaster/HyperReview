@@ -15,7 +15,8 @@ all review and merge decisions.
   jobs. Explicit `--job` mode permits an operator to test a retained historical
   preview; its result is labeled `historical_probe`. Job IDs are claimed in a
   separate private journal before inference; failures and interruptions do not
-  trigger automatic retries.
+  trigger automatic retries. Bounded pages advance past already claimed jobs,
+  including when many previews share the same completion timestamp.
 - At most two changed paths and their bounded before/after windows are sent to
   the model. When paired windows start on the same line, their diff is an excerpt
   diff, not a complete PR diff; otherwise the supplied windows are shown as
@@ -32,6 +33,8 @@ all review and merge decisions.
 - Each scheduled tick handles at most one job. The observer and reviewer remain
   separate processes and journals, although they share machine resources; a
   new review could start after the observer checks for an idle worker.
+  Input and output roots must be disjoint, including ancestor/descendant paths;
+  this is checked before any output is created.
 - Private JSON and Markdown results are bounded by the input selection and do
   not contain copied source excerpts. They are not automatically published or
   uploaded to MLflow. Logs and failure codes omit source text and error prose.

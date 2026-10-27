@@ -120,7 +120,7 @@ def build_input(request):
                                  'limitations': ['bounded excerpts', 'no full diff', 'title unavailable']}
 
 
-def _rows(root, not_before, job=None):
+def _rows(root, not_before, job=None, after=None):
     database = worker._private_file(root / 'journal.sqlite3')
     with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True, timeout=0)) as db:
         db.row_factory = sqlite3.Row
@@ -135,9 +135,27 @@ def _rows(root, not_before, job=None):
             query += 'AND j.job=?'
             args = (job,)
         else:
-            query += 'AND j.updated_at>=? ORDER BY j.updated_at,j.job LIMIT 64'
+            query += 'AND j.updated_at>=? '
             args = (not_before,)
+            if after is not None:
+                query += 'AND (j.updated_at>? OR (j.updated_at=? AND j.job>?)) '
+                args += (after[0], after[0], after[1])
+            query += 'ORDER BY j.updated_at,j.job LIMIT 64'
         return [dict(row) for row in db.execute(query, args).fetchall()]
+
+
+def _pending_rows(root, not_before, own, job=None):
+    """Read bounded pages until an unclaimed job is found."""
+    after = None
+    while True:
+        rows = _rows(root, not_before, job, after)
+        for task in rows:
+            if not own.execute('SELECT 1 FROM observations WHERE job=?', (task['job'],)).fetchone():
+                yield task
+        if job is not None or len(rows) < 64:
+            return
+        last = rows[-1]
+        after = (last['preview_updated'], last['job'])
 
 
 def _verify(root, task):
@@ -183,8 +201,12 @@ def run(config, *, job=None, invoke=_invoke):
 
 
 def _run(config, *, job=None, invoke=_invoke):
-    root = worker._private_directory(Path(config['input_root']))
-    output = worker._private_directory(Path(config['output_root']), create=True)
+    root = worker._path(Path(config['input_root']))
+    output = worker._path(Path(config['output_root']))
+    if root == output or root in output.parents or output in root.parents:
+        raise ValueError('Input and output roots must be disjoint')
+    root = worker._private_directory(root)
+    output = worker._private_directory(output, create=True)
     worker._private_directory(output / 'results', create=True)
     fd = os.open(output / 'shadow.lock', os.O_CREAT | os.O_RDWR | getattr(os, 'O_NOFOLLOW', 0), 0o600)
     try:
@@ -194,9 +216,7 @@ def _run(config, *, job=None, invoke=_invoke):
             return {'status': 'busy'}
         with closing(sqlite3.connect(output / 'journal.sqlite3')) as own:
             own.execute('CREATE TABLE IF NOT EXISTS observations (job TEXT PRIMARY KEY, state TEXT NOT NULL, at INTEGER NOT NULL, result TEXT)')
-            for task in _rows(root, config['not_before'], job):
-                if own.execute('SELECT 1 FROM observations WHERE job=?', (task['job'],)).fetchone():
-                    continue
+            for task in _pending_rows(root, config['not_before'], own, job):
                 if own.execute('SELECT count(*) FROM observations').fetchone()[0] >= 2048:
                     return {'status': 'capacity'}
                 with own:

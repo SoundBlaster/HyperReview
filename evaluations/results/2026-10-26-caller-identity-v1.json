@@ -1,0 +1,405 @@
+{
+  "schema": "hyperreview.metric-rescore-results.v1",
+  "metric_before": "review-witnesses-v3",
+  "metric_after": "review-witnesses-v4",
+  "metric_code_sha256": "91f13ff3503a562060ad902d47ddcef9ed306df4fea17f2baec84b912620b09c",
+  "inputs_seal_sha256": "81ffcb147caa54b0450340beb86815312821df205f2829a3b587a2643590574c",
+  "sealed_original_files": 480,
+  "original_jobs": 51,
+  "completed_outputs_rescored": 47,
+  "original_failed_jobs": 4,
+  "model_calls": 0,
+  "original_scores_preserved": true,
+  "changes": [
+    {
+      "after": 1,
+      "before": 0,
+      "case_id": "case-007",
+      "check_id": "check-002",
+      "cohort": "fresh",
+      "job_id": "r1-case-007-luna-high"
+    },
+    {
+      "after": 1,
+      "before": 0,
+      "case_id": "case-007",
+      "check_id": "check-003",
+      "cohort": "fresh",
+      "job_id": "r1-case-007-luna-high"
+    }
+  ],
+  "arms": [
+    {
+      "cohort": "historical",
+      "variant": "luna-low",
+      "model": "gpt-6-luna",
+      "reasoning_effort": "low",
+      "scheduled": 12,
+      "completed": 10,
+      "failed": 2,
+      "completed_first_attempt": 7,
+      "completed_after_repair": 3,
+      "elapsed_median_seconds_all": 28.579,
+      "witnesses_completed_only": {
+        "source_retention": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 7
+        },
+        "relation_presence": {
+          "v3_mean": 0.35714285714285715,
+          "v4_mean": 0.35714285714285715,
+          "measured_completed_outputs": 7
+        },
+        "containment_preserved": {
+          "v3_mean": 0.8888888888888888,
+          "v4_mean": 0.8888888888888888,
+          "measured_completed_outputs": 3
+        },
+        "compiler_receipt_consistent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 10
+        },
+        "forbidden_relation_absent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 4
+        }
+      }
+    },
+    {
+      "cohort": "historical",
+      "variant": "sol-low",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "low",
+      "scheduled": 12,
+      "completed": 12,
+      "failed": 0,
+      "completed_first_attempt": 12,
+      "completed_after_repair": 0,
+      "elapsed_median_seconds_all": 73.5515,
+      "witnesses_completed_only": {
+        "source_retention": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 9
+        },
+        "relation_presence": {
+          "v3_mean": 0.6666666666666666,
+          "v4_mean": 0.6666666666666666,
+          "measured_completed_outputs": 9
+        },
+        "containment_preserved": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 3
+        },
+        "compiler_receipt_consistent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 12
+        },
+        "forbidden_relation_absent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 6
+        }
+      }
+    },
+    {
+      "cohort": "fresh",
+      "variant": "luna-high",
+      "model": "gpt-6-luna",
+      "reasoning_effort": "high",
+      "scheduled": 9,
+      "completed": 9,
+      "failed": 0,
+      "completed_first_attempt": 9,
+      "completed_after_repair": 0,
+      "elapsed_median_seconds_all": 54.017,
+      "witnesses_completed_only": {
+        "source_retention": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 9
+        },
+        "relation_presence": {
+          "v3_mean": 0.2222222222222222,
+          "v4_mean": 0.3333333333333333,
+          "measured_completed_outputs": 9
+        },
+        "containment_preserved": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 6
+        },
+        "compiler_receipt_consistent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 9
+        },
+        "forbidden_relation_absent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 9
+        }
+      }
+    },
+    {
+      "cohort": "fresh",
+      "variant": "luna-low",
+      "model": "gpt-6-luna",
+      "reasoning_effort": "low",
+      "scheduled": 9,
+      "completed": 7,
+      "failed": 2,
+      "completed_first_attempt": 2,
+      "completed_after_repair": 5,
+      "elapsed_median_seconds_all": 59.081,
+      "witnesses_completed_only": {
+        "source_retention": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 7
+        },
+        "relation_presence": {
+          "v3_mean": 0.07142857142857142,
+          "v4_mean": 0.07142857142857142,
+          "measured_completed_outputs": 7
+        },
+        "containment_preserved": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 4
+        },
+        "compiler_receipt_consistent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 7
+        },
+        "forbidden_relation_absent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 7
+        }
+      }
+    },
+    {
+      "cohort": "fresh",
+      "variant": "sol-low",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "low",
+      "scheduled": 9,
+      "completed": 9,
+      "failed": 0,
+      "completed_first_attempt": 9,
+      "completed_after_repair": 0,
+      "elapsed_median_seconds_all": 79.245,
+      "witnesses_completed_only": {
+        "source_retention": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 9
+        },
+        "relation_presence": {
+          "v3_mean": 0.3333333333333333,
+          "v4_mean": 0.3333333333333333,
+          "measured_completed_outputs": 9
+        },
+        "containment_preserved": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 6
+        },
+        "compiler_receipt_consistent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 9
+        },
+        "forbidden_relation_absent": {
+          "v3_mean": 1.0,
+          "v4_mean": 1.0,
+          "measured_completed_outputs": 9
+        }
+      }
+    }
+  ],
+  "fresh_selected_relations": [
+    {
+      "case_id": "case-006",
+      "variant": "luna-low",
+      "selected_relations_present": 0,
+      "selected_relations_measured": 6,
+      "completed_outputs": 3
+    },
+    {
+      "case_id": "case-006",
+      "variant": "luna-high",
+      "selected_relations_present": 0,
+      "selected_relations_measured": 6,
+      "completed_outputs": 3
+    },
+    {
+      "case_id": "case-006",
+      "variant": "sol-low",
+      "selected_relations_present": 0,
+      "selected_relations_measured": 6,
+      "completed_outputs": 3
+    },
+    {
+      "case_id": "case-007",
+      "variant": "luna-low",
+      "selected_relations_present": 1,
+      "selected_relations_measured": 4,
+      "completed_outputs": 2
+    },
+    {
+      "case_id": "case-007",
+      "variant": "luna-high",
+      "selected_relations_present": 6,
+      "selected_relations_measured": 6,
+      "completed_outputs": 3
+    },
+    {
+      "case_id": "case-007",
+      "variant": "sol-low",
+      "selected_relations_present": 6,
+      "selected_relations_measured": 6,
+      "completed_outputs": 3
+    },
+    {
+      "case_id": "case-008",
+      "variant": "luna-low",
+      "selected_relations_present": 0,
+      "selected_relations_measured": 4,
+      "completed_outputs": 2
+    },
+    {
+      "case_id": "case-008",
+      "variant": "luna-high",
+      "selected_relations_present": 0,
+      "selected_relations_measured": 6,
+      "completed_outputs": 3
+    },
+    {
+      "case_id": "case-008",
+      "variant": "sol-low",
+      "selected_relations_present": 0,
+      "selected_relations_measured": 6,
+      "completed_outputs": 3
+    }
+  ],
+  "mlflow": {
+    "experiment_id": "4",
+    "parent_run_id": "a7deff0fdf8b428abf5ae86d9d4d40a4",
+    "source_parent_runs": {
+      "fresh": "44657499ddaf4a6daa1be066631056a6",
+      "historical": "25a78e4eab144fadb7805c70ea895c1d"
+    },
+    "native_runs": [
+      {
+        "cohort": "historical",
+        "repeat": 1,
+        "run_id": "c60054b5024d48f6ae4822ab3c387bec",
+        "variant": "luna-low"
+      },
+      {
+        "cohort": "historical",
+        "repeat": 2,
+        "run_id": "0f6456a362984b26b9bac751d8c3c001",
+        "variant": "luna-low"
+      },
+      {
+        "cohort": "historical",
+        "repeat": 3,
+        "run_id": "acd33e5fc31e40dc9c251d33298a4dbb",
+        "variant": "luna-low"
+      },
+      {
+        "cohort": "historical",
+        "repeat": 1,
+        "run_id": "f219db308e2e4c32bd5bb888476bcff7",
+        "variant": "sol-low"
+      },
+      {
+        "cohort": "historical",
+        "repeat": 2,
+        "run_id": "7dc546e1918247bd976e05af4ae25303",
+        "variant": "sol-low"
+      },
+      {
+        "cohort": "historical",
+        "repeat": 3,
+        "run_id": "ce634af7b156442ab2a0ecdcb7c40e7c",
+        "variant": "sol-low"
+      },
+      {
+        "cohort": "fresh",
+        "repeat": 1,
+        "run_id": "d81752d2ee0543dda71c755e54ec9790",
+        "variant": "luna-high"
+      },
+      {
+        "cohort": "fresh",
+        "repeat": 2,
+        "run_id": "e1e2818fe4f0479f893bba3fe1c599ee",
+        "variant": "luna-high"
+      },
+      {
+        "cohort": "fresh",
+        "repeat": 3,
+        "run_id": "8fbebee1133c4ab9b61366fd8dc69531",
+        "variant": "luna-high"
+      },
+      {
+        "cohort": "fresh",
+        "repeat": 1,
+        "run_id": "b1d8ccfbaad941f9be3e0f91ab66fced",
+        "variant": "luna-low"
+      },
+      {
+        "cohort": "fresh",
+        "repeat": 2,
+        "run_id": "499513028fd54e46ae1740b53e9c2c08",
+        "variant": "luna-low"
+      },
+      {
+        "cohort": "fresh",
+        "repeat": 3,
+        "run_id": "724704f1314049ce931647e38ef68d70",
+        "variant": "luna-low"
+      },
+      {
+        "cohort": "fresh",
+        "repeat": 1,
+        "run_id": "e262fc84ac974b448bf658737eaeda2a",
+        "variant": "sol-low"
+      },
+      {
+        "cohort": "fresh",
+        "repeat": 2,
+        "run_id": "1d0082f6340d4bf687551a65408d85fb",
+        "variant": "sol-low"
+      },
+      {
+        "cohort": "fresh",
+        "repeat": 3,
+        "run_id": "fda99892fe5549439e22dc5cb8289684",
+        "variant": "sol-low"
+      }
+    ]
+  },
+  "sdk_versions": {
+    "mlflow": "3.16.1",
+    "evidently": "0.7.23"
+  },
+  "evaluator_python": "3.13.15",
+  "evidently_reports": 5,
+  "semantic_assessment": "pending",
+  "publication_gate": false,
+  "interpretation": "Metric correction on saved outputs; successful-output means exclude original failed jobs. Narrow selected-edge witnesses are not general architectural accuracy or a model ranking.",
+  "earlier_rollup_sha256": "3a63bef46fc4b7c02f7c3ec78b934c971016c8d26aec2a4f235a4a73639db2cb",
+  "earlier_rollup_note": "summary.json arms copy original v3 witness means; v4-results.json used incorrect generic check IDs in one case breakdown. Use v4-results-v2.json for corrected rollups and case breakdowns.",
+  "superseded_report_sha256": "33e1703b1841f21a188cd65908ecfb673122da604b2ee2a637f5a1fc5b7aab87"
+}

@@ -5,9 +5,10 @@ rubrics remain local; SDK adapters receive only fixed numeric fields/digests.
 """
 
 import hashlib
+from pathlib import Path
 import re
 
-from . import intake, source_analysis
+from . import callsite_navigation, evaluation_identity, intake, source_analysis
 from .evaluation_delivery import _trusted_input_file, _trusted_path
 from .storage import read_json
 
@@ -15,7 +16,7 @@ from .storage import read_json
 SUITE_SCHEMA = "hyperreview.review-suite.v1"
 PAIR_SCHEMA = "hyperreview.review-pairs.v1"
 REPORT_SCHEMA = "hyperreview.review-comparison.v1"
-METRIC_VERSION = "review-witnesses-v3"
+METRIC_VERSION = "review-witnesses-v4"
 METRICS = ("source_retention", "relation_presence", "containment_preserved", "compiler_receipt_consistent",
            "forbidden_relation_absent")
 ID = re.compile(r"case-[0-9]{3}\Z")
@@ -170,7 +171,14 @@ def _contains(endpoint, tokens):
                for token in tokens)
 
 
-def _relation_witness(result, check):
+def metric_code_digest():
+    """Seal every local implementation used by these deterministic witnesses."""
+    return intake.digest({Path(module.__file__).name: hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
+                          for module in (evaluation_identity, callsite_navigation, source_analysis, intake)} |
+                         {Path(__file__).name: hashlib.sha256(Path(__file__).read_bytes()).hexdigest()})
+
+
+def _relation_witness(result, check, identities):
     for claim in result["claims"]:
         if not claim["id"].startswith("relation-v2-" + check["relation_kind"] + "-"):
             continue
@@ -183,6 +191,15 @@ def _relation_witness(result, check):
             matched = parts[0] in check["from_any"] and parts[1] in check["to_any"]
         else:
             matched = _contains(parts[0], check["from_contains"]) and _contains(parts[1], check["to_contains"])
+        if not matched and check["relation_kind"] == "calls":
+            caller = identities.resolve(parts[0], parts[1], claim, check["side"])
+            if caller is not None:
+                if check["kind"] == "relation_exact":
+                    matched = parts[1] in check["to_any"] and any(
+                        identities.resolve(expected, parts[1], claim, check["side"]) == caller
+                        for expected in check["from_any"])
+                else:
+                    matched = _contains(caller, check["from_contains"]) and _contains(parts[1], check["to_contains"])
         if matched:
             return True
     return False
@@ -192,6 +209,7 @@ def observe(case, bundle, axis):
     observations = {key: [] for key in METRICS}
     checks = []
     request, result = bundle["request"], bundle.get("result")
+    identities = evaluation_identity.CallerIdentities(request, bundle.get("evidence", {}))
     for check in case["checks"]:
         kind = check["kind"]
         if kind == "source":
@@ -202,7 +220,7 @@ def observe(case, bundle, axis):
             checks.append({"id": check["id"], "value": None})
             continue
         elif kind in ("relation", "relation_absence", "relation_exact"):
-            present = _relation_witness(result, check)
+            present = _relation_witness(result, check, identities)
             value, metric = ((present, "relation_presence") if kind != "relation_absence" else
                              (not present, "forbidden_relation_absent"))
         else:

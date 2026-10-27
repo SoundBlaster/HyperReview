@@ -500,7 +500,12 @@ packets retain actual bytes, not live source paths. `review_corpus capture`
 creates candidates, and `review_corpus suite` exports curated model cases.
 The [v2 manifest](evaluations/review-corpus-v2.json) adds a separate
 provider-grammar regression from SpecGraph #804; its synthetic witnesses are
-not reconstructed model responses.
+not reconstructed model responses. The [v3 manifest](evaluations/review-corpus-v3.json)
+also preserves a synthetic evaluator control for abbreviated caller names.
+Metric `review-witnesses-v4` can qualify these names from cited complete source
+without changing literal callee alternatives. The
+[rescore receipt](evaluations/results/2026-10-26-caller-identity-v1.json) records
+47 saved outputs evaluated without new inference; original scores remain intact.
 Use comparison axis `model` to vary model identity under an identical sealed
 request, profile, effort, runtime, compiler and configured budget. Historical
 Luna output is useful evidence, but cannot serve as a model-only baseline for

@@ -1,0 +1,33 @@
+{
+  "schema": "hyperreview.evaluator-cases.v1",
+  "origin_url": "https://github.com/SoundBlaster/BuildHunter/pull/119",
+  "provenance": "Synthetic minimal regression derived from abbreviated caller spellings in a frozen review. Not original model output or human gold.",
+  "source": "struct Panel {\n func menu() {\n  model.path()\n  Finder.reveal()\n }\n}\n",
+  "path": "Panel.swift",
+  "cases": [
+    {
+      "caller": "menu",
+      "target": "model.path",
+      "expected_from": "Panel.menu",
+      "expected_value": 1
+    },
+    {
+      "caller": "menu Finder button",
+      "target": "Finder.reveal",
+      "expected_from": "Panel.menu",
+      "expected_value": 1
+    },
+    {
+      "caller": "Other.menu",
+      "target": "model.path",
+      "expected_from": "Panel.menu",
+      "expected_value": 0
+    },
+    {
+      "caller": "menu and reveal",
+      "target": "model.path",
+      "expected_from": "Panel.menu",
+      "expected_value": 0
+    }
+  ]
+}

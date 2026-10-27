@@ -82,8 +82,7 @@ def _native_engine(comparison, *, database, artifacts_root, output_root):
                 "hyperreview.publication_gate": "false",
                 "hyperreview.axis": axis, "hyperreview.variant": variant,
                 "hyperreview.delivery_stage": "pending",
-                "hyperreview.metric_code_sha256": hashlib.sha256(
-                    Path(review_evaluation.__file__).read_bytes()).hexdigest(),
+                "hyperreview.metric_code_sha256": review_evaluation.metric_code_digest(),
             }) as run:
                 # Native MLflow API evaluates pre-generated outputs. There is
                 # deliberately no predict_fn or built-in model judge here.

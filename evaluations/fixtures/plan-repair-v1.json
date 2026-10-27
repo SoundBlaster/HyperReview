@@ -1,0 +1,43 @@
+{
+  "schema": "hyperreview.plan-repair-controls.v1",
+  "provenance": "Synthetic validator controls derived from BuildHunter #121 root-cause investigation. Historical failed candidate bytes are unavailable. These are not model outputs or human gold.",
+  "origin_url": "https://github.com/SoundBlaster/BuildHunter/pull/121",
+  "cases": [
+    {
+      "id": "repair-001",
+      "mutation": "duplicate_node_refs",
+      "expected_code": "duplicate_refs",
+      "location": " at nodes[0].after_refs"
+    },
+    {
+      "id": "repair-002",
+      "mutation": "duplicate_relation_refs",
+      "expected_code": "duplicate_refs",
+      "location": " at relations[0].source_refs"
+    },
+    {
+      "id": "repair-003",
+      "mutation": "wrong_side_relation_refs",
+      "expected_code": "unknown_wrongside_ref",
+      "location": " at relations[0].source_refs"
+    },
+    {
+      "id": "repair-004",
+      "mutation": "undeclared_relation_owner",
+      "expected_code": "relation_owner",
+      "location": " at relations[0].owner_id"
+    },
+    {
+      "id": "repair-005",
+      "mutation": "skipped_authored_owner",
+      "expected_code": "authored_parent",
+      "location": " at nodes[4].after_parent"
+    },
+    {
+      "id": "repair-006",
+      "mutation": "second_root",
+      "expected_code": "root_count",
+      "location": ""
+    }
+  ]
+}

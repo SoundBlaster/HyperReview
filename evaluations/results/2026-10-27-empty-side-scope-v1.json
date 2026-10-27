@@ -1,0 +1,23 @@
+{
+  "schema": "hyperreview.empty-side-scope-regression.v1",
+  "input_request_digest": "e2ddfbb8b46cfb173f4dcfbbe344b25e30a48d11d77b85ba43e2a637a93f36c8",
+  "synthetic_control": true,
+  "original_reviewer_commit": "a1d23ecc859af01b9c07dadba9118e9bc98409b3",
+  "original_schema_and_guard_accepted": true,
+  "candidate_schema_rejects": true,
+  "candidate_guard_rejects": true,
+  "model_calls": 0,
+  "reviewer_runtime_sha256": "2b2b8c3ea77c47726ba4f96147243ba40a08bf866e88cff38d2ba0f8425f2da7",
+  "prior_validator_run_id": "0a4539d5781f4050816b77b0a27cd4f6",
+  "semantic_assessment": "pending",
+  "publication": false,
+  "tests": {
+    "total": 386,
+    "skipped": 4,
+    "failures": 0
+  },
+  "mlflow": {
+    "run_id": "22a8886b87e7407292c24365f4a07587",
+    "experiment_id": "5"
+  }
+}

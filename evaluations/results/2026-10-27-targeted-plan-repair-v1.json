@@ -1,0 +1,132 @@
+{
+  "schema": "hyperreview.plan-repair-replay.v1",
+  "input_request_digest": "e2ddfbb8b46cfb173f4dcfbbe344b25e30a48d11d77b85ba43e2a637a93f36c8",
+  "input_and_original_capture_unchanged": true,
+  "cases": [
+    {
+      "case_id": "control-001",
+      "mutation": "duplicate_node_refs",
+      "baseline_code": "duplicate_refs",
+      "candidate_code": "duplicate_refs",
+      "candidate_location": " at nodes[0].after_refs",
+      "repair_candidate_bound": true,
+      "candidate_pair_retained": true,
+      "final_plan_unchanged": true,
+      "provider_attempts": 2,
+      "synthetic": true
+    },
+    {
+      "case_id": "control-002",
+      "mutation": "duplicate_relation_refs",
+      "baseline_code": "invalid_plan",
+      "candidate_code": "duplicate_refs",
+      "candidate_location": " at relations[0].source_refs",
+      "repair_candidate_bound": true,
+      "candidate_pair_retained": true,
+      "final_plan_unchanged": true,
+      "provider_attempts": 2,
+      "synthetic": true
+    },
+    {
+      "case_id": "control-003",
+      "mutation": "wrong_side_relation_refs",
+      "baseline_code": "invalid_plan",
+      "candidate_code": "unknown_wrongside_ref",
+      "candidate_location": " at relations[0].source_refs",
+      "repair_candidate_bound": true,
+      "candidate_pair_retained": true,
+      "final_plan_unchanged": true,
+      "provider_attempts": 2,
+      "synthetic": true
+    },
+    {
+      "case_id": "control-004",
+      "mutation": "undeclared_relation_owner",
+      "baseline_code": "invalid_plan",
+      "candidate_code": "relation_owner",
+      "candidate_location": " at relations[0].owner_id",
+      "repair_candidate_bound": true,
+      "candidate_pair_retained": true,
+      "final_plan_unchanged": true,
+      "provider_attempts": 2,
+      "synthetic": true
+    },
+    {
+      "case_id": "control-005",
+      "mutation": "skipped_authored_owner",
+      "baseline_code": "authored_parent",
+      "candidate_code": "authored_parent",
+      "candidate_location": " at nodes[9].after_parent",
+      "repair_candidate_bound": true,
+      "candidate_pair_retained": true,
+      "final_plan_unchanged": true,
+      "provider_attempts": 2,
+      "synthetic": true
+    },
+    {
+      "case_id": "control-006",
+      "mutation": "second_root",
+      "baseline_code": "root_count",
+      "candidate_code": "root_count",
+      "candidate_location": "",
+      "repair_candidate_bound": true,
+      "candidate_pair_retained": true,
+      "final_plan_unchanged": true,
+      "provider_attempts": 2,
+      "synthetic": true
+    }
+  ],
+  "model_calls": 0,
+  "scripted_provider_attempts": 12,
+  "compiler": "hypercode-swift",
+  "compiler_pin": "6503784100372b8fe93d0a794caf80bfbfc47da880874b2b9177267d34a26b9f",
+  "compiler_result": "projections_validated",
+  "ir_matches_frozen_positive_candidate": true,
+  "semantic_assessment": "pending",
+  "publication": false,
+  "population": "six synthetic validator/repair controls on one frozen real input; not model-quality observations",
+  "reviewer_runtime_sha256": "17c42a8a86a00b291554b21e523aba69203ac9d12b8b99ab4a7268bf36dd0354",
+  "replay_python": "3.10.19",
+  "fixture_sha256": "2f46831ff7a9cf99ce8a9b79dd9af6c1316c7f466d49d74436495b6073dab859",
+  "baseline_reviewer_commit": "f386b70a10f79aebe62db331bf5808568071b24d",
+  "tests": {
+    "total": 385,
+    "skipped": 4,
+    "failures": 0
+  },
+  "authored_repair_scope_probe": {
+    "schema": "hyperreview.authored-repair-scope-probe.v1",
+    "model_calls": 0,
+    "captured_scope_expansion_rejected_by_schema": true,
+    "captured_scope_expansion_rejected_locally": true,
+    "synthetic_owner_restoration_accepted": true,
+    "synthetic_owner_restoration_compiled": true,
+    "reviewer_runtime_sha256": "17c42a8a86a00b291554b21e523aba69203ac9d12b8b99ab4a7268bf36dd0354",
+    "native_smoke_stage": "before_authored_scope_narrowing",
+    "native_smoke_outcome": "failed",
+    "native_smoke_issue_sequence": [
+      "authored_parent",
+      "root_count"
+    ],
+    "native_smoke_provider_attempts": 2,
+    "final_scope_narrowing_live_replay": false
+  },
+  "native_smoke_before_scope_narrowing": {
+    "model": "gpt-6-luna",
+    "reasoning_effort": "medium",
+    "provider_attempts": 2,
+    "outcome": "failed",
+    "issues": [
+      "authored_parent",
+      "root_count"
+    ],
+    "reviewer_runtime_sha256": "da1bcdcca5e25602a2f5fabcc509ff8ed5cc203e68629128f6653f7fa7b26cf9",
+    "final_scope_guard_live_replay": false,
+    "github_writes": 0
+  },
+  "previous_validator_run_id": "946ba01e652a4fbabbb1802a42bc5aa7",
+  "mlflow": {
+    "experiment_id": "5",
+    "run_id": "0a4539d5781f4050816b77b0a27cd4f6"
+  }
+}

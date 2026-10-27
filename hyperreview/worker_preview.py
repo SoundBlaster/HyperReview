@@ -30,6 +30,9 @@ def _setup(db):
             job TEXT NOT NULL, state TEXT NOT NULL, at INTEGER NOT NULL, failure_code TEXT
         );
     """)
+    if "diagnostic" not in {row[1] for row in db.execute("PRAGMA table_info(preview_jobs)")}:
+        with db:
+            db.execute("ALTER TABLE preview_jobs ADD COLUMN diagnostic TEXT")
 
 
 def _transition(db, job, state, now, code=None):
@@ -58,6 +61,8 @@ def _manifest(directory):
 
 def _expire(db, root, now):
     from . import worker
+    from .generation_diagnostics import expire
+    expire(db, root, now)
     directory = worker._path(root / "previews")
     if directory.exists():
         worker._private_directory(directory)
@@ -175,13 +180,19 @@ def process_one(db, config, root, api, now, *, observation_factory=None, gate_fa
         if gated and selected["repository"] in config["review_gate"]["repositories"]:
             from .automatic_review_gate import ensure
             base["review_gate_url"] = ensure(db, root, config, selected, job, gate_factory)
+        from .generation_diagnostics import Capture
+        diagnostics = Capture(worker._private_directory(root / "diagnostics", create=True), request, evidence,
+                              {"job": job, "settings": settings, "options": config["preview"],
+                               "reviewer_runtime_sha256": worker_generation.runtime_fingerprint()})
+        with db:
+            db.execute("UPDATE preview_jobs SET diagnostic=? WHERE job=?", (diagnostics.path.name, job))
         # Persist before entering code which can contact the model. A crash or
         # ambiguous provider failure consumes this key instead of replaying it.
         with db:
             db.execute("UPDATE preview_jobs SET generation_runs=1 WHERE job=?", (job,))
             _transition(db, job, "analyzing", int(time.time()))
         base["generation_runs"] = 1
-        completed = worker_generation.run(evidence, request, config["preview"])
+        completed = worker_generation.run(evidence, request, config["preview"], diagnostics=diagnostics)
         base["provider_attempts"] = completed["provider_attempts"]
         if not _fresh(selected, observation_factory()):
             _transition(db, job, "stale", int(time.time()), "eligibility_or_revisions_changed")
@@ -233,6 +244,16 @@ def status(db, root, options, *, gate_options=None):
                          "request_digest": row["request_digest"], "bundle": str(directory),
                          "preview": str(directory / "preview-compact.md"),
                          "tracking_status": "not_started", "last_rechecked_at": row["updated_at"]})
-    return {"previews": previews,
+    diagnostics = []
+    for row in db.execute("SELECT j.job,j.state,j.diagnostic,t.repository,t.pr FROM preview_jobs j"
+                          " JOIN tasks t ON t.candidate=j.candidate WHERE j.diagnostic IS NOT NULL"
+                          " ORDER BY j.updated_at DESC LIMIT 32"):
+        worker._require(str(UUID(row["diagnostic"])) == row["diagnostic"])
+        directory = worker._path(root / "diagnostics" / row["diagnostic"])
+        if directory.exists():
+            worker._private_directory(directory)
+            diagnostics.append({"job": row["job"], "state": row["state"], "repository": row["repository"],
+                                "pr": row["pr"], "bundle": str(directory)})
+    return {"previews": previews, "generation_diagnostics": diagnostics,
             "preview_counts": {row["state"]: row["n"] for row in
                                db.execute("SELECT state,count(*) n FROM preview_jobs GROUP BY state")}}

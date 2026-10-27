@@ -64,7 +64,7 @@ pipeline, `analyzing` and its consumed execution are committed durably. Ordinary
 failure becomes terminal `failed`; an interrupted `analyzing` job becomes
 `failed/interrupted_no_replay` on the next tick. The same job key is never
 automatically retried, even if its bundle is missing or expires. Codex may still
-perform its existing one bounded local-validation regeneration (1–2 provider
+perform one bounded candidate-based local-validation repair (1–2 provider
 attempts within one deadline). An uncertain cloud failure is not evidence that
 no request occurred; failed jobs retain unknown provider-attempt counts.
 
@@ -99,6 +99,23 @@ manifest before presenting a preview; it does not infer again or contact GitHub.
 It lists at most 32 current-settings previews with their last revision-check
 time. The bundle is suitable for later ordinary tracking and human assessment;
 it is not a publication authorization or a claim of semantic correctness.
+
+Each generation job also journals a separate private diagnostic UUID. It retains
+exact request/evidence, pinned options/runtime identity, up to two canonically encoded candidate JSON
+objects and safe validation codes/field addresses. A hashed receipt is updated
+after each captured candidate, rejection and terminal outcome. A transport
+failure may leave no candidate; that does not establish zero inference. A hard
+interruption can leave an incomplete capture and still consumes the job key.
+
+`worker-status` exposes bounded diagnostic paths and job states, never candidate
+text. Diagnostic bundles have the same seven-day retention and strict owned-file
+expiry as previews; job receipts survive expiry and do not authorize replay.
+Only application-owned UUID directories with known file names can be removed.
+These bundles are excluded from preview manifests, publisher snapshots and
+ordinary tracking exports. They are local debugging inputs, not ready previews,
+semantic approval, recovery of deleted historical responses or automatic corpus
+adjudication. Standalone `generate` has no persistent capture unless its trusted
+Python caller supplies a capture object.
 
 Preview expiry runs on due v2 ticks, removes owned UUID bundles older than seven
 days, and preserves job receipts/digests. It includes partial orphan bundles left

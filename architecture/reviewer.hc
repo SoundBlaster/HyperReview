@@ -45,6 +45,7 @@ HyperReview#hyperreview
         GateRecovery
     GitHubPublisher#publisher
   Observability#observability
+    ShadowTriage
     ExperimentTracking#tracking
       MLflowAdapter#mlflow
       WorkflowTrace#traces

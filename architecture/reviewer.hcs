@@ -2,6 +2,11 @@
 HyperReview:
   specification_status: "design"
 
+ShadowTriage:
+  stage: "completed-private-preview"
+  execution: "independent-local-process"
+  effect: "observation-only"
+
 '#scheduler':
   poll_interval_seconds: 300
   poll_scope: "PR discovery"

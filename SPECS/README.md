@@ -88,3 +88,6 @@ nodes. Future tooling integration must preserve their IDs and status.
 
 - [Review-derived model corpus](29-review-corpus.md): frozen feedback and inputs,
   separate model/validator cases and comparable model-only experiments.
+
+- [Local d1 shadow triage](30-d1-shadow.md): independent, private observations
+  alongside already completed previews, without review or publication authority.

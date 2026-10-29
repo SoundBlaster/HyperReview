@@ -44,6 +44,7 @@ _FINGERPRINT_FILES = (
     "hyperreview/callsite_navigation.py",
     "hyperreview/relation_sheet.py",
     "hyperreview/configuration_evidence.py",
+    "hyperreview/changed_source.py",
     "hyperreview/compiled_preview.py",
     "hyperreview/render.py",
     "hyperreview/intake.py",

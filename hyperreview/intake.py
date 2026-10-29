@@ -16,7 +16,7 @@ from urllib.parse import quote
 from uuid import uuid4
 
 from . import __version__
-from . import configuration_evidence
+from . import changed_source, configuration_evidence
 
 
 ALLOWLIST = frozenset(("0al-spec/SpecGraph", "0al-spec/Hypercode",
@@ -31,7 +31,7 @@ MAX_BYTES = 262144
 DEADLINE_SECONDS = 300
 API_BYTES = 4 * 1024 * 1024
 SCHEMA = "hyperreview.evidence.v2"
-POLICY = "own-pr-intake.v5"
+POLICY = "own-pr-intake.v6"
 EXTENSIONS = frozenset((".py", ".swift", ".rs", ".ts", ".tsx", ".js", ".jsx",
                         ".c", ".h", ".cpp", ".hpp", ".m", ".mm", ".md", ".hc"))
 OPERATOR_FILES = frozenset(("agents.md", "claude.md", "skill.md", "mcp.json"))
@@ -429,6 +429,32 @@ def source(api, repo, revision, path, entries, budget):
     }, None
 
 
+def _changed_windows(api, repo, merge_base, head, item, before_tree, after_tree):
+    """Read a pinned comparison and validate windows against both Git blobs."""
+    path = item["after_path"]
+    if item["status"] != "modified" or item["before_path"] != path:
+        return []
+    if path.endswith((".md", ".hc", ".hcs")) or configuration_evidence.accepts_path(path, exclusion(path)):
+        return []
+    try:
+        patches = api.get(
+            f"repos/{repo}/compare/{merge_base}...{head}",
+            '[.files[] | select(.filename == ' + json.dumps(path) + ') | .patch]',
+        )
+        if not isinstance(patches, list) or len(patches) != 1:
+            return []
+        before, error = source(api, repo, merge_base, path, before_tree, changed_source.MAX_BLOB_BYTES)
+        if error:
+            return []
+        after, error = source(api, repo, head, path, after_tree, changed_source.MAX_BLOB_BYTES)
+        if error:
+            return []
+        before["side"], after["side"] = "before", "after"
+        return changed_source.windows(patches[0], before, after)
+    except IntakeError:
+        return []
+
+
 def _bound_evidence(pack):
     """Fit the complete pack, including omission metadata, before digesting it."""
     if len(encoded(pack)) <= MAX_BYTES:
@@ -541,7 +567,7 @@ def _collect(repo, number, api=None, *, historical=False):
         "tracking_status": "not_started", "files": inventory,
         "selector_context": selector_context,
         "scope": {"inventory": "complete_pinned_tree_comparison",
-                  "source": "whole_selected_code_files_and_bounded_configuration_excerpts",
+                  "source": "whole_selected_files_and_bounded_changed_and_configuration_excerpts",
                   "rename_hints": "possibly_incomplete" if len(files) >= 300 else "compare_api",
                   "surrounding_files": "bounded_hypercode_and_one_hop_literal_references",
                   "context_inventory_limited": False,
@@ -572,6 +598,36 @@ def _collect(repo, number, api=None, *, historical=False):
             if reason or selected >= MAX_FILES:
                 item["omissions"].append({"side": "both", "reason": reason or "source_file_limit"})
                 continue
+            path = item["after_path"]
+            old_entry = before_tree.get(item["before_path"], {})
+            new_entry = after_tree.get(path, {})
+            available = max(0, MAX_BYTES - len(encoded(pack)) - 1024)
+            sizes = [entry.get("size") for entry in (old_entry, new_entry)]
+            if (item["status"] == "modified" and path == item["before_path"]
+                    and all(type(size) is int and size >= 0 for size in sizes)
+                    and sum(sizes) > available):
+                pairs = _changed_windows(api, repo, merge_base, pr["head_sha"], item,
+                                         before_tree, after_tree)
+                used = 0
+                for pair in pairs:
+                    if source_records_count + 2 > configuration_evidence.MAX_SOURCE_RECORDS:
+                        break
+                    pair_size = sum(len(encoded(record)) for record in pair)
+                    if used + pair_size > min(32768, available):
+                        continue
+                    item["sources"].extend(pair)
+                    item["omissions"].append({"side": "both", "reason": "changed_source_excerpted"})
+                    if len(encoded(pack)) + 1024 > MAX_BYTES:
+                        del item["sources"][-2:]
+                        item["omissions"].pop()
+                        break
+                    item["omissions"].pop()
+                    source_records_count += 2
+                    used += pair_size
+                if used:
+                    item["omissions"].append({"side": "both", "reason": "changed_source_excerpted"})
+                    selected += 1
+                    continue
             if item.get("status") != "context" and len(paths) == 2 and all(
                     path.endswith(".md") for path in paths):
                 pair_sizes = [entries.get(item[f"{side}_path"], {}).get("size")

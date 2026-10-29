@@ -25,7 +25,11 @@ def windows(patch, before, after):
 
     old = source_lines(before["content"])
     new = source_lines(after["content"])
-    lines = patch.splitlines()
+    # Patch payloads may contain CR from CRLF source lines. Only split on LF;
+    # splitlines() also strips CR and would reject valid, verified hunks.
+    lines = patch.split("\n")
+    if lines[-1] == "":
+        lines.pop()
     hunks = []
     index = 0
     while index < len(lines):
@@ -64,6 +68,7 @@ def windows(patch, before, after):
     ids = set()
     for old_pos, old_count, new_pos, new_count in hunks[:MAX_HUNKS]:
         pair = []
+        pair_ids = []
         for record, content, pos, count in ((before, old, old_pos, old_count),
                                              (after, new, new_pos, new_count)):
             start = max(0, pos - CONTEXT_LINES)
@@ -74,9 +79,11 @@ def windows(patch, before, after):
             digest = hashlib.sha256(excerpt.encode()).hexdigest()
             identity = (record["revision"], record["path"], digest)
             if identity in ids:
-                return []
-            ids.add(identity)
+                break
+            pair_ids.append(identity)
             pair.append({**record, "content": excerpt, "content_bytes": len(excerpt.encode()),
                          "content_sha256": digest, "line_start": start + 1, "line_end": end})
-        result.append(pair)
+        if len(pair) == 2:
+            ids.update(pair_ids)
+            result.append(pair)
     return result

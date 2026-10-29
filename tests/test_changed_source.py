@@ -65,3 +65,22 @@ class ChangedSourceTests(unittest.TestCase):
         before = {"content": "a\n", "revision": BASE, "path": "app.py"}
         after = {"content": "b\n", "revision": HEAD, "path": "app.py"}
         self.assertEqual(changed_source.windows("@@ -400 +1 @@\n-a\n+b", before, after), [])
+
+    def test_crlf_payload_is_compared_without_stripping_carriage_returns(self):
+        before = {"content": "old()\r\n", "revision": BASE, "path": "app.py"}
+        after = {"content": "new()\r\n", "revision": HEAD, "path": "app.py"}
+        result = changed_source.windows("@@ -1 +1 @@\n-old()\r\n+new()\r\n", before, after)
+        self.assertEqual(result[0][0]["content"], "old()\r\n")
+        self.assertEqual(result[0][1]["content"], "new()\r\n")
+
+    def test_duplicate_window_does_not_discard_other_pairs(self):
+        old = ["same\n"] * 80
+        new = old.copy()
+        old[20] = old[60] = "old()\n"
+        new[20] = new[60] = "new()\n"
+        before = {"content": "".join(old), "revision": BASE, "path": "app.py"}
+        after = {"content": "".join(new), "revision": HEAD, "path": "app.py"}
+        patch = "@@ -21 +21 @@\n-old()\n+new()\n@@ -61 +61 @@\n-old()\n+new()\n"
+        result = changed_source.windows(patch, before, after)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0][0]["line_start"], 13)

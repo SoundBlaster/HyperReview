@@ -11,7 +11,7 @@ NON_RETRYABLE_OMISSIONS = frozenset({
     "symlink_or_nonregular", "input_byte_limit", "binary_content", "empty_source",
     "source_file_limit", "encoded_evidence_byte_limit", "evidence_byte_limit",
     "operator_slice", "secret_pattern", "source_byte_limit", "incomplete_pair",
-    "context_byte_limit", "context_excerpted", "context_inventory_limit",
+    "context_byte_limit", "context_excerpted", "context_inventory_limit", "changed_source_excerpted",
     "configuration_file_limit", "configuration_excerpt_limit",
     "configuration_environment_redacted", "configuration_secret_block",
     "configuration_secret_line", "configuration_secret_file",

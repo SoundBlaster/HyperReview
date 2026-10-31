@@ -2,11 +2,20 @@ import unittest
 
 from hyperreview.model_contract import ContractError, prepare_request
 from hyperreview.intake import digest
-from hyperreview.render import render_preview, render_compact_preview
+from hyperreview.render import _omission_summary, render_preview, render_compact_preview
 from test_model_contract import pack, valid_result
 
 
 class RenderTests(unittest.TestCase):
+    def test_changed_windows_are_described_as_partial_not_missing(self):
+        request = {"omissions": [{"path": "src/large.py", "side": "both",
+                                  "reason": "changed_source_excerpted"}]}
+        text = "".join(_omission_summary(request))
+        self.assertIn("Частичный охват", text)
+        self.assertIn("другие изменения могут отсутствовать", text)
+        self.assertIn("обе стороны", text)
+        self.assertNotIn("Пропущено", text)
+
     def setUp(self):
         self.request = prepare_request(pack())
         self.result = valid_result(self.request)

@@ -13,6 +13,15 @@ The pack MUST enumerate included files, omitted files, omissions caused by
 limits, and source-read failures. Input selection MUST exclude credentials and
 operator files. Symlinks and paths escaping the snapshot MUST NOT be followed.
 
+When a modified code file cannot fit whole, intake MAY supply paired,
+line-preserving windows around changed hunks. It MUST use the pinned comparison,
+verify the original before/after Git blobs and check each hunk against both
+blobs before retaining windows. Blob reads, hunk count, source records and
+encoded evidence remain bounded. A missing, invalid or oversized patch or blob
+MUST NOT produce guessed windows. Every excerpted file MUST be marked
+`changed_source_excerpted`: other file regions and even other changes may be
+absent. This evidence does not establish full change coverage.
+
 CI observations MUST include check identity, result, checked revision, and
 retrieval time. They MUST NOT be attached to a different revision or converted
 into claims broader than the check establishes. The worker does not run PR code.

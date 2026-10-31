@@ -212,10 +212,13 @@ def _omission_summary(request):
     for path, reasons in groups.items():
         details = []
         for reason, counts in reasons.items():
-            sides = ", ".join(("до" if side == "before" else "после") + f": {count}"
+            sides = ", ".join({"before": "до", "after": "после", "both": "обе стороны"}[side] + f": {count}"
                               for side, count in sorted(counts.items()))
-            details.append(_text(reason) + " (" + sides + ")")
-        lines.append("- Пропущено: " + _text(path or "путь скрыт политикой")
+            description = ("показаны фрагменты изменённых участков; другие изменения могут отсутствовать"
+                           if reason == "changed_source_excerpted" else reason)
+            details.append(_text(description) + " (" + sides + ")")
+        label = "Частичный охват" if "changed_source_excerpted" in reasons else "Пропущено"
+        lines.append("- " + label + ": " + _text(path or "путь скрыт политикой")
                      + " — " + "; ".join(details) + ".\n")
     return lines
 
@@ -350,7 +353,8 @@ def render_preview(request, result, receipt, semantic_diff, *, tracking_status="
     for limitation in [*request["scope"], *request["limitations"], *result["limitations"]]:
         lines.append("- " + _text(limitation) + "\n")
     for omission in request["omissions"]:
-        lines.append("- Omitted: " + _text(omission.get("path") or "undisclosed path")
+        label = "Partial changed-source coverage" if omission["reason"] == "changed_source_excerpted" else "Omitted"
+        lines.append("- " + label + ": " + _text(omission.get("path") or "undisclosed path")
                      + " (" + _text(omission["reason"]) + ").\n")
     lines.append("\nNo PR code was executed by this analysis. An absent reference or unchanged "
                  "projection does not establish unchanged behavior. Publication requires separate "
@@ -393,7 +397,7 @@ def render_compact_preview(request, result, receipt, semantic_diff, *, tracking_
                      + links + "\n")
     lines.extend(["\n## Границы анализа\n",
                   f"PR #{request['pr']}: `{request['merge_base_sha']}` → `{request['head_sha']}`.\n",
-                  f"Исходников в анализе: {len(request['sources'])}; пропущено: {len(request['omissions'])}.\n",
+                  f"Исходников в анализе: {len(request['sources'])}; ограничений: {len(request['omissions'])}.\n",
                   "Компилятор проверил структуру Hypercode и ссылки. Соответствие интерпретации коду "
                   "и поведение программы этим не доказаны. Анализ ограничен предоставленными "
                   "исходниками и фрагментами контекста; выполнение программы не наблюдалось.\n"])

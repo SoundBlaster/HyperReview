@@ -49,7 +49,8 @@ keyword arguments and exact source spans on both sides; it contains no values.
 This is positive evidence that a keyword is supplied, not proof of callee binding
 or execution. Dynamic calls, ambiguous repeated calls and invalid excerpts add
 no hint; `**kwargs` and truncated keyword lists never establish absence. The
-optional hints share the existing comparison-payload budget. Other languages
+optional hints share the existing comparison-payload budget, after authored-map
+hints. Other languages
 continue through the ordinary source-based review path.
 
 [Corpus v4](../evaluations/review-corpus-v4.json) retains prior positive and

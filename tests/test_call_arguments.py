@@ -1,5 +1,6 @@
 import json
 import unittest
+from unittest.mock import patch
 
 from hyperreview import call_arguments, local_provider
 from hyperreview.model_contract import prepare_request
@@ -47,3 +48,14 @@ class CallArgumentTests(unittest.TestCase):
         hint, = call_arguments.hints(data)
         self.assertEqual(hint["after"]["line_start"], 102)
         self.assertTrue(hint["partial_index"])
+
+    def test_authored_map_keeps_priority_when_argument_hints_fill_budget(self):
+        data = request("def run():\n    build()\n", "def run():\n    build(scope=x)\n")
+        authored = {"path": "architecture.hc", "roles": ["Application"]}
+        oversized = {"positive_facts": "x" * 6144}
+        with patch("hyperreview.local_provider.source_analysis.authored_map_hints", return_value=[authored]), \
+                patch("hyperreview.local_provider.call_arguments.hints", return_value=[oversized]):
+            payload = json.loads(local_provider._comparison_content(data))
+        self.assertEqual(payload["authored_map_hints"], [authored])
+        self.assertNotIn("call_argument_hints", payload)
+        self.assertLessEqual(len(local_provider._wire_bytes(payload)), 6144)

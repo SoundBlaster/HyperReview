@@ -280,14 +280,6 @@ def _comparison_content(request):
             break
         comparisons.append(item)
     payload = {"trust": "untrusted_source_data", "same_path_diffs": comparisons}
-    argument_hints = []
-    for hint in call_arguments.hints(request):
-        candidate = {**payload, "call_argument_hints": argument_hints + [hint],
-                     "argument_hint_scope": "Positive syntax facts only. Re-read the cited call before claiming missing arguments; **kwargs and runtime binding are not resolved."}
-        if len(_wire_bytes(candidate)) > 6144:
-            break
-        argument_hints.append(hint)
-        payload = candidate
     map_hints = []
     for hint in source_analysis.authored_map_hints(request):
         candidate = {**payload, "authored_map_hints": map_hints + [hint]}
@@ -296,6 +288,14 @@ def _comparison_content(request):
         map_hints.append(hint)
     if map_hints:
         payload["authored_map_hints"] = map_hints
+    argument_hints = []
+    for hint in call_arguments.hints(request):
+        candidate = {**payload, "call_argument_hints": argument_hints + [hint],
+                     "argument_hint_scope": "Positive syntax facts only. Re-read the cited call before claiming missing arguments; **kwargs and runtime binding are not resolved."}
+        if len(_wire_bytes(candidate)) > 6144:
+            break
+        argument_hints.append(hint)
+        payload = candidate
     call_hints = []
     for hint in callsite_navigation.callsite_hints(request):
         candidate = {**payload, "callsite_hints": call_hints + [hint],

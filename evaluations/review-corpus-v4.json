@@ -1,0 +1,435 @@
+{
+  "schema": "hyperreview.review-corpus.v1",
+  "version": "review-corpus-v4",
+  "entries": [
+    {
+      "id": "sample-001",
+      "kind": "model_review",
+      "split": "development",
+      "group": "SoundBlaster/SessionMonitor#143",
+      "used_for_tuning": true,
+      "case": {
+        "id": "case-001",
+        "repository": "SoundBlaster/SessionMonitor",
+        "pr": 143,
+        "base": "3ca4ece501dd6870fac11614240704a0c4b1bfec",
+        "head": "9a75c716ac1085ee702f6b2eacef7233edcb25fb",
+        "checks": [
+          {
+            "id": "check-001",
+            "kind": "source",
+            "side": "after",
+            "path": "Apps/MonitorMac/Sources/shared/ui/DesignNumericRow.swift"
+          },
+          {
+            "id": "check-002",
+            "kind": "relation",
+            "side": "after",
+            "relation_kind": "calls",
+            "from_contains": [
+              "MenuSummaryPage"
+            ],
+            "to_contains": [
+              "DesignNumericRow"
+            ]
+          },
+          {
+            "id": "check-003",
+            "kind": "relation",
+            "side": "after",
+            "relation_kind": "calls",
+            "from_contains": [
+              "QuotaCoverageSummary"
+            ],
+            "to_contains": [
+              "DesignNumericRow"
+            ]
+          },
+          {
+            "id": "check-004",
+            "kind": "relation_absence",
+            "side": "after",
+            "relation_kind": "calls",
+            "from_contains": [
+              "QuotaPresentationSection"
+            ],
+            "to_contains": [
+              "DesignNumericRow"
+            ]
+          }
+        ],
+        "rubric": [
+          "Does the first screen expose the shared numeric presentation change and its consumers?",
+          "When provider source is supplied, does the review distinguish monospaced numeric values, proportional labels and caller-owned formatting?",
+          "With callsites alone, does it report their direct constructions while leaving callee internals unknown?",
+          "The construction is in QuotaCoverageSummary.body, QuotaWindowRow.body and ResetDiscontinuityPopover.body, not QuotaPresentationSection.body; architecture ownership is not an invoking operation."
+        ]
+      },
+      "fixture": null,
+      "records": [
+        "31666a99758ca5e83aa956708c3289a07b9654c281249b4bea8fb71a72e7c027",
+        "dcefef08111078fa6dbbb16bd1cd98418d3a3990e08536e8d8e7d90cdaa0c350"
+      ],
+      "adjudication": {
+        "status": "source_checked",
+        "assessor_kind": "agent",
+        "rationale": "Source-checked nested caller attribution: numeric constructions occur in the named quota subviews, not their outer component. Keep a failing observation and an improved observation."
+      },
+      "tags": [
+        "caller_attribution"
+      ],
+      "origin_urls": [
+        "https://github.com/SoundBlaster/SessionMonitor/pull/143"
+      ]
+    },
+    {
+      "id": "sample-002",
+      "kind": "model_review",
+      "split": "development",
+      "group": "0al-spec/SpecGraph#793",
+      "used_for_tuning": true,
+      "case": {
+        "id": "case-002",
+        "repository": "0al-spec/SpecGraph",
+        "pr": 793,
+        "base": "bc051b08c68dfe795d10fd9309e98867d3430911",
+        "head": "567f55206a1f7322ea792ab0047c72c8968541e0",
+        "checks": [
+          {
+            "id": "check-001",
+            "kind": "source",
+            "side": "after",
+            "path": "tools/conversation_notes/store.py"
+          },
+          {
+            "id": "check-002",
+            "kind": "relation",
+            "side": "after",
+            "relation_kind": "calls",
+            "from_contains": [
+              "NotesStore",
+              "update"
+            ],
+            "to_contains": [
+              "publish"
+            ]
+          },
+          {
+            "id": "check-003",
+            "kind": "relation",
+            "side": "after",
+            "relation_kind": "calls",
+            "from_contains": [
+              "NotesStore",
+              "publish"
+            ],
+            "to_contains": [
+              "os",
+              "replace"
+            ]
+          }
+        ],
+        "rubric": [
+          "Does the compact view explain revisioned persistence and publication rather than only CLI/API wrappers?",
+          "Does it explain expected_revision, the writer lock, preparation of a complete revision and replacement of CURRENT without claiming observed crash safety?",
+          "Does it keep caller-attributed approval observations separate from canonical authority?"
+        ]
+      },
+      "fixture": null,
+      "records": [
+        "51839f65b8f8659e86f31e494a0a87ff254f221a01668c38eca24abb9a389e80",
+        "01ed7b02d64254613f6ceffbbdc979e39c317c4c8ab612ea8fdaed019d589ec2"
+      ],
+      "adjudication": {
+        "status": "source_checked",
+        "assessor_kind": "agent",
+        "rationale": "Source-checked mechanism coverage: persistence update invokes publish. Preserve the weaker and improved review; omission of a selected edge is not automatically a false statement."
+      },
+      "tags": [
+        "mechanism_coverage",
+        "publication_boundary"
+      ],
+      "origin_urls": [
+        "https://github.com/0al-spec/SpecGraph/pull/793"
+      ]
+    },
+    {
+      "id": "sample-003",
+      "kind": "model_review",
+      "split": "development",
+      "group": "SoundBlaster/BuildHunter#107",
+      "used_for_tuning": true,
+      "case": {
+        "id": "case-003",
+        "repository": "SoundBlaster/BuildHunter",
+        "pr": 107,
+        "base": "b48d271402ac9e34eb2e81bd5a5f8fc20b30ab58",
+        "head": "3fc0eeddd4a5f05a6bee60355837c090b2df1d01",
+        "checks": [
+          {
+            "id": "check-001",
+            "kind": "containment",
+            "side": "before",
+            "roles": [
+              "BuildHunterRuntime",
+              "SharedRuntime",
+              "PluginScanning"
+            ]
+          },
+          {
+            "id": "check-002",
+            "kind": "containment",
+            "side": "after",
+            "roles": [
+              "BuildHunterRuntime",
+              "SharedRuntime",
+              "PluginScanning"
+            ]
+          },
+          {
+            "id": "check-003",
+            "kind": "containment",
+            "side": "after",
+            "roles": [
+              "BuildHunterRuntime",
+              "SharedRuntime",
+              "HunterScopedFilesystem"
+            ]
+          }
+        ],
+        "rubric": [
+          "Are authored roles and shared containment preserved independently on each revision?",
+          "Does the explanation show delegation without inventing an architectural move or a direct call across an intermediate helper?"
+        ]
+      },
+      "fixture": null,
+      "records": [
+        "2a036ba1e18138d3a29afd8d376c30cf645f36d0afb9453cc68106129967a770"
+      ],
+      "adjudication": {
+        "status": "source_checked",
+        "assessor_kind": "agent",
+        "rationale": "Positive control: preserve the authored SharedRuntime containment path. This is a useful retained review, not a newly invented failure label."
+      },
+      "tags": [
+        "authored_containment",
+        "positive_control"
+      ],
+      "origin_urls": [
+        "https://github.com/SoundBlaster/BuildHunter/pull/107"
+      ]
+    },
+    {
+      "id": "sample-004",
+      "kind": "model_review",
+      "split": "development",
+      "group": "SoundBlaster/SessionMonitor#145",
+      "used_for_tuning": true,
+      "case": {
+        "id": "case-004",
+        "repository": "SoundBlaster/SessionMonitor",
+        "pr": 145,
+        "base": "3eaa86281b9e3874176ebc980178f07457a2d7c1",
+        "head": "8097a8b98a8691e85fb2441d4016b9b926320a52",
+        "checks": [
+          {
+            "id": "check-001",
+            "kind": "source",
+            "side": "after",
+            "path": "Sources/MonitorStore/QuotaProjectionRead.swift"
+          },
+          {
+            "id": "check-002",
+            "kind": "relation_exact",
+            "side": "before",
+            "relation_kind": "calls",
+            "from_any": [
+              "SessionMonitor.agentStatus",
+              "agentStatus"
+            ],
+            "to_any": [
+              "snapshot",
+              "self.snapshot",
+              "SessionMonitor.snapshot"
+            ]
+          },
+          {
+            "id": "check-003",
+            "kind": "relation_absence",
+            "side": "before",
+            "relation_kind": "calls",
+            "from_contains": [
+              "SessionMonitor",
+              "agentStatus"
+            ],
+            "to_contains": [
+              "UsageStore",
+              "snapshot"
+            ]
+          },
+          {
+            "id": "check-004",
+            "kind": "relation_exact",
+            "side": "before",
+            "relation_kind": "calls",
+            "from_any": [
+              "SessionMonitor.agentStatus",
+              "agentStatus"
+            ],
+            "to_any": [
+              "UsageStore.latestSessionID",
+              "store.latestSessionID"
+            ]
+          }
+        ],
+        "rubric": [
+          "Each calls row names one immediate caller and one callee; never merge snapshot and latestSessionID into one endpoint.",
+          "Before AgentStatus.swift invokes store.latestSessionID and an unqualified snapshot(query:). QueryObservation.swift is NOT supplied: retain that literal target or self.snapshot, not an invented direct call to UsageStore.snapshot.",
+          "Explain why reduced quota input preserves relevant decisions: all latest timestamp ties and reset-transition witnesses, with full coverage tracked separately. Ordered LIMIT 1 selections and 256/1024 batching are not an arbitrary overall row cap; do not claim constant total database work.",
+          "Migration registration and initialization are supplied in UsageStore.swift; acknowledge that wiring rather than declaring it missing. Distinguish unknown external writers and unobserved runs.",
+          "Describe only source-supported policy reuse, not complete semantic equivalence or benchmark speedups; performance documentation was omitted."
+        ]
+      },
+      "fixture": null,
+      "records": [
+        "35e182f6f5f0c9aba70834fb481be6e0671401f790e5a5bbcfbd2f550167bb35",
+        "384f61e5e97173c51c82c6c0a4f260479f5e6e484a1936890b3d2e3b640a69ef"
+      ],
+      "adjudication": {
+        "status": "source_checked",
+        "assessor_kind": "agent",
+        "rationale": "Source-checked false direct call: an unqualified snapshot helper does not establish a direct UsageStore.snapshot call; retain atomic endpoints and explain selection witnesses/coverage."
+      },
+      "tags": [
+        "wrapper_shortcut",
+        "compound_endpoint",
+        "reduced_input"
+      ],
+      "origin_urls": [
+        "https://github.com/SoundBlaster/SessionMonitor/pull/145"
+      ]
+    },
+    {
+      "id": "sample-005",
+      "kind": "validator",
+      "split": "development",
+      "group": "SoundBlaster/HyperReview#57",
+      "used_for_tuning": true,
+      "case": null,
+      "fixture": {
+        "path": "evaluations/fixtures/literal-caller-v1.json",
+        "sha256": "ae1fab5fbcce1788e3f4dfaa47bca73c62468542940f943b2583ec9eae9e2c8e"
+      },
+      "records": [
+        "d452bf34d79dbf3b8bae931a5db89ddd304d17a25131b94fe505bba3f9eb765d"
+      ],
+      "adjudication": {
+        "status": "source_checked",
+        "assessor_kind": "agent",
+        "rationale": "The bot finding was reproduced, checked with swiftc, fixed and regression-tested. It concerns the reviewer validator, not the reviewed product or Luna output quality."
+      },
+      "tags": [
+        "validator_false_positive"
+      ],
+      "origin_urls": [
+        "https://github.com/SoundBlaster/HyperReview/pull/57#discussion_r4370900888"
+      ]
+    },
+    {
+      "id": "sample-006",
+      "kind": "validator",
+      "split": "development",
+      "group": "0al-spec/SpecGraph#804",
+      "used_for_tuning": true,
+      "case": null,
+      "fixture": {
+        "path": "evaluations/fixtures/node-presence-v1.json",
+        "sha256": "b71e2d1015cced3a49243368a2e56ed4cbd94f0334702f6780791ada76acf0c8"
+      },
+      "records": [
+        "f90d1733727812e28a34d1cd5ce0056fc3376e7e9339001e4bc470fb114884bc"
+      ],
+      "adjudication": {
+        "status": "source_checked",
+        "assessor_kind": "agent",
+        "rationale": "Provider schema under-constrained the existing converter invariant. Synthetic witnesses reject absent-side parent/refs and missing present-side refs while accepting added/removed/retained nodes. Original failed response bytes are unavailable; do not count this fixture as a model-quality observation."
+      },
+      "tags": [
+        "node_presence",
+        "provider_schema"
+      ],
+      "origin_urls": [
+        "https://github.com/0al-spec/SpecGraph/pull/804#discussion_r4380503697"
+      ]
+    },
+    {
+      "id": "sample-007",
+      "kind": "validator",
+      "split": "development",
+      "group": "SoundBlaster/BuildHunter#119",
+      "used_for_tuning": true,
+      "case": null,
+      "fixture": {
+        "path": "evaluations/fixtures/caller-identity-v1.json",
+        "sha256": "708ca3556ea4df71e2560aadec90b386e05084da91801a4356f134565c7f8118"
+      },
+      "records": [
+        "9aff310165111249638213b7784b4ad04887b9635b4f7f749abf1a8dc2990cec"
+      ],
+      "adjudication": {
+        "status": "source_checked",
+        "assessor_kind": "agent",
+        "rationale": "Synthetic regression derived from the frozen #119 caller-spelling false negatives. Source declarations and immediate invocation names establish a unique caller; wrong owners and compound callers remain unmatched. This is an evaluator control, not independent human acceptance or a model-quality sample."
+      },
+      "tags": [
+        "evaluator_false_negative",
+        "caller_spelling"
+      ],
+      "origin_urls": [
+        "https://github.com/SoundBlaster/BuildHunter/pull/119"
+      ]
+    },
+    {
+      "id": "sample-008",
+      "kind": "model_review",
+      "split": "development",
+      "group": "0al-spec/SpecGraph#862",
+      "used_for_tuning": true,
+      "case": {
+        "base": "43c567e1c40fc7c07fb5bc64598e072c4d10001a",
+        "checks": [
+          {
+            "id": "check-001",
+            "kind": "source",
+            "path": "tools/project_ontology_supervisor_cli.py",
+            "side": "after"
+          }
+        ],
+        "head": "1e5108fd89c97ad4385273f6e6b37c9c9cc42a08",
+        "id": "case-862",
+        "pr": 862,
+        "repository": "0al-spec/SpecGraph",
+        "rubric": [
+          "The supplied after-side run_request call passes requested_scopes=scopes at L101; do not claim the argument is absent.",
+          "Keep relation explanations consistent with the summary and responsibility descriptions."
+        ]
+      },
+      "fixture": null,
+      "records": [
+        "9a785ec762530f9f8719a287711d0de96279d2ef6dd92b5a86938bffb82cf021"
+      ],
+      "adjudication": {
+        "status": "source_checked",
+        "assessor_kind": "agent",
+        "rationale": "Supplied CLI call explicitly forwards requested_scopes=scopes at L101, contradicting the generated relation reason. This is a source-checked agent assessment, not human approval or independent holdout."
+      },
+      "tags": [
+        "argument_forwarding",
+        "false_missing_wiring"
+      ],
+      "origin_urls": [
+        "https://github.com/0al-spec/SpecGraph/pull/862"
+      ]
+    }
+  ]
+}

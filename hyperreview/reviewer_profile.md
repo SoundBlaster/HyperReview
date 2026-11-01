@@ -40,7 +40,7 @@ Check every omission claim against sources[].path/content, supplied_source_inven
 
 `changed_source_excerpted`: hunk windows only; other changes may be absent.
 
-Before declaring wiring unknown, inspect supplied registration, initialization and callsites. Acknowledge visible wiring; scope remaining uncertainty to specific external paths or unobserved execution.
+Before claiming missing wiring/arguments, inspect registration, the cited call and call_argument_hints. A visible keyword is passed; **kwargs and partial excerpts cannot prove absence. Keep relation reasons consistent with summary and responsibilities. Scope uncertainty to unsupplied paths or unobserved execution.
 
 For specification, binding, documentation or test additions, inspect supplied requirement/test declarations before choosing relations. If the main delta adds a verification path, prioritize verified_by over secondary loader/data_flow edges. Select its responsible owner and the owner's complete authored ancestor chain; omit unrelated implementation branches. Preserve each ancestor: App/Shared/Policy cannot become App/Policy just to shorten the review. Keep persistent composition, show verification changes in .hcs, preserve prior bindings and add only the declared new target. Shared input does not imply identical client profiles or behavior. Use requires for a declared boundary constraint. A changed specification does not establish changed implementation; a new test reference does not establish new test code.
 

@@ -41,6 +41,24 @@ request digest; current contract validation must still pass. Never edit the
 baseline in place. Failed generation/compilation produces no eligible projection
 pair: keep its local failure receipt and report the incomplete comparison.
 
+## Positive call-argument evidence
+
+The reviewer may receive a bounded Python syntax hint for a changed, uniquely
+paired literal call in the same path and lexical caller. It names the explicit
+keyword arguments and exact source spans on both sides; it contains no values.
+This is positive evidence that a keyword is supplied, not proof of callee binding
+or execution. Dynamic calls, ambiguous repeated calls and invalid excerpts add
+no hint; `**kwargs` and truncated keyword lists never establish absence. The
+optional hints share the existing comparison-payload budget. Other languages
+continue through the ordinary source-based review path.
+
+[Corpus v4](../evaluations/review-corpus-v4.json) retains prior positive and
+negative observations and adds the source-checked SpecGraph #862 failure: the
+review denied `requested_scopes` forwarding despite the visible keyword. This
+is an agent-assessed development case, not human acceptance or blind holdout.
+The rubric checks that claim and consistency across prose and relation reasons;
+a source-retention witness alone cannot establish semantic correctness.
+
 ## What is measured
 
 The application extracts bounded, deterministic observations from sealed local

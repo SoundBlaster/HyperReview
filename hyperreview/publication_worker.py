@@ -248,7 +248,7 @@ def _retryable_plan(plan):
     if not blockers & transient:
         return False
     definitive = {"repository_or_pr_not_allowlisted", "authenticated_account_mismatch",
-                  "pr_author_mismatch", "pr_not_open", "pr_is_draft", "cross_repository_pr",
+                  "pr_author_mismatch", "pr_not_open", "pr_state_invalid", "pr_is_draft", "cross_repository_pr",
                   "pr_identity_mismatch", "pr_ineligible", "authenticated_account_changed",
                   "duplicate_own_marker_comments", "review_gate_invalid",
                   "review_gate_revision_changed", "tracking_unconfirmed", "live_revision_invalid"}

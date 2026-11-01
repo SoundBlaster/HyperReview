@@ -81,6 +81,12 @@ per PR using a stable tool marker scoped to repository and PR. The body MUST
 identify the analyzed base/head revisions, interpretation status, omissions,
 and links to supporting source. It MUST NOT masquerade as a GitHub approval.
 
+Completed live reviews MAY be delivered to a closed or merged PR with the same
+verified revisions. Closing the PR alone MUST NOT discard a ready report or
+mark its publication stale. This grants no new analysis on closed PRs;
+historical read-only previews remain publication-disabled. Gate completion
+continues to represent analysis completion; report delivery has its own receipt.
+
 Immediately before publication, the broker MUST recheck author, repositories,
 PR state, authorization, and base/head revisions. A known stale job MUST NOT be
 published. GitHub comment writes and PR pushes are not atomic; a post-write

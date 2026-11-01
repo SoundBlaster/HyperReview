@@ -163,8 +163,8 @@ def _blockers_for_eligibility(repo, number, pr, account):
         blockers.append("authenticated_account_mismatch")
     if pr.get("author") != intake.AUTHOR:
         blockers.append("pr_author_mismatch")
-    if pr.get("state") != "open":
-        blockers.append("pr_not_open")
+    if pr.get("state") not in ("open", "closed"):
+        blockers.append("pr_state_invalid")
     if pr.get("draft") is not False:
         blockers.append("pr_is_draft")
     if pr.get("base_repo") != repo or pr.get("head_repo") != repo:
@@ -175,10 +175,15 @@ def _blockers_for_eligibility(repo, number, pr, account):
 
 
 def _eligibility_blockers(repo, number, pr, account):
+    from .pr_eligibility import PullRequestEligibilityContext
+    from .publication_eligibility import CompletedReviewPublicationEligibility
+
     blockers = _blockers_for_eligibility(repo, number, pr, account)
-    try:
-        intake.eligible(repo, number, pr, account)
-    except intake.IntakeError:
+    context = PullRequestEligibilityContext(number, repo, intake.AUTHOR,
+        pr.get("number"), pr.get("author"), pr.get("state"), pr.get("draft"),
+        pr.get("base_repo"), pr.get("head_repo"))
+    if (not CompletedReviewPublicationEligibility().is_satisfied_by(context)
+            or not all(_revision(pr.get(field)) for field in ("base_sha", "head_sha"))):
         if not blockers:
             blockers.append("pr_ineligible")
     return blockers

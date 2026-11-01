@@ -184,10 +184,10 @@ class PublicationTests(unittest.TestCase):
                 self.assertIn(blocker, plan["blockers"])
                 self.assertIsNone(plan["action"])
 
-    def test_closed_draft_foreign_account_author_and_repo_are_blocked(self):
+    def test_invalid_state_draft_foreign_account_author_and_repo_are_blocked(self):
         baseline = FakeGitHub().pr
         cases = [
-            (FakeGitHub(pr={**baseline, "state": "closed"}), "pr_not_open"),
+            (FakeGitHub(pr={**baseline, "state": None}), "pr_state_invalid"),
             (FakeGitHub(pr={**baseline, "draft": True}), "pr_is_draft"),
             (FakeGitHub(account="other"), "authenticated_account_mismatch"),
             (FakeGitHub(pr={**baseline, "author": "other"}), "pr_author_mismatch"),
@@ -198,6 +198,38 @@ class PublicationTests(unittest.TestCase):
                 _destination, plan = self.plan(api)
                 self.assertEqual(plan["status"], "blocked")
                 self.assertIn(blocker, plan["blockers"])
+
+    def test_completed_live_review_can_publish_to_closed_or_merged_pr(self):
+        for merged in (False, True):
+            with self.subTest(merged=merged):
+                self.root = self.root / str(merged)
+                self.root.mkdir(mode=0o700)
+                api = FakeGitHub(pr={**FakeGitHub().pr, "state": "closed", "merged": merged})
+                directory, plan = self.plan(api)
+                self.assertEqual(plan["status"], "ready")
+                writer = RecordingWriter(api)
+                result = self.publish(directory, api, writer)
+                self.assertEqual(result["status"], "published")
+                self.assertEqual(len(writer.calls), 1)
+                repeated = self.publish(directory, api, writer)
+                self.assertEqual(repeated["status"], "already_published")
+
+    def test_pr_closure_between_plan_and_write_does_not_discard_report(self):
+        api = FakeGitHub()
+        directory, _plan = self.plan(api)
+        api.pr = {**api.pr, "state": "closed"}
+        writer = RecordingWriter(api)
+        self.assertEqual(self.publish(directory, api, writer)["status"], "published")
+        self.assertNotIn("Stale preview", api.comments[0]["body"])
+
+    def test_closed_pr_still_rejects_changed_head_and_foreign_author(self):
+        baseline = {**FakeGitHub().pr, "state": "closed"}
+        for change, code in (({"head_sha": "f" * 40}, "head_revision_changed"),
+                             ({"author": "other"}, "pr_author_mismatch")):
+            with self.subTest(code=code):
+                _directory, plan = self.plan(FakeGitHub(pr={**baseline, **change}))
+                self.assertEqual(plan["status"], "blocked")
+                self.assertIn(code, plan["blockers"])
 
     def test_missing_or_pending_tracking_blocks_and_tampered_receipt_raises(self):
         receipt_path = self.bundle / "tracking-receipt.json"

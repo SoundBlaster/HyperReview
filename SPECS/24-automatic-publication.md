@@ -117,3 +117,15 @@ reconciliation. Private-preview inference remains independently configurable.
 32 recent delivery summaries. No successful publication is claimed without the
 existing broker's confirmation. Runtime delivery evidence is distinct from CI
 and from semantic assessment of the generated explanation.
+
+## Transient review-gate recovery
+
+Before model generation, a transient GitHub read failure or uncertain gate
+creation is retried at most three times: immediately, after 60 seconds, then
+180 seconds after the second failure. The worker journals both the attempt
+and the next eligible time; its regular wake-up cadence may add delay. The
+queue remains available for other work. A previously attempted root comment
+is recovered by reading its unique marker, never by another root-comment POST.
+Changed PR revisions and grant violations are not treated as transient failures.
+When the budget is exhausted the existing failure and gate-release process applies;
+model calls are not replayed by this recovery.

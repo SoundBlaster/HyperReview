@@ -16,6 +16,7 @@ FILES = frozenset(("before.hc", "after.hc", "before.ir.json", "after.ir.json",
                    "preview.md", "preview-compact.md", "evidence.json",
                    "composition-plan.json", "generation-receipt.json", "metadata.json"))
 MAX_FILE_BYTES = 2 * 1024 * 1024
+GATE_RETRY_DELAYS = (60, 180)
 
 
 def _setup(db):
@@ -30,7 +31,12 @@ def _setup(db):
             job TEXT NOT NULL, state TEXT NOT NULL, at INTEGER NOT NULL, failure_code TEXT
         );
     """)
-    if "diagnostic" not in {row[1] for row in db.execute("PRAGMA table_info(preview_jobs)")}:
+    columns = {row[1] for row in db.execute("PRAGMA table_info(preview_jobs)")}
+    for name in ("gate_attempts", "gate_retry_after"):
+        if name not in columns:
+            with db:
+                db.execute(f"ALTER TABLE preview_jobs ADD COLUMN {name} INTEGER NOT NULL DEFAULT 0")
+    if "diagnostic" not in columns:
         with db:
             db.execute("ALTER TABLE preview_jobs ADD COLUMN diagnostic TEXT")
 
@@ -154,7 +160,8 @@ def process_one(db, config, root, api, now, *, observation_factory=None, gate_fa
         identity = [task["candidate"], task["request_digest"], task["handoff_digest"], settings]
         job = intake.digest(identity)
         existing = db.execute("SELECT * FROM preview_jobs WHERE job=?", (job,)).fetchone()
-        if existing is None or (existing["state"] == "queued" and existing["generation_runs"] == 0):
+        if existing is None or (existing["state"] == "queued" and existing["generation_runs"] == 0
+                                and existing["gate_retry_after"] <= now):
             selected = task
             break
     if selected is None:
@@ -168,16 +175,35 @@ def process_one(db, config, root, api, now, *, observation_factory=None, gate_fa
             db.execute("INSERT INTO preview_jobs (job,candidate,settings,state,updated_at) VALUES (?,?,?,?,?)",
                        (job, selected["candidate"], settings, "queued", now))
             _transition(db, job, "queued", now)
+    gate_active = gated and selected["repository"] in config["review_gate"]["repositories"]
+    if gate_active and existing is not None and existing["gate_attempts"] >= len(GATE_RETRY_DELAYS) + 1:
+        _transition(db, job, "failed", now, "review_gate_attempts_exhausted")
+        base.update(_finish_gate(db, root, config, selected, job, "failed", gate_factory))
+        return {**base, "status": "preview_failed", "failure_code": "review_gate_attempts_exhausted"}
     try:
         worker._require(worker._retained_handoff(root, selected), "Intake handoff is unavailable")
-        if not _fresh(selected, observation_factory()):
+        if gate_active:
+            next_attempt = (existing["gate_attempts"] if existing is not None else 0) + 1
+            interrupted_retry_after = now + (GATE_RETRY_DELAYS[next_attempt - 1]
+                                             if next_attempt <= len(GATE_RETRY_DELAYS) else 0)
+            with db:
+                db.execute("UPDATE preview_jobs SET gate_attempts=gate_attempts+1,gate_retry_after=? WHERE job=?",
+                           (interrupted_retry_after, job))
+        try:
+            fresh = _fresh(selected, observation_factory())
+        except intake.IntakeError:
+            if not gate_active:
+                raise
+            from .automatic_review_gate import GateError
+            raise GateError("review_gate_unavailable") from None
+        if not fresh:
             _transition(db, job, "stale", int(time.time()), "eligibility_or_revisions_changed")
             base.update(_finish_gate(db, root, config, selected, job, "stale", gate_factory))
             return {**base, "status": "preview_stale"}
         directory = root / "artifacts" / selected["artifact"]
         evidence = read_json(directory / "evidence.json")
         request = read_json(directory / "request.json")
-        if gated and selected["repository"] in config["review_gate"]["repositories"]:
+        if gate_active:
             from .automatic_review_gate import ensure
             base["review_gate_url"] = ensure(db, root, config, selected, job, gate_factory)
         from .generation_diagnostics import Capture
@@ -220,6 +246,16 @@ def process_one(db, config, root, api, now, *, observation_factory=None, gate_fa
         if not isinstance(error, GateError):
             raise
         code = error.code
+    if gate_active and code in ("review_gate_unavailable", "review_gate_write_uncertain"):
+        row = db.execute("SELECT gate_attempts,generation_runs FROM preview_jobs WHERE job=?", (job,)).fetchone()
+        if row["generation_runs"] == 0 and 1 <= row["gate_attempts"] <= len(GATE_RETRY_DELAYS):
+            retry_after = int(time.time()) + GATE_RETRY_DELAYS[row["gate_attempts"] - 1]
+            with db:
+                db.execute("UPDATE preview_jobs SET gate_retry_after=?,failure_code=? WHERE job=?",
+                           (retry_after, code, job))
+            _transition(db, job, "queued", int(time.time()), code)
+            return {**base, "status": "review_gate_retry_pending", "failure_code": code,
+                    "retry_after": retry_after}
     _transition(db, job, "failed", int(time.time()), code)
     base.update(_finish_gate(db, root, config, selected, job, "failed", gate_factory))
     return {**base, "status": "preview_failed", "failure_code": code}

@@ -181,9 +181,15 @@ def _identity(task):
 
 def _fresh(api, task, *, require_revision=True):
     candidate, repo, pr_number, base, head = _identity(task)
+    account_data = _rest(api, "user", "{login}")
+    if type(account_data) is not dict:
+        _fail("review_gate_binding_changed")
+    account = account_data.get("login")
     try:
-        account = _rest(api, "user", "{login}").get("login")
         pr = intake.metadata(api, repo, pr_number)
+    except Exception:
+        _fail("review_gate_unavailable")
+    try:
         intake.eligible(repo, pr_number, pr, account)
     except Exception:
         _fail("review_gate_binding_changed")
@@ -555,6 +561,8 @@ def _persist_plan(db, task, job_id, config, api, root):
         body_bytes = (plan_dir / "comment.md").read_bytes()
     except GateError:
         raise
+    except intake.IntakeError:
+        _fail("review_gate_unavailable")
     except Exception:
         _fail("review_gate_state_invalid")
     plan_digest = hashlib.sha256(plan_bytes).hexdigest()
@@ -855,13 +863,15 @@ def complete(db, root, config, task, job, outcome, api_factory=None):
 def reconcile(db, root, config, api_factory=None):
     """Reconcile at most one pending gate operation; never invokes a model."""
     _setup(db)
+    from .worker_preview import _setup as setup_previews
+    setup_previews(db)
     options = config.get("review_gate") if type(config) is dict else None
     validate_options(options, config.get("repositories", []))
     api = _api(api_factory)
     placeholders = ",".join("?" for _ in options["repositories"])
     rows = db.execute("""SELECT g.*,t.repository task_repository,t.pr task_pr,
                        t.base_sha task_base_sha,t.head_sha task_head_sha,t.state task_state,
-                       j.state preview_state,j.candidate preview_candidate
+                       j.state preview_state,j.candidate preview_candidate,j.gate_attempts preview_gate_attempts
                        FROM automatic_review_gates g
                        LEFT JOIN tasks t ON t.candidate=g.candidate
                        LEFT JOIN preview_jobs j ON j.job=g.job
@@ -869,6 +879,9 @@ def reconcile(db, root, config, api_factory=None):
                       (*options["repositories"], _MAX_GATES)).fetchall()
     row = None
     for item in rows:
+        # Active preview retries own their gate recovery and its persisted schedule.
+        if item["preview_state"] == "queued" and item["preview_gate_attempts"]:
+            continue
         if item["recovery_attempts"] >= _MAX_RECOVERY:
             continue
         if item["superseded_by"] and item["status"] in ("superseding", "needs_attention"):

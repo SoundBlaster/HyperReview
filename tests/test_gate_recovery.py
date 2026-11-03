@@ -102,3 +102,14 @@ class GateReplyRecoveryTests(unittest.TestCase):
             with self.assertRaises(gate.GateError):
                 gate.complete(self.db, self.root, self.config, self.task, self.job, "success")
             resolve.assert_not_called()
+
+    def test_reserved_reply_missing_in_inventory_is_not_reposted(self):
+        with patch.object(gate, "_api", return_value=object()), patch.object(gate, "_fresh"), \
+             patch.object(gate, "_bound_thread", return_value=("thread-node", "SoundBlaster", False)), \
+             patch.object(gate, "_find_reply", return_value=None), \
+             patch.object(gate, "_write_rest") as post, \
+             patch.object(gate, "_resolve", side_effect=self.resolve):
+            gate.complete(self.db, self.root, self.config, self.task, self.job, "success")
+            post.assert_not_called()
+        self.assertEqual(self.db.execute("select count(*) from automatic_gate_replies").fetchone()[0], 1)
+        self.assertEqual(self.db.execute("select status from automatic_review_gates").fetchone()[0], "completed")

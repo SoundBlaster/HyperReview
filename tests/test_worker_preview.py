@@ -224,3 +224,192 @@ class WorkerPreviewTests(unittest.TestCase):
         self.assertIn("isolated", instructions)
         self.assertNotIn("runs only the bounded worker", instructions)
         self.assertEqual(plist["ProgramArguments"][-1], str(self.config))
+
+
+class GateRetryTests(unittest.TestCase):
+    tick = WorkerPreviewTests.tick
+    completed = WorkerPreviewTests.completed
+
+    def setUp(self):
+        WorkerPreviewTests.setUp(self)
+        self.config = worker.create_config(repositories=[REPO], state_root=self.state,
+            output_root=self.root / "gated-configs", preview=self.options,
+            review_gate={"repositories": [REPO], "eta_seconds": 600,
+                         "state_root": str(self.root / "gate")}) / "config.json"
+
+    def test_retry_delays_survive_new_ticks_and_generation_runs_once(self):
+        from hyperreview.automatic_review_gate import GateError
+        self.tick()
+        with patch("hyperreview.automatic_review_gate.reconcile"), \
+             patch("hyperreview.automatic_review_gate.ensure",
+                   side_effect=[GateError("review_gate_unavailable"), GateError("review_gate_write_uncertain"), "https://example.test/gate"]) as ensure, \
+             patch("hyperreview.worker_preview._finish_gate", return_value={}) as finish, \
+             patch("hyperreview.worker_generation.run", return_value=self.completed()) as generate:
+            self.assertEqual(self.tick(10300)["retry_after"], 10360)
+            self.assertEqual(self.tick(10359)["status"], "not_due")
+            self.assertEqual(ensure.call_count, 1)
+            self.assertEqual(self.tick(10360)["retry_after"], 10540)
+            self.assertEqual(self.tick(10539)["status"], "not_due")
+            self.assertEqual(ensure.call_count, 2)
+            self.assertEqual(self.tick(10540)["status"], "preview_ready")
+            self.assertEqual(ensure.call_count, 3)
+            self.assertEqual(generate.call_count, 1)
+            self.assertEqual(finish.call_count, 1)
+
+    def test_third_unavailable_releases_gate_and_stops(self):
+        from hyperreview.automatic_review_gate import GateError
+        self.tick()
+        with patch("hyperreview.automatic_review_gate.reconcile"), \
+             patch("hyperreview.automatic_review_gate.ensure", side_effect=GateError("review_gate_unavailable")) as ensure, \
+             patch("hyperreview.worker_preview._finish_gate", return_value={}) as finish, \
+             patch("hyperreview.worker_generation.run") as generate:
+            self.tick(10300); self.tick(10360)
+            result = self.tick(10540)
+            self.assertEqual(result["status"], "preview_failed")
+            self.assertEqual(result["failure_code"], "review_gate_unavailable")
+            self.tick(10840)
+            self.assertEqual(ensure.call_count, 3)
+            generate.assert_not_called()
+            self.assertEqual(finish.call_args.args[5], "failed")
+
+    def test_binding_change_is_not_retried(self):
+        from hyperreview.automatic_review_gate import GateError
+        self.tick()
+        with patch("hyperreview.automatic_review_gate.reconcile"), \
+             patch("hyperreview.automatic_review_gate.ensure", side_effect=GateError("review_gate_binding_changed")) as ensure, \
+             patch("hyperreview.worker_preview._finish_gate", return_value={}):
+            self.assertEqual(self.tick(10300)["status"], "preview_failed")
+            self.tick(10360)
+            self.assertEqual(ensure.call_count, 1)
+
+    def test_interrupted_gate_attempt_waits_and_uses_same_job(self):
+        self.tick()
+        with patch("hyperreview.automatic_review_gate.reconcile"), \
+             patch("hyperreview.automatic_review_gate.ensure", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                self.tick(10300)
+        with worker._state(self.state) as db:
+            before = dict(db.execute("SELECT * FROM preview_jobs").fetchone())
+            self.assertEqual((before["gate_attempts"], before["gate_retry_after"]), (1, 10360))
+        with patch("hyperreview.automatic_review_gate.reconcile"), \
+             patch("hyperreview.automatic_review_gate.ensure", return_value="https://example.test/gate") as ensure, \
+             patch("hyperreview.worker_preview._finish_gate", return_value={}), \
+             patch("hyperreview.worker_generation.run", return_value=self.completed()):
+            self.tick(10359)
+            ensure.assert_not_called()
+            self.assertEqual(self.tick(10360)["status"], "preview_ready")
+        with worker._state(self.state) as db:
+            after = dict(db.execute("SELECT * FROM preview_jobs").fetchone())
+            self.assertEqual(after["job"], before["job"])
+            self.assertEqual(after["gate_attempts"], 2)
+
+    def test_uncertain_creation_recovers_without_another_post(self):
+        from unittest.mock import MagicMock
+        from hyperreview import automatic_review_gate as gate
+        task = {"candidate": "a" * 64, "repository": REPO, "pr": 761,
+                "base_sha": "b" * 40, "head_sha": "c" * 40}
+        config = worker.load_config(self.config)
+        record = {**task, "job": "d" * 64, "status": "checking",
+                  "grant_repositories": json.dumps([REPO], separators=(",", ":"))}
+        db = MagicMock()
+        db.execute.return_value.fetchone.return_value = record
+        with patch.object(gate, "_setup"), patch.object(gate, "_authorized"), \
+             patch.object(gate, "_api", return_value=object()), \
+             patch.object(gate, "_recover_creation", return_value="https://example.test/gate") as recover, \
+             patch("hyperreview.review_gate.publish_review_gate") as post:
+            self.assertEqual(gate.ensure(db, self.state, config, task, record["job"]),
+                             "https://example.test/gate")
+            recover.assert_called_once()
+            post.assert_not_called()
+
+    def test_gate_api_unavailability_is_not_mislabeled_as_changed_binding(self):
+        from hyperreview import automatic_review_gate as gate
+        task = {"candidate": "a" * 64, "repository": REPO, "pr": 761,
+                "base_sha": "b" * 40, "head_sha": "c" * 40}
+        class Unavailable:
+            def get(self, *args):
+                raise OSError("synthetic network failure")
+        with self.assertRaises(gate.GateError) as error:
+            gate._fresh(Unavailable(), task)
+        self.assertEqual(error.exception.code, "review_gate_unavailable")
+
+    def test_gate_metadata_read_failure_is_retryable_but_ineligible_pr_is_not(self):
+        from hyperreview import automatic_review_gate as gate
+        task = {"candidate": "a" * 64, "repository": REPO, "pr": 761,
+                "base_sha": "b" * 40, "head_sha": "c" * 40}
+        class MetadataFailure:
+            def get(self, endpoint, *args):
+                if endpoint == "user":
+                    return {"login": "SoundBlaster"}
+                raise worker.intake.IntakeError("synthetic read failure")
+        with self.assertRaises(gate.GateError) as error:
+            gate._fresh(MetadataFailure(), task)
+        self.assertEqual(error.exception.code, "review_gate_unavailable")
+        with patch.object(gate.intake, "metadata", return_value={}), \
+             patch.object(gate.intake, "eligible", side_effect=worker.intake.IntakeError("ineligible")):
+            with self.assertRaises(gate.GateError) as error:
+                gate._fresh(MetadataFailure(), task)
+        self.assertEqual(error.exception.code, "review_gate_binding_changed")
+
+    def test_reconcile_does_not_consume_queued_retry(self):
+        from hyperreview import automatic_review_gate as gate
+        from hyperreview.automatic_review_gate import GateError
+        self.tick()
+        with patch.object(gate, "reconcile"), patch.object(gate, "ensure", side_effect=GateError("review_gate_unavailable")):
+            self.tick(10300)
+        config = worker.load_config(self.config)
+        with worker._state(self.state) as db:
+            gate._setup(db)
+            row = db.execute("SELECT j.job,t.* FROM preview_jobs j JOIN tasks t ON j.candidate=t.candidate").fetchone()
+            values = (row["job"], row["candidate"], REPO, row["pr"], row["base_sha"], row["head_sha"],
+                      json.dumps([REPO]), "SoundBlaster", "a" * 20, "source.py", 1, "later", "now",
+                      "plan", "a" * 64, "b" * 64, "c" * 64, "checking", 10300, gate._grant(config))
+            db.execute("""INSERT INTO automatic_review_gates
+                (job,candidate,repository,pr,base_sha,head_sha,grant_repositories,account,gate_id,path,line,
+                 expected_completion,started_at,plan_dir,plan_sha256,comment_sha256,body_sha256,status,updated_at,grant_digest)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", values)
+            db.commit()
+            with patch.object(gate, "_recover_creation") as recover:
+                result = gate.reconcile(db, self.state, config, api_factory=WorkerGitHub)
+                self.assertEqual(result, {"reconciled": 0, "pending": 0})
+                recover.assert_not_called()
+
+    def test_old_preview_journal_gets_retry_columns_without_losing_jobs(self):
+        import sqlite3
+        db = sqlite3.connect(":memory:")
+        db.execute("""CREATE TABLE preview_jobs (job TEXT PRIMARY KEY, candidate TEXT NOT NULL, settings TEXT NOT NULL,
+                   state TEXT NOT NULL, updated_at INTEGER NOT NULL, generation_runs INTEGER NOT NULL DEFAULT 0,
+                   provider_attempts INTEGER, artifact TEXT, bundle_digest TEXT, failure_code TEXT)""")
+        db.execute("INSERT INTO preview_jobs(job,candidate,settings,state,updated_at) VALUES ('a','b','c','queued',1)")
+        worker_preview._setup(db)
+        self.assertEqual(db.execute("SELECT gate_attempts,gate_retry_after FROM preview_jobs").fetchone(), (0, 0))
+
+    def test_interrupted_third_attempt_is_not_replayed_a_fourth_time(self):
+        from hyperreview.automatic_review_gate import GateError
+        self.tick()
+        with patch("hyperreview.automatic_review_gate.reconcile"), \
+             patch("hyperreview.automatic_review_gate.ensure",
+                   side_effect=[GateError("review_gate_unavailable"), GateError("review_gate_unavailable"), KeyboardInterrupt]) as ensure, \
+             patch("hyperreview.worker_preview._finish_gate", return_value={}) as finish, \
+             patch("hyperreview.worker_generation.run") as generate:
+            self.tick(10300); self.tick(10360)
+            with self.assertRaises(KeyboardInterrupt):
+                self.tick(10540)
+            result = self.tick(10541)
+            self.assertEqual(result["failure_code"], "review_gate_attempts_exhausted")
+            self.assertEqual(ensure.call_count, 3)
+            generate.assert_not_called()
+            self.assertEqual(finish.call_args.args[5], "failed")
+
+    def test_gate_plan_github_read_failure_is_retryable(self):
+        from hyperreview import automatic_review_gate as gate
+        from unittest.mock import MagicMock
+        config = worker.load_config(self.config)
+        task = {"candidate": "a" * 64, "repository": REPO, "pr": 761,
+                "base_sha": "b" * 40, "head_sha": "c" * 40}
+        with patch.object(gate, "_fresh", return_value=("SoundBlaster", {})), \
+             patch.object(gate, "_anchor", return_value=("source.py", 1)), \
+             patch("hyperreview.review_gate.plan_review_gate", side_effect=worker.intake.IntakeError("network")):
+            with self.assertRaises(gate.GateError) as error:
+                gate._persist_plan(MagicMock(), task, "d" * 64, config, WorkerGitHub(), self.state)
+        self.assertEqual(error.exception.code, "review_gate_unavailable")

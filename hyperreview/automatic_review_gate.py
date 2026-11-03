@@ -112,6 +112,9 @@ def _setup(db):
         CREATE TABLE IF NOT EXISTS automatic_gate_replies (
             job TEXT NOT NULL, outcome TEXT NOT NULL, PRIMARY KEY(job,outcome)
         );
+        CREATE TABLE IF NOT EXISTS automatic_gate_recoveries (
+            job TEXT PRIMARY KEY, reason TEXT NOT NULL, recorded_at INTEGER NOT NULL
+        );
         CREATE INDEX IF NOT EXISTS automatic_review_gates_pr
             ON automatic_review_gates(repository,pr,updated_at);
     """)
@@ -840,12 +843,42 @@ def complete(db, root, config, task, job, outcome, api_factory=None):
     if releases_gate and is_resolved:
         terminal_status = "failed_released" if normalized == "failed" else "completed"
         if record["status"] in ("completing", terminal_status):
+            recovery = db.execute("SELECT reason FROM automatic_gate_recoveries WHERE job=?", (job_id,)).fetchone()
+            if (normalized == "preview_ready" and recovery is not None
+                    and recovery[0] == "unconfirmed_reply_after_preview"):
+                _set(db, job_id, status="completed", completion_outcome="preview_ready", failure_code=None)
+                _schedule_older(db, record)
+                return record["url"]
             url = _mark_resolved_after_recovery(db, record, api, outcome=normalized)
             if normalized == "preview_ready":
                 _schedule_older(db, record)
             return url
         _fail("review_gate_binding_changed")
-    _reply_once(db, record, api, "failed_released" if normalized == "failed" else normalized)
+    try:
+        _reply_once(db, record, api, "failed_released" if normalized == "failed" else normalized)
+    except GateError as error:
+        current = db.execute("SELECT * FROM automatic_review_gates WHERE job=?", (job_id,)).fetchone()
+        # _reply_once inventories the exact marker before recording this state.
+        # Never send it again: a delayed write may still appear after the read.
+        if not (normalized == "preview_ready" and error.code == "review_gate_write_uncertain"
+                and current["failure_code"] == "reply_unconfirmed" and current["reply_attempts"] > 0
+                and db.execute("SELECT 1 FROM automatic_gate_replies WHERE job=? AND outcome='preview_ready'",
+                               (job_id,)).fetchone() is not None):
+            raise
+        _fresh(api, task)
+        _bound_thread(current, api)
+        # Persist intent before the remote mutation, so a crash after resolution
+        # can recover without inventing a reply or repeating the comment POST.
+        with db:
+            db.execute("INSERT OR IGNORE INTO automatic_gate_recoveries VALUES (?,?,?)",
+                       (job_id, "unconfirmed_reply_after_preview", int(time.time())))
+            db.execute("UPDATE automatic_review_gates SET status='completing',completion_outcome='preview_ready' WHERE job=?",
+                       (job_id,))
+        current = db.execute("SELECT * FROM automatic_review_gates WHERE job=?", (job_id,)).fetchone()
+        _resolve(db, current, outcome="preview_ready")
+        current = db.execute("SELECT * FROM automatic_review_gates WHERE job=?", (job_id,)).fetchone()
+        _schedule_older(db, current)
+        return current["url"]
     _set(db, job_id, completion_outcome=normalized,
          status="completing" if releases_gate else normalized)
     if releases_gate:

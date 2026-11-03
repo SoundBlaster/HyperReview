@@ -129,3 +129,14 @@ is recovered by reading its unique marker, never by another root-comment POST.
 Changed PR revisions and grant violations are not treated as transient failures.
 When the budget is exhausted the existing failure and gate-release process applies;
 model calls are not replayed by this recovery.
+
+## Unconfirmed completion reply
+
+If a completion-reply POST was attempted but cannot be found in a complete
+read-only inventory, never send it again: its outcome remains uncertain. For a
+committed preview only, after validating the current PR revisions and exact
+owned thread, the worker can resolve the gate without a reply. It records that
+recovery intent before resolution so a crash after the GraphQL mutation can be
+reconciled without inventing a reply. This confirms analysis completion, not
+publication; the summary remains subject to the independent publication checks.
+Failures and unverified or stale previews do not take this path.

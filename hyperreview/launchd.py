@@ -125,7 +125,8 @@ def write_launchd_plan(*, config_path: Path, python: Path, output_root: Path) ->
     }
     plist_bytes = plistlib.dumps(plist, fmt=plistlib.FMT_XML, sort_keys=True)
     instructions = _installation_instructions(private_preview="preview" in loaded,
-                                              review_gates="review_gate" in loaded)
+                                              review_gates="review_gate" in loaded,
+                                              gate_refresh="gate_refresh" in loaded)
     try:
         destination = write_bundle(
             {"agent.plist": plist_bytes, "installation.md": instructions}, output_root
@@ -135,7 +136,7 @@ def write_launchd_plan(*, config_path: Path, python: Path, output_root: Path) ->
     return destination
 
 
-def _installation_instructions(private_preview=False, review_gates=False):
+def _installation_instructions(private_preview=False, review_gates=False, gate_refresh=False):
     """Static instructions intentionally contain no input-controlled shell text."""
     instructions = b"""# HyperReview worker launchd plan
 
@@ -188,5 +189,8 @@ To re-enable it later, review the plist again, run `launchctl enable
             b"Failures keep the thread open; deadlines do not release it. It does not publish ordinary comments,\n"
             b"track or merge PRs.")
         instructions += b"\nThe review-gate repository grant and ETA are in the v3 worker config.\n"
+    if gate_refresh:
+        instructions += (b"\nThe config additionally authorizes dispatching specified repository workflows "
+                         b"after owned review threads close. Review every workflow and ref before installation.\n")
     instructions += b"\nThe service wakes every 30 seconds. The configured interval limits PR discovery, not ready queue work. One run collects at most one request and may immediately generate one preview under the existing grants and budgets.\n"
     return instructions

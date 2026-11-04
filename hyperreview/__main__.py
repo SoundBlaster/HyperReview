@@ -28,6 +28,8 @@ def main():
     worker_config.add_argument("--preview-timeout-seconds", type=int)
     worker_config.add_argument("--authorize-review-gates", action="store_true")
     worker_config.add_argument("--review-gate-repository", action="append")
+    worker_config.add_argument("--gate-refresh-workflow", action="append", metavar="REPO=WORKFLOW@REF",
+                               help="Authorize a repository workflow dispatch after gate closure")
     worker_config.add_argument("--review-gate-eta-seconds", type=int)
     worker_config.add_argument("--review-gate-state-root", type=Path)
     for name in ("worker-tick", "worker-run", "worker-status"):
@@ -211,6 +213,7 @@ def main():
                 if args.command == "worker-config":
                     preview = None
                     review_gate = None
+                    gate_refresh = None
                     if args.authorize_review_gates:
                         if not args.private_preview or not args.review_gate_repository:
                             parser.error("Review gates require private preview and explicit repository grants")
@@ -222,6 +225,19 @@ def main():
                                                              args.review_gate_eta_seconds,
                                                              args.review_gate_state_root)):
                         parser.error("Review gate options require --authorize-review-gates")
+                    if args.gate_refresh_workflow:
+                        if review_gate is None:
+                            parser.error("Workflow refresh requires authorized review gates")
+                        gate_refresh = {}
+                        for item in args.gate_refresh_workflow:
+                            try:
+                                repo, target = item.split("=", 1)
+                                workflow, ref = target.split("@", 1)
+                            except ValueError:
+                                parser.error("Expected REPO=WORKFLOW@REF")
+                            if repo in gate_refresh:
+                                parser.error("Duplicate workflow refresh repository")
+                            gate_refresh[repo] = {"workflow": workflow, "ref": ref}
                     if args.private_preview:
                         if not args.allow_cloud_source or any(value is None for value in (
                                 args.codex_executable, args.codex_sha256, args.compiler, args.compiler_sha256)):
@@ -241,7 +257,7 @@ def main():
                     destination = create_config(repositories=args.repo, state_root=state_root,
                                                 interval_seconds=args.interval_seconds,
                                                 output_root=args.output_root, preview=preview,
-                                                review_gate=review_gate)
+                                                review_gate=review_gate, gate_refresh=gate_refresh)
                     print(f"Worker config: {destination / 'config.json'}")
                     return 0
                 if args.command == "worker-launchd-plan":

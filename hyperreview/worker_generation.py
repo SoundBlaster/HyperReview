@@ -30,6 +30,7 @@ _FINGERPRINT_FILES = (
     "hyperreview/worker_generation.py",
     "hyperreview/worker_preview.py",
     "hyperreview/automatic_review_gate.py",
+    "hyperreview/gate_refresh.py",
     "hyperreview/worker.py",
     "hyperreview/local_provider.py",
     "hyperreview/storage.py",

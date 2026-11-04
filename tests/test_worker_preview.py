@@ -237,6 +237,16 @@ class GateRetryTests(unittest.TestCase):
             review_gate={"repositories": [REPO], "eta_seconds": 600,
                          "state_root": str(self.root / "gate")}) / "config.json"
 
+    def test_opt_in_workflow_refresh_runs_after_preview_work(self):
+        config = json.loads(self.config.read_text())
+        config["gate_refresh"] = {REPO: {"workflow": "stack-gate.yml", "ref": "main"}}
+        self.config.write_text(json.dumps(config))
+        self.assertEqual(worker.load_config(self.config)["gate_refresh"], config["gate_refresh"])
+        with patch("hyperreview.worker_preview.process_one", return_value=None), \
+             patch("hyperreview.gate_refresh.drain") as drain:
+            self.tick()
+        drain.assert_called_once()
+
     def test_retry_delays_survive_new_ticks_and_generation_runs_once(self):
         from hyperreview.automatic_review_gate import GateError
         self.tick()

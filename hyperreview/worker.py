@@ -96,7 +96,8 @@ def load_config(path):
         _require(set(config) == base_keys)
     elif config.get("schema") in (PREVIEW_CONFIG_SCHEMA, GATED_PREVIEW_CONFIG_SCHEMA):
         extra = {"review_gate"} if config["schema"] == GATED_PREVIEW_CONFIG_SCHEMA else set()
-        _require(set(config) == base_keys | {"preview"} | extra)
+        required = base_keys | {"preview"} | extra
+        _require(set(config) in (required, required | {"gate_refresh"}))
         from .worker_generation import PreviewJobError, validate_options
         try:
             validate_options(config["preview"])
@@ -114,6 +115,10 @@ def load_config(path):
             validate_options(config["review_gate"], repositories)
         except GateError as error:
             raise WorkerError("Automatic review gate configuration is invalid") from error
+    if "gate_refresh" in config:
+        from .gate_refresh import validate_options
+        _require("review_gate" in config)
+        validate_options(config["gate_refresh"], config["review_gate"]["repositories"])
     interval = config["interval_seconds"]
     _require(type(interval) is int and 300 <= interval <= 86400)
     _require(type(config["state_root"]) is str)
@@ -122,7 +127,7 @@ def load_config(path):
 
 
 def create_config(*, repositories, state_root, output_root, interval_seconds=300, preview=None,
-                  review_gate=None):
+                  review_gate=None, gate_refresh=None):
     config = {"schema": CONFIG_SCHEMA, "repositories": list(repositories),
               "interval_seconds": interval_seconds, "state_root": str(state_root)}
     if preview is not None:
@@ -137,6 +142,11 @@ def create_config(*, repositories, state_root, output_root, interval_seconds=300
         from .automatic_review_gate import validate_options
         validate_options(review_gate, repositories)
         config.update(schema=GATED_PREVIEW_CONFIG_SCHEMA, review_gate=review_gate)
+    if gate_refresh is not None:
+        _require(review_gate is not None, "Workflow refresh requires automatic review gates")
+        from .gate_refresh import validate_options
+        validate_options(gate_refresh, review_gate["repositories"])
+        config["gate_refresh"] = gate_refresh
     # Validate before creating any state directory; reuse the file boundary below.
     _require(1 <= len(config["repositories"]) <= len(intake.ALLOWLIST))
     _require(all(type(repo) is str and repo in intake.ALLOWLIST for repo in repositories))
@@ -437,6 +447,9 @@ def tick(config_path, *, api=None, collect_request=True):
                 db, config, root, api, now,
                 observation_factory=(lambda: api) if injected_api else _observation_api,
                 gate_factory=(lambda: api) if injected_api else _gate_observation_api)
+            if "gate_refresh" in config:
+                from .gate_refresh import drain
+                drain(db, config["gate_refresh"], int(time.time()))
             if completed_preview is not None:
                 return {"discovered": discovered, "queue_full": full, **completed_preview}
         policy = WorkerTaskEligibility()

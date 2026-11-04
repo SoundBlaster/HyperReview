@@ -140,3 +140,19 @@ recovery intent before resolution so a crash after the GraphQL mutation can be
 reconciled without inventing a reply. This confirms analysis completion, not
 publication; the summary remains subject to the independent publication checks.
 Failures and unverified or stale previews do not take this path.
+
+## Optional repository workflow refresh
+
+An operator can separately grant `worker-config --gate-refresh-workflow
+OWNER/REPO=WORKFLOW.yml@REF` for a repository already authorized for automatic
+review gates. This permits dispatching that exact workflow and ref using the
+worker's GitHub credentials; it does not itself change a status or approve a PR.
+Enable this only for a trusted workflow that safely recomputes current evidence.
+
+Before resolving a gate the worker journals a refresh request; it dispatches
+only after the gate is recorded closed. A restart preserves pending requests.
+Ambiguous or unsuccessful dispatches retry after 60 and 180 seconds, at most
+three attempts, so an uncertain response can produce duplicate workflow runs.
+Revoking or changing the grant suppresses old queued requests. Scheduled
+repository reconciliation remains an independent fallback for exhausted retries,
+other actors' thread changes, and disabled or offline workers.

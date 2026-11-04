@@ -113,3 +113,13 @@ class GateReplyRecoveryTests(unittest.TestCase):
             post.assert_not_called()
         self.assertEqual(self.db.execute("select count(*) from automatic_gate_replies").fetchone()[0], 1)
         self.assertEqual(self.db.execute("select status from automatic_review_gates").fetchone()[0], "completed")
+
+    def test_gate_resolution_enqueues_only_explicitly_authorized_workflow(self):
+        self.config["gate_refresh"] = {REPO: {"workflow": "stack-gate.yml", "ref": "main"}}
+        with patch.object(gate, "_api", return_value=object()), patch.object(gate, "_fresh"), \
+             patch.object(gate, "_bound_thread", return_value=("thread-node", "SoundBlaster", False)), \
+             patch.object(gate, "_find_reply", return_value=None), \
+             patch.object(gate, "_resolve", side_effect=self.resolve):
+            gate.complete(self.db, self.root, self.config, self.task, self.job, "success")
+        row = self.db.execute("select repository,workflow,ref,sent from automatic_gate_refreshes").fetchone()
+        self.assertEqual(tuple(row), (REPO, "stack-gate.yml", "main", 0))

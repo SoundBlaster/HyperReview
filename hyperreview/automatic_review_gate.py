@@ -794,12 +794,16 @@ def _finish_older(db, record, config, api):
     if thread_id != record["thread_id"]:
         _fail("review_gate_binding_changed")
     if resolved:
+        from .gate_refresh import enqueue
+        enqueue(db, config, record)
         _set(db, record["job"], status="superseded", completion_outcome="replacement_completed", failure_code=None)
         return
     _reply_once(db, record, api, "replacement_completed")
     record = db.execute("SELECT * FROM automatic_review_gates WHERE job=?", (record["job"],)).fetchone()
     _fresh(api, task)
     _bound_thread(record, api, allow_outdated=True)
+    from .gate_refresh import enqueue
+    enqueue(db, config, record)
     _resolve(db, record, superseded=True)
 
 
@@ -846,9 +850,13 @@ def complete(db, root, config, task, job, outcome, api_factory=None):
             recovery = db.execute("SELECT reason FROM automatic_gate_recoveries WHERE job=?", (job_id,)).fetchone()
             if (normalized == "preview_ready" and recovery is not None
                     and recovery[0] == "unconfirmed_reply_after_preview"):
+                from .gate_refresh import enqueue
+                enqueue(db, config, record)
                 _set(db, job_id, status="completed", completion_outcome="preview_ready", failure_code=None)
                 _schedule_older(db, record)
                 return record["url"]
+            from .gate_refresh import enqueue
+            enqueue(db, config, record)
             url = _mark_resolved_after_recovery(db, record, api, outcome=normalized)
             if normalized == "preview_ready":
                 _schedule_older(db, record)
@@ -875,6 +883,8 @@ def complete(db, root, config, task, job, outcome, api_factory=None):
             db.execute("UPDATE automatic_review_gates SET status='completing',completion_outcome='preview_ready' WHERE job=?",
                        (job_id,))
         current = db.execute("SELECT * FROM automatic_review_gates WHERE job=?", (job_id,)).fetchone()
+        from .gate_refresh import enqueue
+        enqueue(db, config, current)
         _resolve(db, current, outcome="preview_ready")
         current = db.execute("SELECT * FROM automatic_review_gates WHERE job=?", (job_id,)).fetchone()
         _schedule_older(db, current)
@@ -886,6 +896,8 @@ def complete(db, root, config, task, job, outcome, api_factory=None):
         if normalized == "preview_ready":
             _fresh(api, task)
         _bound_thread(record, api, allow_outdated=normalized == "failed")
+        from .gate_refresh import enqueue
+        enqueue(db, config, record)
         _resolve(db, record, outcome=normalized)
         record = db.execute("SELECT * FROM automatic_review_gates WHERE job=?", (job_id,)).fetchone()
         if normalized == "preview_ready":

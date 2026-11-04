@@ -591,6 +591,12 @@ after a clear notice that no review or approval was produced. ETA expiry alone
 does not release the gate. Repository rules must require
 conversation resolution for this to block merge.
 
+Optionally add `--gate-refresh-workflow OWNER/REPO=WORKFLOW.yml@REF` to
+authorize dispatch of that repository-owned workflow after a gate closes. The
+workflow should safely recompute current checks; this grant can start it and
+requires Actions write permission. Pending dispatches survive worker restarts;
+an uncertain response can cause a repeated workflow run.
+
 The ordinary publisher links its review summary back to the start thread.
 After confirmed publication it also posts a short summary link in that completed
 thread. Retained completed deliveries can receive the link without rerunning
